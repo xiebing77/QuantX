@@ -2,7 +2,7 @@
 """bitrue spot"""
 import os
 from datetime import datetime
-from .bitrue import Bitrue
+from .bitrue import Bitrue, api_key, secret_key
 from .spot import Spot
 from common import create_balance
 
@@ -15,7 +15,8 @@ class BitrueSpot(Bitrue):
         return
 
     def connect(self):
-        self.__api = Spot(user_agent=Bitrue.name+'/python', exchange=self)
+        self.__api = Spot(key=api_key, secret=secret_key,
+            user_agent=Bitrue.name+'/python', exchange=self)
 
     # MARKETS
     def ping(self):

@@ -2,7 +2,7 @@
 """binance spot"""
 import os
 from datetime import datetime
-from .binance import Binance
+from .binance import Binance, api_key, secret_key
 from .spot import Spot
 from common import create_balance
 
@@ -15,7 +15,8 @@ class BinanceSpot(Binance):
         return
 
     def connect(self):
-        self.__api = Spot(user_agent=Binance.name+'/python', exchange=self)
+        self.__api = Spot(key=api_key, secret=secret_key,
+            user_agent=Binance.name+'/python', exchange=self)
 
     # ACCOUNT(including orders and trades)
     def ping(self):
