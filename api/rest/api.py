@@ -3,7 +3,7 @@ import json
 import logging
 import hashlib
 from json import JSONDecodeError
-
+import time
 import requests
 from .error import ClientError, ServerError
 from common import cleanNoneValue, encoded_string
@@ -29,6 +29,7 @@ class API(object):
         show_limit_usage=False,
         show_header=False,
         user_agent='',
+        exchange=None,
     ):
         self.key = key
         self.secret = secret
@@ -57,6 +58,8 @@ class API(object):
         if type(proxies) is dict:
             self.proxies = proxies
 
+        if exchange:
+            self.exchange = exchange
         return
 
     def query(self, url_path, payload=None):
@@ -71,7 +74,7 @@ class API(object):
     def sign_request(self, http_method, url_path, payload=None):
         if payload is None:
             payload = {}
-        payload["timestamp"] = get_timestamp()
+        payload["timestamp"] = self.exchange.get_timestamp()
         query_string = self._prepare_params(payload)
         signature = self._get_sign(query_string)
         payload["signature"] = signature
@@ -88,7 +91,7 @@ class API(object):
         """
         if payload is None:
             payload = {}
-        payload["timestamp"] = get_timestamp()
+        payload["timestamp"] = self.exchange.get_timestamp()
         query_string = self._prepare_params(payload)
         signature = self._get_sign(query_string)
         url_path = url_path + "?" + query_string + "&signature=" + signature

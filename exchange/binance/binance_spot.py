@@ -15,15 +15,34 @@ class BinanceSpot(Binance):
         return
 
     def connect(self):
-        self.__api = Spot(user_agent=Binance.name+'/python')
+        self.__api = Spot(user_agent=Binance.name+'/python', exchange=self)
 
+    # ACCOUNT(including orders and trades)
     def ping(self):
         return self.__api.ping()
 
     def time(self):
         return self.get_time_from_data_ts(self.__api.time()['serverTime'])
 
-    def _get_price(self, exchange_symbol):
+    def exchange_info(self):
+        return self.exchange_info()
+
+    def _depth(self, exchange_symbol, limit=100):
+        return self.__api.depth(symbol=exchange_symbol, limit=limit)
+
+    def _trades(self, exchange_symbol):
+        trades = self.__api.trades(symbol=exchange_symbol)
+        return trades
+
+    def _historical_trades(self, exchange_symbol):
+        trades = self.__api.historical_trades(symbol=exchange_symbol)
+        return trades
+
+    def _agg_trades(self, exchange_symbol):
+        trades = self.__api.agg_trades(symbol=exchange_symbol)
+        return trades
+
+    def _ticker_price(self, exchange_symbol):
         return float(self.__api.ticker_price(exchange_symbol)['price'])
 
     def _get_klines(self, exchange_symbol, interval, size, since):
@@ -34,9 +53,9 @@ class BinanceSpot(Binance):
 
         return klines
 
-    def get_account(self):
-        """获取账户信息"""
-        account = self.__api.get_account()
+    # ACCOUNT(including orders and trades)
+    def account(self):
+        account = self.__api.account()
         nb = []
         balances = account['balances']
         for item in balances:
@@ -50,7 +69,7 @@ class BinanceSpot(Binance):
     def get_all_balances(self):
         """获取余额"""
         balances = []
-        account = self.get_account()
+        account = self.account()
         for item in account['balances']:
             balance = create_balance(item['asset'], item['free'], item['locked'])
             balances.append(balance)
@@ -60,7 +79,7 @@ class BinanceSpot(Binance):
     def get_balances(self, *coins):
         """获取余额"""
         coin_balances = []
-        account = self.__api.get_account()
+        account = self.account()
         balances = account['balances']
         for coin in coins:
             coinKey = self.__get_coinkey(coin)
@@ -76,12 +95,12 @@ class BinanceSpot(Binance):
         else:
             return tuple(coin_balances)
 
-    def _get_trades(self, exchange_symbol):
-        trades = self.__api.get_my_trades(symbol=exchange_symbol)
+    def _my_trades(self, exchange_symbol):
+        trades = self.__api.my_trades(symbol=exchange_symbol)
         return trades
 
-    def _create_order(self, binance_side, binance_type, exchange_symbol, price, amount, client_order_id=None):
-        ret = self.__api.create_order(symbol=exchange_symbol, side=binance_side, type=binance_type,
+    def _new_order(self, binance_side, binance_type, exchange_symbol, price, amount, client_order_id=None):
+        ret = self.__api.new_order(symbol=exchange_symbol, side=binance_side, type=binance_type,
             timeInForce=TIME_IN_FORCE_GTC, price=price, quantity=amount)
         log.debug(ret)
         try:
@@ -107,7 +126,4 @@ class BinanceSpot(Binance):
 
     def _cancel_order(self, exchange_symbol, order_id):
         self.__api.cancel_order(symbol=exchange_symbol, orderId=order_id)
-
-    def _get_order_book(self, exchange_symbol, limit=100):
-        return self.__api.depth(symbol=exchange_symbol, limit=limit)
 

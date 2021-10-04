@@ -3,11 +3,11 @@
 import sys
 sys.path.append('../')
 from interface.market_data import MarketData
-from interface.trade import Trade
+from interface.account import Account
 from common import get_symbol_coins
 
 
-class Exchange(MarketData, Trade):
+class Exchange(MarketData, Account):
     def __init__(self):
         return
 

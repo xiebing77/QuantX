@@ -1,17 +1,18 @@
 #!/usr/bin/python
 """"""
+import common
 
-class Trade():
+class Account():
 
-    def create_order(self, side, type, symbol, price, amount, client_order_id=None):
+    def new_order(self, side, type, symbol, price, amount, client_order_id=None):
         #log.info('create order: pair(%s), side(%s), type(%s), price(%f), amount(%f)' % (exchange_symbol, binance_side, binance_type, price, amount))
+        ex_side = self.ex_sides[side]
         if hasattr(self, '_before_create_order'):
-            target_coin, base_coin = xq.get_symbol_coins(symbol)
-            self._before_create_order(self._trans_side(side), target_coin, base_coin,
+            target_coin, base_coin = common.get_symbol_coins(symbol)
+            self._before_create_order(ex_side, target_coin, base_coin,
                 price, amount, client_order_id)
-        return self._create_order(
-            self._trans_type(type), self._trans_side(side), self._trans_symbol(symbol),
-            price, amount, client_order_id)
+        return self._new_order(self.ex_order_types[type], ex_side,
+            self._trans_symbol(symbol), price, amount, client_order_id)
 
     def cancel_order(self, symbol, order_id):
         self._cancel_order(self._trans_symbol(symbol), orderId=order_id)
@@ -23,6 +24,9 @@ class Trade():
         for order_id in order_ids:
             self.cancel_order(symbol, order_id)
 
+    def get_orders(self, symbol):
+        return self._get_orders(self._trans_symbol(symbol))
+
     def get_open_orders(self, symbol):
         return self._get_open_orders(self._trans_symbol(symbol))
 
@@ -32,5 +36,5 @@ class Trade():
     def order_status_is_close(self, symbol, order_id):
         return self._order_status_is_close(self._trans_symbol(symbol))
 
-    def get_trades(self, symbol):
-        return self._get_trades(self._trans_symbol(symbol))
+    def my_trades(self, symbol):
+        return self._get_my_trades(self._trans_symbol(symbol))

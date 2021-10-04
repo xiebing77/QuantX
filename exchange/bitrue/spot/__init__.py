@@ -10,34 +10,33 @@ class Spot(API):
     # MARKETS
     from .market import ping
     from .market import time
-    #from binance.spot.market import exchange_info
+    from .market import exchange_info
     from .market import depth
-    #from binance.spot.market import trades
-    #from binance.spot.market import historical_trades
-    #from binance.spot.market import agg_trades
+    from .market import trades
+    from .market import historical_trades
+    from .market import agg_trades
     #from binance.spot.market import klines
     #from binance.spot.market import avg_price
     #from binance.spot.market import ticker_24hr
     from .market import ticker_price
-    #from binance.spot.market import book_ticker
+    from .market import book_ticker
+
+    # ACCOUNT(including orders and trades)
+    from .account import new_order
+    from .account import cancel_order
+    #from binance.spot.account import cancel_open_orders
+    from .account import get_order
+    from .account import get_open_orders
+    from .account import get_orders
+    #from binance.spot.account import new_oco_order
+    #from binance.spot.account import cancel_oco_order
+    #from binance.spot.account import get_oco_order
+    #from binance.spot.account import get_oco_orders
+    #from binance.spot.account import get_oco_open_orders
+    from .account import account
+    from .account import my_trades
 
     '''
-    # ACCOUNT(including orders and trades)
-    from binance.spot.account import new_order_test
-    from binance.spot.account import new_order
-    from binance.spot.account import cancel_order
-    from binance.spot.account import cancel_open_orders
-    from binance.spot.account import get_order
-    from binance.spot.account import get_open_orders
-    from binance.spot.account import get_orders
-    from binance.spot.account import new_oco_order
-    from binance.spot.account import cancel_oco_order
-    from binance.spot.account import get_oco_order
-    from binance.spot.account import get_oco_orders
-    from binance.spot.account import get_oco_open_orders
-    from binance.spot.account import account
-    from binance.spot.account import my_trades
-
     # STREAMS
     from binance.spot.data_stream import new_listen_key
     from binance.spot.data_stream import renew_listen_key

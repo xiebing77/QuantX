@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import os
+import time
 from datetime import datetime
 import kline as kl
 from exchange.exchange import Exchange
@@ -103,6 +104,9 @@ class Bitrue(Exchange):
 
     def get_data_ts_from_time(self, t):
         return int(t.timestamp()) * 1000
+
+    def get_timestamp(self):
+        return int(time.time() * 1000)
 
     def _get_open_order_ids(self, exchange_symbol):
         orders = self._get_open_orders(symbol)
