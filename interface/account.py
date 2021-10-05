@@ -17,12 +17,12 @@ class Account():
     def cancel_order(self, symbol, order_id):
         self._cancel_order(self._trans_symbol(symbol), orderId=order_id)
 
-    def cancel_all_open_orders(self, symbol):
-        self._cancel_all_open_orders(self._trans_symbol(symbol))
-
     def cancel_orders(self, symbol, order_ids):
         for order_id in order_ids:
             self.cancel_order(symbol, order_id)
+
+    def cancel_open_orders(self, symbol):
+        self._cancel_open_orders(self._trans_symbol(symbol))
 
     def get_orders(self, symbol):
         return self._get_orders(self._trans_symbol(symbol))
@@ -31,7 +31,8 @@ class Account():
         return self._get_open_orders(self._trans_symbol(symbol))
 
     def get_open_order_ids(self, symbol):
-        return self._get_open_order_ids(self._trans_symbol(symbol))
+        orders = self.get_open_orders(symbol)
+        return [order[self.Order_Id_Key] for order in orders]
 
     def order_status_is_close(self, symbol, order_id):
         return self._order_status_is_close(self._trans_symbol(symbol))

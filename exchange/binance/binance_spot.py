@@ -128,3 +128,6 @@ class BinanceSpot(Binance):
     def _cancel_order(self, exchange_symbol, order_id):
         self.__api.cancel_order(symbol=exchange_symbol, orderId=order_id)
 
+    def _cancel_open_orders(self, exchange_symbol):
+        self.__api.cancel_open_orders(symbol=exchange_symbol)
+
