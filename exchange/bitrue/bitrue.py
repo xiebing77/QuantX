@@ -39,6 +39,9 @@ class Bitrue(Exchange):
     kline_idx_volume      = kl.get_kline_index(kl.KLINE_KEY_VOLUME, kline_column_names)
     max_count_of_single_download_kl = 1000
 
+    Order_Id_Key = 'orderId'
+    Order_Time_Key = 'time'
+
     ORDER_STATUS_NEW = 'NEW'
     ORDER_STATUS_PARTIALLY_FILLED = 'PARTIALLY_FILLED'
     ORDER_STATUS_FILLED = 'FILLED'
@@ -91,13 +94,9 @@ class Bitrue(Exchange):
     def _get_coinkey(self, coin):
         return coin.upper()
 
-    def _trans_type(self, type):
-        if type == xq.ORDER_TYPE_LIMIT:
-            return ORDER_TYPE_LIMIT
-        elif type == xq.ORDER_TYPE_MARKET:
-            return ORDER_TYPE_MARKET
-        else:
-            return None
+    def _trans_symbol(self, symbol):
+        target_coin, base_coin = common.split_symbol_coins(symbol)
+        return '%s%s' % (self._get_coinkey(target_coin), self._get_coinkey(base_coin))
 
     def get_time_from_data_ts(self, ts):
         return datetime.fromtimestamp(ts / 1000)
@@ -107,10 +106,6 @@ class Bitrue(Exchange):
 
     def get_timestamp(self):
         return int(time.time() * 1000)
-
-    def _get_open_order_ids(self, exchange_symbol):
-        orders = self._get_open_orders(symbol)
-        return [order["orderId"] for order in orders]
 
     def _order_status_is_close(self, exchange_symbol, order_id):
         order = self._get_order(exchange_symbol, order_id)

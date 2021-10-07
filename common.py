@@ -32,7 +32,7 @@ def encoded_string(query):
 def creat_symbol(target_coin, base_coin):
     return "%s_%s" % (target_coin.lower(), base_coin.lower())
 
-def get_symbol_coins(symbol):
+def split_symbol_coins(symbol):
     coins = symbol.split("_")
     return tuple(coins)
 

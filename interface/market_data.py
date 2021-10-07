@@ -10,6 +10,18 @@ class MarketData():
     def depth(self, symbol, limit=100):
         return self._depth(self._trans_symbol(symbol), limit=limit)
 
+    def trades(self, symbol):
+        trades = self._trades(symbol=self._trans_symbol(symbol))
+        return trades
+
+    def historical_trades(self, symbol):
+        trades = self._historical_trades(symbol=self._trans_symbol(symbol))
+        return trades
+
+    def agg_trades(self, symbol):
+        trades = self._agg_trades(symbol=self._trans_symbol(symbol))
+        return trades
+
     def ticker_price(self, symbol):
         return self._ticker_price(self._trans_symbol(symbol))
 

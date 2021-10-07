@@ -39,6 +39,9 @@ class Binance(Exchange):
     kline_idx_volume      = kl.get_kline_index(kl.KLINE_KEY_VOLUME, kline_column_names)
     max_count_of_single_download_kl = 1000
 
+    Order_Id_Key = 'orderId'
+    Order_Time_Key = 'time'
+
     ORDER_STATUS_NEW = 'NEW'
     ORDER_STATUS_PARTIALLY_FILLED = 'PARTIALLY_FILLED'
     ORDER_STATUS_FILLED = 'FILLED'
@@ -73,11 +76,11 @@ class Binance(Exchange):
     ex_order_types = {
         order.ORDER_TYPE_LIMIT: 'LIMIT',
         order.ORDER_TYPE_MARKET: 'MARKET',
-        #ORDER_TYPE_STOP_LOSS = 'STOP_LOSS'
-        #ORDER_TYPE_STOP_LOSS_LIMIT = 'STOP_LOSS_LIMIT'
-        #ORDER_TYPE_TAKE_PROFIT = 'TAKE_PROFIT'
-        #ORDER_TYPE_TAKE_PROFIT_LIMIT = 'TAKE_PROFIT_LIMIT'
-        #ORDER_TYPE_LIMIT_MAKER = 'LIMIT_MAKER'
+        #order.ORDER_TYPE_STOP_LOSS: 'STOP_LOSS',
+        #order.ORDER_TYPE_STOP_LOSS_LIMIT: 'STOP_LOSS_LIMIT',
+        #order.ORDER_TYPE_TAKE_PROFIT: 'TAKE_PROFIT',
+        #order.ORDER_TYPE_TAKE_PROFIT_LIMIT: 'TAKE_PROFIT_LIMIT',
+        #order.ORDER_TYPE_LIMIT_MAKER: 'LIMIT_MAKER',
     }
 
     TIME_IN_FORCE_GTC = 'GTC'  # Good till cancelled
@@ -88,8 +91,18 @@ class Binance(Exchange):
     ORDER_RESP_TYPE_RESULT = 'RESULT'
     ORDER_RESP_TYPE_FULL = 'FULL'
 
+    Trade_Key_CommissionQty = 'commission'
+    Trade_Key_CommissionAsset = 'commissionAsset'
+    Trade_Key_IsBuyer = 'isBuyer'
+    Trade_Key_Qty = 'qty'
+    Trade_Key_Price = 'price'
+
     def _get_coinkey(self, coin):
         return coin.upper()
+
+    def _trans_symbol(self, symbol):
+        target_coin, base_coin = common.split_symbol_coins(symbol)
+        return '%s%s' % (self._get_coinkey(target_coin), self._get_coinkey(base_coin))
 
     def get_time_from_data_ts(self, ts):
         return datetime.fromtimestamp(ts / 1000)
@@ -99,10 +112,6 @@ class Binance(Exchange):
 
     def get_timestamp(self):
         return int(time.time() * 1000)
-
-    def _get_open_order_ids(self, exchange_symbol):
-        orders = self._get_open_orders(symbol)
-        return [order["orderId"] for order in orders]
 
     def _order_status_is_close(self, exchange_symbol, order_id):
         order = self._get_order(exchange_symbol, order_id)
