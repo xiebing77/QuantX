@@ -6,7 +6,7 @@ from exchange.exchange_factory import get_exchange_names, create_exchange
 import pprint
 
 
-def calc_trades(exchange, trades, cur_price):
+def calc_trades(exchange, trades):
     commission = {}
     position_qty = 0
     gross_profit = 0
@@ -28,12 +28,7 @@ def calc_trades(exchange, trades, cur_price):
             position_qty -= trade_qty
             gross_profit += trade_value
 
-    cur_price = exchange.ticker_price(symbol)
-    floating_gross_profit = cur_price * position_qty + gross_profit
-    print("position_qty: %s" % position_qty)
-    print("floating_gross_profit: %s" % floating_gross_profit)
-    print("commission: %s" % commission)
-
+    return position_qty, gross_profit, commission
 
 
 if __name__ == "__main__":
@@ -61,5 +56,9 @@ if __name__ == "__main__":
     tail_dt = exchange.get_time_from_data_ts(my_trades[0-1][exchange.Order_Time_Key])
     print("  %s  ~  %s" % (head_dt, tail_dt) )
 
+    position_qty, gross_profit, commission = calc_trades(exchange, my_trades)
     cur_price = exchange.ticker_price(symbol)
-    calc_trades(exchange, my_trades, cur_price)
+    floating_gross_profit = cur_price * position_qty + gross_profit
+    print("position_qty: %s" % position_qty)
+    print("floating_gross_profit: %s" % floating_gross_profit)
+    print("commission: %s" % commission)

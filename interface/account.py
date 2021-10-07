@@ -17,17 +17,17 @@ class Account():
     def cancel_order(self, symbol, order_id):
         self._cancel_order(self._trans_symbol(symbol), orderId=order_id)
 
-    def cancel_all_open_orders(self, symbol):
-        self._cancel_all_open_orders(self._trans_symbol(symbol))
-
     def cancel_orders(self, symbol, order_ids):
         for order_id in order_ids:
             self.cancel_order(symbol, order_id)
 
+    def cancel_open_orders(self, symbol):
+        self._cancel_open_orders(self._trans_symbol(symbol))
+
     def get_order(self, symbol):
         return self._get_orders(self._trans_symbol(symbol))
 
-    def get_open_orders(self, symbol):
+    def get_open_order(self, symbol):
         return self._get_open_orders(self._trans_symbol(symbol))
 
     def get_open_order_ids(self, symbol):

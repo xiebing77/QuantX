@@ -123,3 +123,9 @@ class BitrueSpot(Bitrue):
     def _cancel_order(self, exchange_symbol, order_id):
         self.__api.cancel_order(symbol=exchange_symbol, orderId=order_id)
 
+    def _cancel_open_orders(self, exchange_symbol):
+        orders = self.__api.get_open_orders(symbol=exchange_symbol)
+        for order in orders:
+            order_id = order[self.Order_Id_Key]
+            self.__api.cancel_order(symbol=exchange_symbol, orderId=order_id)
+
