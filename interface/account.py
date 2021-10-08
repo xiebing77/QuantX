@@ -25,9 +25,9 @@ class Account():
         self._cancel_open_orders(self._trans_symbol(symbol))
 
     def get_order(self, symbol):
-        return self._get_orders(self._trans_symbol(symbol))
+        return self._get_order(self._trans_symbol(symbol))
 
-    def get_open_order(self, symbol):
+    def get_open_orders(self, symbol):
         return self._get_open_orders(self._trans_symbol(symbol))
 
     def get_open_order_ids(self, symbol):

@@ -49,16 +49,16 @@ if __name__ == "__main__":
 
     symbol = args.symbol
     my_trades = exchange.my_trades(symbol)
-    print("my_trades(%s):" % (len(my_trades)) )
+    print("%-25s: %s" % ("length", len(my_trades)) )
     #pprint.pprint(my_trades)
 
     head_dt = exchange.get_time_from_data_ts(my_trades[0][exchange.Order_Time_Key])
     tail_dt = exchange.get_time_from_data_ts(my_trades[0-1][exchange.Order_Time_Key])
-    print("  %s  ~  %s" % (head_dt, tail_dt) )
+    print("%-25s: %s  ~  %s" % ("time range", head_dt, tail_dt) )
 
     position_qty, gross_profit, commission = calc_trades(exchange, my_trades)
     cur_price = exchange.ticker_price(symbol)
     floating_gross_profit = cur_price * position_qty + gross_profit
-    print("position_qty: %s" % position_qty)
-    print("floating_gross_profit: %s" % floating_gross_profit)
-    print("commission: %s" % commission)
+    print("%-25s: %s" % ("position qty", position_qty))
+    print("%-25s: %s" % ("floating grossprofit", floating_gross_profit))
+    print("%-25s: %s" % ("commission", commission))

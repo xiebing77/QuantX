@@ -28,7 +28,7 @@ class BinanceSpot(Binance):
     def exchange_info(self):
         return self.exchange_info()
 
-    def _depth(self, exchange_symbol, limit=100):
+    def _depth(self, exchange_symbol, limit=5000):
         return self.__api.depth(symbol=exchange_symbol, limit=limit)
 
     def _trades(self, exchange_symbol):

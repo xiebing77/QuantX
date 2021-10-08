@@ -6,7 +6,13 @@ from exchange.exchange_factory import get_exchange_names, create_exchange
 from common import SIDE_BUY, SIDE_SELL
 
 
-def calc_slippage_by_side(book, side, amount):
+def diff_price(price, ticker_price):
+    if not price:
+        return None
+    return abs(price - ticker_price) * 100 / ticker_price
+
+
+def calc_average_price(book, side, qty):
     if side == SIDE_BUY:
         orders = book['asks']
     else:
@@ -15,25 +21,21 @@ def calc_slippage_by_side(book, side, amount):
     deal = 0
     cost = 0
     for order in orders:
-        order_amount = float(order[1])
+        order_qty = float(order[1])
         order_price = float(order[0])
-        if amount - deal > order_amount:
-            deal += order_amount
-            cost += order_amount * order_price
+        if qty - deal >= order_qty:
+            deal += order_qty
+            cost += order_qty * order_price
         else:
-            cost += (amount - deal) * order_price
-            deal = amount
+            cost += (qty - deal) * order_price
+            deal = qty
             break
 
-    if deal < amount:
-        print("The order book depth is not enough.(%5s: %20s) Please get more orders"%(side, deal))
+    if deal < qty:
+        #print("The order book depth is not enough.(%5s: %20s) Please get more orders"%(side, deal))
         return None, None, None
-    average_price = cost / amount
-    if side == SIDE_BUY:
-        slippage = (average_price - cur_price) * 100 / cur_price
-    else:
-        slippage = (cur_price - average_price) * 100 / cur_price
-    return average_price, cost, slippage
+    average_price = cost / qty
+    return average_price, cost, order_price
 
 
 if __name__ == "__main__":
@@ -41,14 +43,14 @@ if __name__ == "__main__":
     parser.add_argument('-exchange', choices=get_exchange_names(), help='exchange name')
     parser.add_argument('-symbol', required=True, help='symbol, eg: btc_usdt')
     #parser.add_argument('-side', required=True, choices=[SIDE_BUY, SIDE_SELL], help='side')
-    parser.add_argument('-amount', type=float, required=True, help='amount')
+    parser.add_argument('-qty', type=float, required=True, help='qty')
 
     args = parser.parse_args()
     # print(args)
 
     symbol = args.symbol
     #side = args.side
-    amount = args.amount
+    qty = args.qty
 
     exchange = create_exchange(args.exchange)
     if not exchange:
@@ -59,20 +61,20 @@ if __name__ == "__main__":
     exchange.ping()
     print(exchange.time())
 
-    cur_price = exchange.ticker_price(symbol)
-    depth_limit = 1000
-    book = exchange.depth(symbol, depth_limit)
+    ticker_price = exchange.ticker_price(symbol)
+    book = exchange.depth(symbol)
     # print(book)
-    print("Current price: %s  depth limit: %s" % (cur_price, depth_limit))
+    print("ticker price: %s" % (ticker_price))
 
-    buy_average_price, buy_cost, buy_slippage = calc_slippage_by_side(book, SIDE_BUY, amount)
-    sell_average_price, sell_cost, sell_slippage = calc_slippage_by_side(book, SIDE_SELL, amount)
+    buy_average_price, buy_cost, buy_edge_price = calc_average_price(book, SIDE_BUY, qty)
+    sell_average_price, sell_cost, sell_edge_price = calc_average_price(book, SIDE_SELL, qty)
     sl_str = '-'*75
     print(sl_str)
     sl_fmt = '%20s:  %25s  %25s'
     print(sl_fmt % ('Side', SIDE_BUY, SIDE_SELL))
     print(sl_fmt % ('Average deal price', buy_average_price, sell_average_price))
     print(sl_fmt % ('Total cost', buy_cost, sell_cost))
-    print(sl_fmt % ('Slippage(%)', buy_slippage, sell_slippage))
+    print(sl_fmt % ('Slippage(%)', diff_price(buy_average_price, ticker_price),
+        diff_price(sell_average_price, ticker_price)))
     print(sl_str)
 
