@@ -10,6 +10,7 @@ from common import create_balance
 class BitrueSpot(Bitrue):
     name = Bitrue.name + '_spot'
     start_time = datetime(2017, 8, 17, 8)
+    depth_limits = [5, 10, 20, 50, 100, 500, 1000]
 
     def __init__(self, debug=False):
         return
@@ -28,7 +29,7 @@ class BitrueSpot(Bitrue):
     def exchange_info(self):
         return self.exchange_info()
 
-    def _depth(self, exchange_symbol, limit=1000):
+    def _depth(self, exchange_symbol, limit):
         return self.__api.depth(symbol=exchange_symbol, limit=limit)
 
     def _trades(self, exchange_symbol):

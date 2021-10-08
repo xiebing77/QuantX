@@ -12,12 +12,7 @@ def diff_price(price, ticker_price):
     return abs(price - ticker_price) * 100 / ticker_price
 
 
-def calc_average_price(book, side, qty):
-    if side == SIDE_BUY:
-        orders = book['asks']
-    else:
-        orders = book['bids']
-
+def calc_average_price(orders, qty):
     deal = 0
     cost = 0
     for order in orders:
@@ -62,19 +57,24 @@ if __name__ == "__main__":
     print(exchange.time())
 
     ticker_price = exchange.ticker_price(symbol)
-    book = exchange.depth(symbol)
+    depth_limit = exchange.depth_limits[-1]
+    book = exchange.depth(symbol, depth_limit)
     # print(book)
+    maker_asks = book['asks']
+    maker_bids = book['bids']
+    print('depth limit: %s,  asks: %s,  bids: %s' % (
+        depth_limit, len(maker_asks), len(maker_bids)))
     print("ticker price: %s" % (ticker_price))
 
-    buy_average_price, buy_cost, buy_edge_price = calc_average_price(book, SIDE_BUY, qty)
-    sell_average_price, sell_cost, sell_edge_price = calc_average_price(book, SIDE_SELL, qty)
+    taker_buy_avg_price, taker_buy_cost, taker_buy_edge_price = calc_average_price(maker_asks, qty)
+    taker_sell_avg_price, taker_sell_cost, taker_sell_edge_price = calc_average_price(maker_bids, qty)
     sl_str = '-'*75
     print(sl_str)
     sl_fmt = '%20s:  %25s  %25s'
-    print(sl_fmt % ('Side', SIDE_BUY, SIDE_SELL))
-    print(sl_fmt % ('Average deal price', buy_average_price, sell_average_price))
-    print(sl_fmt % ('Total cost', buy_cost, sell_cost))
-    print(sl_fmt % ('Slippage(%)', diff_price(buy_average_price, ticker_price),
-        diff_price(sell_average_price, ticker_price)))
+    print(sl_fmt % ('Side', 'buy (take asks)', 'sell (take bids)'))
+    print(sl_fmt % ('Average deal price', taker_buy_avg_price, taker_sell_avg_price))
+    print(sl_fmt % ('Total cost', taker_buy_cost, taker_sell_cost))
+    print(sl_fmt % ('Slippage(%)', diff_price(taker_buy_avg_price, ticker_price),
+        diff_price(taker_sell_avg_price, ticker_price)))
     print(sl_str)
 

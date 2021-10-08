@@ -5,7 +5,7 @@ import argparse
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from common import SIDE_BUY, SIDE_SELL
 from tools.slippage import calc_average_price, diff_price
-
+from pprint import pprint
 
 def format_float(fmt, f):
     return format(f, fmt) if f else None
@@ -41,57 +41,57 @@ if __name__ == "__main__":
     ticker_price = exchange.ticker_price(symbol)
     print("ticker price: %s" % (ticker_price))
 
-    book = exchange.depth(symbol)
-    # print(book)
-    sell_orders = book['asks']
-    buy_orders = book['bids']
+    depth_limit = exchange.depth_limits[-1]
+    book = exchange.depth(symbol, depth_limit)
+    #pprint(book)
+    maker_asks = book['asks']
+    maker_bids = book['bids']
+    print('depth limit: %s,  sell: %s,  buy: %s' % (
+        depth_limit, len(maker_asks), len(maker_bids)))
 
     # Handicap spread
-    sell1_order = sell_orders[0]
-    buy1_order = buy_orders[0]
-
-    sell1_price = float(sell1_order[0])
-    buy1_price = float(buy1_order[0])
+    sell1_price = float(maker_asks[0][0])
+    buy1_price = float(maker_bids[0][0])
     print('sell1 price: %s, buy1 price: %s' % (sell1_price, buy1_price))
     spread = handicap_spread(sell1_price, buy1_price, ticker_price)
     print('Handicap spread: %.8f%%' % (spread*100))
 
     #slippage
     #print('  slippage  '.ljust(80, '~'))
-    depth_sell_qty = calc_total_qty(sell_orders)
-    depth_buy_qty = calc_total_qty(buy_orders)
+    maker_asks_total_qty = calc_total_qty(maker_asks)
+    maker_bids_total_qty = calc_total_qty(maker_bids)
     qtys = []
     qty = 1
-    while qty < min(depth_buy_qty, depth_sell_qty):
+    while qty < min(maker_bids_total_qty, maker_asks_total_qty):
         qtys.append(qty)
         qty *= 10
-    qtys += [min(depth_buy_qty, depth_sell_qty), max(depth_buy_qty, depth_sell_qty)]
+    qtys += [min(maker_bids_total_qty, maker_asks_total_qty), max(maker_bids_total_qty, maker_asks_total_qty)]
     #print(qtys)
 
     slippage_fmt = '12.4f'
     det_fmt = '14.4f'
-    print('%20s | %s | %s' % ('', SIDE_BUY.center(93, '-'), SIDE_SELL.center(93, '-')))
+    print('%20s | %s | %s' % ('', ' buy (take asks) '.center(93, '-'), ' sell (take bids) '.center(93, '-')))
     t_fmt = '%20s | %12s  %20s %20s %20s(%14s)  | %12s  %20s %20s %20s(%14s)'
     print(t_fmt % ('qty', 'slippage(%)', 'cost', 'avg price', 'edge price', 'diff ticker(%)',
         'slippage(%)', 'cost', 'avg price', 'edge price', 'diff ticker(%)'))
     for qty in qtys:
-        buy_avg_price, buy_cost, buy_edge_price = calc_average_price(book, SIDE_BUY, qty)
-        sell_avg_price, sell_cost, sell_edge_price = calc_average_price(book, SIDE_SELL, qty)
-        buy_slippage = diff_price(buy_avg_price, ticker_price)
-        sell_slippage = diff_price(sell_avg_price, ticker_price)
-        buy_diff_et = diff_price(buy_edge_price, ticker_price)
-        sell_diff_et = diff_price(sell_edge_price, ticker_price)
+        taker_buy_avg_price, taker_buy_cost, taker_buy_edge_price = calc_average_price(maker_asks, qty)
+        taker_sell_avg_price, taker_sell_cost, taker_sell_edge_price = calc_average_price(maker_bids, qty)
+        taker_buy_slippage = diff_price(taker_buy_avg_price, ticker_price)
+        taker_sell_slippage = diff_price(taker_sell_avg_price, ticker_price)
+        taker_buy_diff_et = diff_price(taker_buy_edge_price, ticker_price)
+        taker_sell_diff_et = diff_price(taker_sell_edge_price, ticker_price)
         print(t_fmt % (qty,
-            format_float(slippage_fmt, buy_slippage),
-            buy_cost,
-            buy_avg_price,
-            buy_edge_price,
-            format_float(det_fmt, buy_diff_et),
-            format_float(slippage_fmt, sell_slippage),
-            sell_cost,
-            sell_avg_price,
-            sell_edge_price,
-            format_float(det_fmt, sell_diff_et)
+            format_float(slippage_fmt, taker_buy_slippage),
+            taker_buy_cost,
+            taker_buy_avg_price,
+            taker_buy_edge_price,
+            format_float(det_fmt, taker_buy_diff_et),
+            format_float(slippage_fmt, taker_sell_slippage),
+            taker_sell_cost,
+            taker_sell_avg_price,
+            taker_sell_edge_price,
+            format_float(det_fmt, taker_sell_diff_et)
             )
         )
 

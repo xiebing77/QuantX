@@ -7,8 +7,8 @@ kline_default_size = 200
 
 class MarketData():
 
-    def depth(self, symbol):
-        return self._depth(self._trans_symbol(symbol))
+    def depth(self, symbol, limit):
+        return self._depth(self._trans_symbol(symbol), limit=limit)
 
     def trades(self, symbol):
         trades = self._trades(symbol=self._trans_symbol(symbol))
