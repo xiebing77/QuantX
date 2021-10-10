@@ -5,6 +5,7 @@ from datetime import datetime
 from .bitrue import Bitrue, api_key, secret_key
 from .spot import Spot
 from common import create_balance
+from order import TIME_IN_FORCE_GTC
 
 
 class BitrueSpot(Bitrue):
@@ -92,13 +93,13 @@ class BitrueSpot(Bitrue):
         else:
             return tuple(coin_balances)
 
-    def _my_trades(self, exchange_symbol):
-        trades = self.__api.my_trades(symbol=exchange_symbol, limit=1000)
+    def _my_trades(self, exchange_symbol, limit):
+        trades = self.__api.my_trades(symbol=exchange_symbol, limit=limit)
         return trades
 
-    def _new_order(self, binance_side, binance_type, exchange_symbol, price, amount, client_order_id=None):
-        ret = self.__api.new_order(symbol=exchange_symbol, side=binance_side, type=binance_type,
-            timeInForce=TIME_IN_FORCE_GTC, price=price, quantity=amount)
+    def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, client_order_id=None):
+        ret = self.__api.new_order(symbol=ex_symbol, side=ex_side, type=ex_type,
+            timeInForce=TIME_IN_FORCE_GTC, price=price, quantity=qty)
         log.debug(ret)
         try:
             if ret['orderId']:
@@ -120,6 +121,9 @@ class BitrueSpot(Bitrue):
 
     def _get_order(self, exchange_symbol, order_id):
         return self.__api.get_order(symbol=exchange_symbol, orderId=order_id)
+
+    def _get_orders(self, exchange_symbol, limit):
+        return self.__api.get_orders(symbol=exchange_symbol, limit=limit)
 
     def _cancel_order(self, exchange_symbol, order_id):
         self.__api.cancel_order(symbol=exchange_symbol, orderId=order_id)

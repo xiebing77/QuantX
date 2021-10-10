@@ -4,19 +4,20 @@ sys.path.append('../')
 import argparse
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from common import SIDE_BUY, SIDE_SELL
-from tools.slippage import calc_average_price, diff_price
+from tools.slippage import calc_average_price, diff_price, format_percent, calc_total_qty
 from pprint import pprint
 
-def format_float(fmt, f):
-    return format(f, fmt) if f else None
 
-def calc_total_qty(orders):
-    total_qty = 0
+def calc_qty_by_diff(orders, ticker_price, diff_rate):
+    qty = 0
     for order in orders:
         order_qty = float(order[1])
         order_price = float(order[0])
-        total_qty += order_qty
-    return total_qty
+        if diff_price(order_price, ticker_price) > diff_rate:
+            break
+        qty += order_qty
+    return [qty, qty+order_qty]
+
 
 def handicap_spread(sell1_price, buy1_price, ticker_price):
     return (sell1_price - buy1_price) / ticker_price
@@ -39,7 +40,6 @@ if __name__ == "__main__":
     print(exchange.time())
 
     ticker_price = exchange.ticker_price(symbol)
-    print("ticker price: %s" % (ticker_price))
 
     depth_limit = exchange.depth_limits[-1]
     book = exchange.depth(symbol, depth_limit)
@@ -52,7 +52,9 @@ if __name__ == "__main__":
     # Handicap spread
     sell1_price = float(maker_asks[0][0])
     buy1_price = float(maker_bids[0][0])
-    print('sell1 price: %s, buy1 price: %s' % (sell1_price, buy1_price))
+    print('sell 1 price: %s' % (sell1_price))
+    print("ticker price: %s" % (ticker_price))
+    print(' buy 1 price: %s' % (buy1_price))
     spread = handicap_spread(sell1_price, buy1_price, ticker_price)
     print('Handicap spread: %.8f%%' % (spread*100))
 
@@ -65,8 +67,18 @@ if __name__ == "__main__":
     while qty < min(maker_bids_total_qty, maker_asks_total_qty):
         qtys.append(qty)
         qty *= 10
-    qtys += [min(maker_bids_total_qty, maker_asks_total_qty), max(maker_bids_total_qty, maker_asks_total_qty)]
-    #print(qtys)
+    qtys += [maker_bids_total_qty, maker_asks_total_qty]
+    qtys += calc_qty_by_diff(maker_asks, ticker_price, 0.01)
+    qtys += calc_qty_by_diff(maker_bids, ticker_price, 0.01)
+    qtys += calc_qty_by_diff(maker_asks, ticker_price, 0.1)
+    qtys += calc_qty_by_diff(maker_bids, ticker_price, 0.1)
+    qtys += calc_qty_by_diff(maker_asks, ticker_price, 0.3)
+    qtys += calc_qty_by_diff(maker_bids, ticker_price, 0.3)
+
+    qtys = list(set(qtys))
+    qtys.sort()
+    if qtys[0] == 0:
+        qtys = qtys[1:]
 
     slippage_fmt = '12.4f'
     det_fmt = '14.4f'
@@ -82,16 +94,16 @@ if __name__ == "__main__":
         taker_buy_diff_et = diff_price(taker_buy_edge_price, ticker_price)
         taker_sell_diff_et = diff_price(taker_sell_edge_price, ticker_price)
         print(t_fmt % (qty,
-            format_float(slippage_fmt, taker_buy_slippage),
+            format_percent(slippage_fmt, taker_buy_slippage),
             taker_buy_cost,
             taker_buy_avg_price,
             taker_buy_edge_price,
-            format_float(det_fmt, taker_buy_diff_et),
-            format_float(slippage_fmt, taker_sell_slippage),
+            format_percent(det_fmt, taker_buy_diff_et),
+            format_percent(slippage_fmt, taker_sell_slippage),
             taker_sell_cost,
             taker_sell_avg_price,
             taker_sell_edge_price,
-            format_float(det_fmt, taker_sell_diff_et)
+            format_percent(det_fmt, taker_sell_diff_et)
             )
         )
 

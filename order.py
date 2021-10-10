@@ -1,6 +1,10 @@
 #!/usr/bin/python
 """order"""
 
+TIME_IN_FORCE_GTC = 'GTC'  # Good till cancelled
+TIME_IN_FORCE_IOC = 'IOC'  # Immediate or cancel
+TIME_IN_FORCE_FOK = 'FOK'  # Fill or kill
+
 ORDER_TYPE_LIMIT = "LIMIT"
 ORDER_TYPE_MARKET = "MARKET"
 
