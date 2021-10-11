@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from common import check_required_parameter, check_required_parameters
+from common import check_required_parameter, check_required_parameters, check_type_parameter, convert_list_to_json_array
 
 # https://github.com/Bitrue-exchange/bitrue-official-api-docs
 

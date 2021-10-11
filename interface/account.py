@@ -15,7 +15,7 @@ class Account():
             ex_symbol=self._trans_symbol(symbol), price=price, qty=qty, client_order_id=client_order_id)
 
     def cancel_order(self, symbol, order_id):
-        self._cancel_order(self._trans_symbol(symbol), orderId=order_id)
+        self._cancel_order(self._trans_symbol(symbol), order_id=order_id)
 
     def cancel_orders(self, symbol, order_ids):
         for order_id in order_ids:

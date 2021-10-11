@@ -93,6 +93,8 @@ if __name__ == "__main__":
         taker_sell_slippage = diff_price(taker_sell_avg_price, ticker_price)
         taker_buy_diff_et = diff_price(taker_buy_edge_price, ticker_price)
         taker_sell_diff_et = diff_price(taker_sell_edge_price, ticker_price)
+        if (not taker_buy_slippage or not taker_sell_slippage):
+            print('-'*212)
         print(t_fmt % (qty,
             format_percent(slippage_fmt, taker_buy_slippage),
             taker_buy_cost,
@@ -106,4 +108,6 @@ if __name__ == "__main__":
             format_percent(det_fmt, taker_sell_diff_et)
             )
         )
+        if qty%10 == 0:
+            print('-'*212)
 

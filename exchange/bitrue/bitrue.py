@@ -42,6 +42,10 @@ class Bitrue(Exchange):
     Order_Id_Key = 'orderId'
     Order_Time_Key = 'time'
 
+    Order_Key_Price = 'price'
+    Order_Key_OrigQty = 'origQty'
+    Order_Key_ExecutedQty = 'executedQty'
+
     ORDER_STATUS_NEW = 'NEW'
     ORDER_STATUS_PARTIALLY_FILLED = 'PARTIALLY_FILLED'
     ORDER_STATUS_FILLED = 'FILLED'
@@ -90,6 +94,12 @@ class Bitrue(Exchange):
     ORDER_RESP_TYPE_ACK = 'ACK'
     ORDER_RESP_TYPE_RESULT = 'RESULT'
     ORDER_RESP_TYPE_FULL = 'FULL'
+
+    Trade_Key_CommissionQty = 'commission'
+    Trade_Key_CommissionAsset = 'commissionAsset'
+    Trade_Key_IsBuyer = 'isBuyer'
+    Trade_Key_Qty = 'qty'
+    Trade_Key_Price = 'price'
 
     def _get_coinkey(self, coin):
         return coin.upper()

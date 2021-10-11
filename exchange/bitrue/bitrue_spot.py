@@ -11,6 +11,9 @@ from order import TIME_IN_FORCE_GTC
 class BitrueSpot(Bitrue):
     name = Bitrue.name + '_spot'
     start_time = datetime(2017, 8, 17, 8)
+
+    symbol_info_map = {}
+
     depth_limits = [5, 10, 20, 50, 100, 500, 1000]
 
     def __init__(self, debug=False):
@@ -20,6 +23,15 @@ class BitrueSpot(Bitrue):
         self.__api = Spot(key=api_key, secret=secret_key,
             user_agent=Bitrue.name+'/python', exchange=self)
 
+    def _get_assetPrecision(self, ex_symbol):
+        if ex_symbol not in self.symbol_info_map:
+            sy_infos = self._exchange_info()['symbols']
+            for sy_info in sy_infos:
+                if ex_symbol == sy_info['symbol']:
+                    self.symbol_info_map[sy_info['symbol']] = sy_info
+        sy_info = self.symbol_info_map[ex_symbol]
+        return sy_info['baseAssetPrecision'], sy_info['quotePrecision']
+
     # MARKETS
     def ping(self):
         return self.__api.ping()
@@ -27,8 +39,8 @@ class BitrueSpot(Bitrue):
     def time(self):
         return self.get_time_from_data_ts(self.__api.time()['serverTime'])
 
-    def exchange_info(self):
-        return self.exchange_info()
+    def _exchange_info(self, ex_symbol: str = None, ex_symbols: list = None):
+        return self.__api.exchange_info()
 
     def _depth(self, exchange_symbol, limit):
         return self.__api.depth(symbol=exchange_symbol, limit=limit)
@@ -100,7 +112,7 @@ class BitrueSpot(Bitrue):
     def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, client_order_id=None):
         ret = self.__api.new_order(symbol=ex_symbol, side=ex_side, type=ex_type,
             timeInForce=TIME_IN_FORCE_GTC, price=price, quantity=qty)
-        log.debug(ret)
+        #log.debug(ret)
         try:
             if ret['orderId']:
 

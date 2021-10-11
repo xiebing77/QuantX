@@ -25,9 +25,21 @@ def check_required_parameters(params):
     for p in params:
         check_required_parameter(p[0], p[1])
 
+def check_type_parameter(value, name, data_type):
+    if value is not None and type(value) != data_type:
+        raise ParameterTypeError([name, data_type])
+
+
 from urllib.parse import urlencode
 def encoded_string(query):
     return urlencode(query, True).replace("%40", "@")
+
+def convert_list_to_json_array(symbols):
+    if symbols is None:
+        return symbols
+    res = json.dumps(symbols)
+    return res.replace(" ", "")
+
 
 def creat_symbol(target_coin, base_coin):
     return "%s_%s" % (target_coin.lower(), base_coin.lower())

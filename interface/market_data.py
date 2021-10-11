@@ -7,6 +7,25 @@ kline_default_size = 200
 
 class MarketData():
 
+    def exchange_info(self, symbol: str = None, symbols: list = None):
+        if symbol and symbols:
+            raise ParameterArgumentError("symbol and symbols cannot be sent together.")
+        if symbol:
+            ex_symbol = self._trans_symbol(symbol)
+        else:
+            ex_symbol = None
+        if symbols:
+            ex_symbols = []
+            for sy in symbols:
+                ex_symbols.append(self._trans_symbol(symbol))
+        else:
+            ex_symbols = None
+        return self._exchange_info(ex_symbol=ex_symbol, ex_symbols=ex_symbols)
+
+    def get_assetPrecision(self, symbol):
+        ex_symbol = self._trans_symbol(symbol)
+        return self._get_assetPrecision(ex_symbol)
+
     def depth(self, symbol, limit):
         return self._depth(self._trans_symbol(symbol), limit=limit)
 

@@ -4,6 +4,7 @@ sys.path.append('../')
 import argparse
 from exchange.exchange_factory import get_exchange_names, create_exchange
 import pprint
+import pandas as pd
 
 
 if __name__ == "__main__":
@@ -25,6 +26,20 @@ if __name__ == "__main__":
 
     symbol = args.symbol
     orders = exchange.get_orders(symbol, args.limit)
+
+    b_prec, q_prec = exchange.get_assetPrecision(symbol)
+    print(b_prec)
+    for order in orders:
+        order[exchange.Order_Key_OrigQty] = round(float(order[exchange.Order_Key_OrigQty]), b_prec)
+        order[exchange.Order_Key_ExecutedQty] = round(float(order[exchange.Order_Key_ExecutedQty]), b_prec)
+
+        order[exchange.Order_Key_Price] = round(float(order[exchange.Order_Key_Price]), q_prec)
+
     print("%-25s: %s" % ("all orders length", len(orders)) )
     pprint.pprint(orders)
+
+    #orders_df = pd.DataFrame(orders)
+    #print(orders_df)
+
+
 
