@@ -39,6 +39,7 @@ if __name__ == "__main__":
     exchange.ping()
     print(exchange.time())
 
+    b_prec, q_prec = exchange.get_assetPrecision(symbol)
     ticker_price = exchange.ticker_price(symbol)
 
     depth_limit = exchange.depth_limits[-1]
@@ -80,12 +81,11 @@ if __name__ == "__main__":
     if qtys[0] == 0:
         qtys = qtys[1:]
 
-    slippage_fmt = '12.4f'
-    det_fmt = '14.4f'
-    print('%20s | %s | %s' % ('', ' buy (take asks) '.center(93, '-'), ' sell (take bids) '.center(93, '-')))
-    t_fmt = '%20s | %12s  %20s %20s %20s(%14s)  | %12s  %20s %20s %20s(%14s)'
-    print(t_fmt % ('qty', 'slippage(%)', 'cost', 'avg price', 'edge price', 'diff ticker(%)',
-        'slippage(%)', 'cost', 'avg price', 'edge price', 'diff ticker(%)'))
+    slippage_fmt = '10.5f'
+    print('%15s | %s | %s' % ('', ' buy (take asks) '.center(80, '-'), ' sell (take bids) '.center(80, '-')))
+    t_fmt = '%15s | %11s  %20s %16s %15s(%11s)  | %11s  %20s %16s %15s(%11s)'
+    print(t_fmt % ('qty', 'slippage', 'cost', 'avg price', 'edge price', 'slippage',
+        'slippage', 'cost', 'avg price', 'edge price', 'slippage'))
     for qty in qtys:
         taker_buy_avg_price, taker_buy_cost, taker_buy_edge_price = calc_average_price(maker_asks, qty)
         taker_sell_avg_price, taker_sell_cost, taker_sell_edge_price = calc_average_price(maker_bids, qty)
@@ -94,20 +94,20 @@ if __name__ == "__main__":
         taker_buy_diff_et = diff_price(taker_buy_edge_price, ticker_price)
         taker_sell_diff_et = diff_price(taker_sell_edge_price, ticker_price)
         if (not taker_buy_slippage or not taker_sell_slippage):
-            print('-'*212)
-        print(t_fmt % (qty,
+            print('-'*181)
+        print(t_fmt % (round(qty, b_prec),
             format_percent(slippage_fmt, taker_buy_slippage),
-            taker_buy_cost,
-            taker_buy_avg_price,
+            round(taker_buy_cost, 9) if taker_buy_cost else None,
+            round(taker_buy_avg_price, q_prec+1) if taker_buy_avg_price else None,
             taker_buy_edge_price,
-            format_percent(det_fmt, taker_buy_diff_et),
+            format_percent(slippage_fmt, taker_buy_diff_et),
             format_percent(slippage_fmt, taker_sell_slippage),
-            taker_sell_cost,
-            taker_sell_avg_price,
+            round(taker_sell_cost, 9) if taker_sell_cost else None,
+            round(taker_sell_avg_price, q_prec+1) if taker_sell_avg_price else None,
             taker_sell_edge_price,
-            format_percent(det_fmt, taker_sell_diff_et)
+            format_percent(slippage_fmt, taker_sell_diff_et)
             )
         )
         if qty%10 == 0:
-            print('-'*212)
+            print('-'*181)
 

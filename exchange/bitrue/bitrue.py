@@ -2,9 +2,10 @@
 import os
 import time
 from datetime import datetime
-import kline as kl
+import common.kline as kl
 from exchange.exchange import Exchange
-import common, order
+import common
+import common.order as order
 
 
 api_key = os.environ.get('BITRUE_API_KEY')

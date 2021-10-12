@@ -7,7 +7,7 @@ from common import SIDE_BUY, SIDE_SELL
 
 
 def format_percent(fmt, f):
-    return format(f*100, fmt) if f else None
+    return format(f*100, fmt)+'%' if f else None
 
 
 def calc_total_qty(orders):
@@ -68,6 +68,7 @@ if __name__ == "__main__":
     exchange.ping()
     print(exchange.time())
 
+    b_prec, q_prec = exchange.get_assetPrecision(symbol)
     ticker_price = exchange.ticker_price(symbol)
     depth_limit = exchange.depth_limits[-1]
     book = exchange.depth(symbol, depth_limit)
@@ -80,7 +81,8 @@ if __name__ == "__main__":
 
     maker_asks_total_qty = calc_total_qty(maker_asks)
     maker_bids_total_qty = calc_total_qty(maker_bids)
-    print("asks total qty: %20s,  bids total qty: %20s" % (maker_asks_total_qty, maker_bids_total_qty))
+    print("asks total qty: %20s,  bids total qty: %20s" % (
+        round(maker_asks_total_qty, b_prec), round(maker_bids_total_qty, b_prec)))
     if maker_asks_total_qty < qty or maker_bids_total_qty < qty:
         print("The order book depth is not enough. Please get more orders")
 
@@ -88,12 +90,16 @@ if __name__ == "__main__":
     taker_sell_avg_price, taker_sell_cost, _ = calc_average_price(maker_bids, qty)
     sl_str = '-'*75
     print(sl_str)
-    slippage_fmt = '12.4f'
+    slippage_fmt = '10.5f'
     sl_fmt = '%20s:  %25s  %25s'
     print(sl_fmt % ('Side', 'buy (take asks)', 'sell (take bids)'))
-    print(sl_fmt % ('Average deal price', taker_buy_avg_price, taker_sell_avg_price))
-    print(sl_fmt % ('Total cost', taker_buy_cost, taker_sell_cost))
-    print(sl_fmt % ('Slippage(%)',
+    print(sl_fmt % ('Average deal price',
+        round(taker_buy_avg_price, q_prec+1) if taker_buy_avg_price else None,
+        round(taker_sell_avg_price, q_prec+1) if taker_sell_avg_price else None))
+    print(sl_fmt % ('Total cost',
+        round(taker_buy_cost, 9) if taker_buy_cost else None,
+        round(taker_sell_cost, 9) if taker_sell_cost else None))
+    print(sl_fmt % ('Slippage',
         format_percent(slippage_fmt, diff_price(taker_buy_avg_price, ticker_price)),
         format_percent(slippage_fmt, diff_price(taker_sell_avg_price, ticker_price))))
     print(sl_str)

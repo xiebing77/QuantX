@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """"""
-import kline as kl
+import common.kline as kl
 
 kline_default_size = 200
 
