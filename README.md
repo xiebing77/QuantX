@@ -1,2 +1,2 @@
-# QuantX-Common
-QuantX common
+# QuantX
+QuantX
