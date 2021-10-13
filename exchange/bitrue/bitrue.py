@@ -43,6 +43,8 @@ class Bitrue(Exchange):
     Order_Id_Key = 'orderId'
     Order_Time_Key = 'time'
 
+    Order_Key_Side = 'side'
+
     Order_Key_Price = 'price'
     Order_Key_OrigQty = 'origQty'
     Order_Key_ExecutedQty = 'executedQty'

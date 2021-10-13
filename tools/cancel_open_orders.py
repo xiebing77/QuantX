@@ -3,7 +3,7 @@ import sys
 sys.path.append('../')
 import argparse
 from common import SIDE_BUY, SIDE_SELL
-from order import ORDER_TYPE_MARKET
+from common.order import ORDER_TYPE_MARKET
 from exchange.exchange_factory import get_exchange_names, create_exchange
 import pprint
 

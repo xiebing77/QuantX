@@ -1,6 +1,21 @@
 #!/usr/bin/python
 """"""
 
+def createInstance(module_name, class_name, *args, **kwargs):
+    # print("args  :", args)
+    # print("kwargs:", kwargs)
+    module_meta = __import__(module_name, globals(), locals(), [class_name])
+    class_meta = getattr(module_meta, class_name)
+    obj = class_meta(*args, **kwargs)
+    return obj
+
+import json
+def get_json_config(config_path):
+    fo = open(config_path, "r")
+    config = json.loads(fo.read())
+    fo.close()
+    return config
+
 
 def cleanNoneValue(d) -> dict:
     out = {}
