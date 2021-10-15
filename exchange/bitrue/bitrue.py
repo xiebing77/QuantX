@@ -44,13 +44,13 @@ class Bitrue(Exchange):
 
     Order_Key_Type = 'type'
     Order_Key_Side = 'side'
-    Order_Key_Status = 'status'
 
     Order_Key_Price = 'price'
     Order_Key_OrigQty = 'origQty'
     Order_Key_ExecutedQty = 'executedQty'
     Order_Key_CummulativeQuoteQty = 'cummulativeQuoteQty'
 
+    ORDER_STATUS_KEY = 'status'
     ORDER_STATUS_NEW = 'NEW'
     ORDER_STATUS_PARTIALLY_FILLED = 'PARTIALLY_FILLED'
     ORDER_STATUS_FILLED = 'FILLED'
@@ -122,8 +122,11 @@ class Bitrue(Exchange):
     def get_timestamp(self):
         return int(time.time() * 1000)
 
+    def check_status_is_close(self, order):
+        print(order)
+        return order[self.ORDER_STATUS_KEY] in [self.ORDER_STATUS_FILLED,
+            self.ORDER_STATUS_CANCELED, self.ORDER_STATUS_REJECTED, self.ORDER_STATUS_EXPIRED]
+
     def _order_status_is_close(self, exchange_symbol, order_id):
         order = self._get_order(exchange_symbol, order_id)
-        if order['status'] in [ORDER_STATUS_FILLED, ORDER_STATUS_CANCELED, ORDER_STATUS_REJECTED, ORDER_STATUS_EXPIRED]:
-            return True
-        return False
+        return self.check_status_is_close(order)

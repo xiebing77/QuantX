@@ -76,14 +76,27 @@ def get_balance_frozen(balance):
     return float(balance["frozen"])
 
 
+SIDE_KEY = 'side'
 SIDE_BUY = 'buy'
 SIDE_SELL = 'sell'
+
+ORDER_TYPE_KEY = "type"
 ORDER_TYPE_LIMIT = "LIMIT"
 ORDER_TYPE_MARKET = "MARKET"
 
 TIME_IN_FORCE_GTC = 'GTC'  # Good till cancelled
 TIME_IN_FORCE_IOC = 'IOC'  # Immediate or cancel
 TIME_IN_FORCE_FOK = 'FOK'  # Fill or kill
+
+
+BILL_STATUS_KEY = 'status'
+BILL_STATUS_OPEN = 'open'
+BILL_STATUS_CLOSE = 'close'
+
+BILL_ORDER_ID_KEY = 'order_id'
+#BILL_ORDER_TYPE_KEY = 'order_type'
+BILL_PRICE_KEY = 'price'
+BILL_QTY_KEY = 'qty'
 
 
 MATH_FLOOR = 0  # 向下，舍去多余

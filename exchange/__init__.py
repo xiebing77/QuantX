@@ -1,4 +1,4 @@
-
+from pprint import pprint
 import common
 class Account():
 
@@ -22,20 +22,34 @@ class Account():
     def get_order(self, symbol, order_id):
         return self._get_order(self._trans_symbol(symbol), order_id)
 
-    def get_orders(self, symbol, limit):
+    def get_orders(self, symbol, limit=None):
         return self._get_orders(self._trans_symbol(symbol), limit=limit)
 
     def get_open_orders(self, symbol):
         return self._get_open_orders(self._trans_symbol(symbol))
 
+    def check_orders_close_status(self, symbol, order_ids):
+        orders = self.get_orders(symbol)
+        close_order_ids = []
+        for order in orders:
+            order_id = int(order[self.Order_Id_Key])
+            #print(order_id, order_ids, order_id in order_ids, type(order_id), type(order_ids[0]))
+            if order_id in order_ids and self.check_status_is_close(order):
+                close_order_ids.append(order_id)
+        return close_order_ids
+
     def order_status_is_close(self, symbol, order_id):
-        return self._order_status_is_close(self._trans_symbol(symbol))
+        return self._order_status_is_close(self._trans_symbol(symbol), order_id)
 
     def my_trades(self, symbol, limit):
         return self._my_trades(self._trans_symbol(symbol), limit=limit)
 
 
     #
+    def cancel_orders_byId(self, symbol, orderIds):
+        for orderId in orderIds:
+            self.cancel_order(symbol, orderId)
+
     def cancel_orders(self, symbol, orders):
         for order in orders:
             self.cancel_order(symbol, order[self.Order_Id_Key])
