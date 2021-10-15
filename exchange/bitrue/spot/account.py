@@ -109,7 +109,7 @@ def account(self, **kwargs):
     return self.sign_request("GET", '/api/v1/account', {**kwargs})
 
 
-def my_trades(self, symbol: str, **kwargs):
+def my_trades_v1(self, symbol: str, **kwargs):
     """Account Trade List (USER_DATA)
 
     Get trades for a specific account and symbol.
@@ -127,3 +127,23 @@ def my_trades(self, symbol: str, **kwargs):
     check_required_parameter(symbol, "symbol")
     payload = {"symbol": symbol, **kwargs}
     return self.sign_request("GET", '/api/v1/myTrades', payload)
+
+
+def my_trades_v2(self, symbol: str, **kwargs):
+    """Account Trade List (USER_DATA)
+
+    Get trades for a specific account and symbol.
+
+    Args:
+        symbol (str)
+    Keyword Args:
+        startTime (int, optional)
+        endTime (int, optional)
+        fromId (int, optional): TradeId to fetch from. Default gets most recent trades.
+        limit (int, optional): Default Value: 100; Max Value: 1000
+        recvWindow (int, optional): 
+    """
+
+    check_required_parameter(symbol, "symbol")
+    payload = {"symbol": symbol, **kwargs}
+    return self.sign_request("GET", '/api/v2/myTrades', payload)

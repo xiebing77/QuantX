@@ -78,6 +78,13 @@ def get_balance_frozen(balance):
 
 SIDE_BUY = 'buy'
 SIDE_SELL = 'sell'
+ORDER_TYPE_LIMIT = "LIMIT"
+ORDER_TYPE_MARKET = "MARKET"
+
+TIME_IN_FORCE_GTC = 'GTC'  # Good till cancelled
+TIME_IN_FORCE_IOC = 'IOC'  # Immediate or cancel
+TIME_IN_FORCE_FOK = 'FOK'  # Fill or kill
+
 
 MATH_FLOOR = 0  # 向下，舍去多余
 MATH_CEIL = 1  # 向上，

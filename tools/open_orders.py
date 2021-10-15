@@ -25,9 +25,9 @@ if __name__ == "__main__":
 
     symbol = args.symbol
     open_orders = exchange.get_open_orders(symbol)
-    #print("%-25s: %s" % ("open orders length", len(open_orders)) )
-    #pprint.pprint(open_orders)
+    print("%-25s: %s" % ("open orders length", len(open_orders)) )
+    pprint.pprint(open_orders)
 
-    open_orders_df = pd.DataFrame(open_orders)
-    print(open_orders_df)
+    #open_orders_df = pd.DataFrame(open_orders)
+    #print(open_orders_df)
 

@@ -5,7 +5,7 @@ from datetime import datetime
 from .bitrue import Bitrue, api_key, secret_key
 from .spot import Spot
 from common import create_balance
-from common.order import TIME_IN_FORCE_GTC
+from common import TIME_IN_FORCE_GTC
 
 
 class BitrueSpot(Bitrue):
@@ -106,7 +106,8 @@ class BitrueSpot(Bitrue):
             return tuple(coin_balances)
 
     def _my_trades(self, exchange_symbol, limit):
-        trades = self.__api.my_trades(symbol=exchange_symbol, limit=limit)
+        trades = self.__api.my_trades_v1(symbol=exchange_symbol, limit=limit)
+        #trades += self.__api.my_trades_v2(symbol=exchange_symbol, limit=limit)
         return trades
 
     def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, client_order_id=None):

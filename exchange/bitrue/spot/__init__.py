@@ -34,7 +34,8 @@ class Spot(API):
     #from binance.spot.account import get_oco_orders
     #from binance.spot.account import get_oco_open_orders
     from .account import account
-    from .account import my_trades
+    from .account import my_trades_v1
+    from .account import my_trades_v2
 
     '''
     # STREAMS

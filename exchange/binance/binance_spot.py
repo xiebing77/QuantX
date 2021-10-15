@@ -5,7 +5,7 @@ from datetime import datetime
 from .binance import Binance, api_key, secret_key
 from .spot import Spot
 from common import create_balance
-from common.order import TIME_IN_FORCE_GTC
+from common import TIME_IN_FORCE_GTC
 
 
 class BinanceSpot(Binance):

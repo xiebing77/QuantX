@@ -3,9 +3,8 @@ import os
 import time
 from datetime import datetime
 import common.kline as kl
-from exchange.exchange import Exchange
+from exchange import Exchange
 import common
-import common.order as order
 
 
 
@@ -80,8 +79,8 @@ class Binance(Exchange):
     }
 
     ex_order_types = {
-        order.ORDER_TYPE_LIMIT: 'LIMIT',
-        order.ORDER_TYPE_MARKET: 'MARKET',
+        common.ORDER_TYPE_LIMIT: 'LIMIT',
+        common.ORDER_TYPE_MARKET: 'MARKET',
         #order.ORDER_TYPE_STOP_LOSS: 'STOP_LOSS',
         #order.ORDER_TYPE_STOP_LOSS_LIMIT: 'STOP_LOSS_LIMIT',
         #order.ORDER_TYPE_TAKE_PROFIT: 'TAKE_PROFIT',

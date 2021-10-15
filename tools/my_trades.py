@@ -43,6 +43,7 @@ if __name__ == "__main__":
     parser.add_argument('-exchange', choices=get_exchange_names(), help='exchange name')
     parser.add_argument('-symbol', required=True, help='symbol, eg: btc_usdt')
     parser.add_argument('-limit', default=100, help='')
+    parser.add_argument('--stat', action="store_true", help=' stat position ...')
     args = parser.parse_args()
     # print(args)
     if not (args.exchange):
@@ -61,21 +62,24 @@ if __name__ == "__main__":
     print("%-25s: %s" % ("length", len(my_trades)) )
     if not my_trades:
         exit(1)
+    for trade in my_trades:
+        trade['datatime'] = exchange.get_time_from_data_ts(trade['time'])
 
     #pprint.pprint(my_trades)
     my_trades_df = pd.DataFrame(my_trades)
-    my_trades_df['price'] = pd.to_numeric(my_trades_df['price'])
-    my_trades_df['qty'] = pd.to_numeric(my_trades_df['qty'])
+    #my_trades_df['price'] = pd.to_numeric(my_trades_df['price'])
+    #my_trades_df['qty'] = pd.to_numeric(my_trades_df['qty'])
     print(my_trades_df)
 
-    head_dt = exchange.get_time_from_data_ts(my_trades[0][exchange.Order_Time_Key])
-    tail_dt = exchange.get_time_from_data_ts(my_trades[-1][exchange.Order_Time_Key])
-    print("%-25s: %s  ~  %s" % ("time range", head_dt, tail_dt) )
+    if args.stat:
+        head_dt = exchange.get_time_from_data_ts(my_trades[0][exchange.Order_Time_Key])
+        tail_dt = exchange.get_time_from_data_ts(my_trades[-1][exchange.Order_Time_Key])
+        print("%-25s: %s  ~  %s" % ("time range", head_dt, tail_dt) )
 
-    position_qty, cost, commission = calc_trades(exchange, my_trades)
-    cur_price = exchange.ticker_price(symbol)
-    floating_gross_profit = cur_price * position_qty + cost
-    print("%-25s: %s" % ("position qty", round(position_qty,b_prec)))
-    print("%-25s: %s" % ("cost", cost))
-    print("%-25s: %s" % ("commission", commission))
-    print("%-25s: %s" % ("floating grossprofit", floating_gross_profit))
+        position_qty, cost, commission = calc_trades(exchange, my_trades)
+        cur_price = exchange.ticker_price(symbol)
+        floating_gross_profit = cur_price * position_qty + cost
+        print("%-25s: %s" % ("position qty", round(position_qty,b_prec)))
+        print("%-25s: %s" % ("cost", cost))
+        print("%-25s: %s" % ("commission", commission))
+        print("%-25s: %s" % ("floating grossprofit", floating_gross_profit))

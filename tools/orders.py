@@ -2,8 +2,9 @@
 import sys
 sys.path.append('../')
 import argparse
+from decimal import *
 from exchange.exchange_factory import get_exchange_names, create_exchange
-import pprint
+from pprint import pprint
 import pandas as pd
 
 
@@ -11,7 +12,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='quary open orders')
     parser.add_argument('-exchange', choices=get_exchange_names(), help='exchange name')
     parser.add_argument('-symbol', required=True, help='symbol, eg: btc_usdt')
-    parser.add_argument('-limit', default=100, help='')
+    parser.add_argument('-limit', default=1000, help='')
+    parser.add_argument('-ignore', nargs='*', default=[], help='key value1 value2 eg: status CANCELED REJECTED')
     args = parser.parse_args()
     # print(args)
     if not (args.exchange):
@@ -26,20 +28,19 @@ if __name__ == "__main__":
 
     symbol = args.symbol
     orders = exchange.get_orders(symbol, args.limit)
+    print("%-25s: %s" % ("orders length", len(orders)))
+    for o in orders:
+        o['datatime'] = exchange.get_time_from_data_ts(o[exchange.Order_Time_Key])
+        #o[exchange.Order_Key_CummulativeQuoteQty] = Decimal(o[exchange.Order_Key_CummulativeQuoteQty])
+        #o[exchange.Order_Key_ExecutedQty] = float(o[exchange.Order_Key_ExecutedQty])
+    #pprint(orders)
 
-    b_prec, q_prec = exchange.get_assetPrecision(symbol)
-    print(b_prec)
-    for order in orders:
-        order[exchange.Order_Key_OrigQty] = round(float(order[exchange.Order_Key_OrigQty]), b_prec)
-        order[exchange.Order_Key_ExecutedQty] = round(float(order[exchange.Order_Key_ExecutedQty]), b_prec)
-
-        order[exchange.Order_Key_Price] = round(float(order[exchange.Order_Key_Price]), q_prec)
-
-    print("%-25s: %s" % ("all orders length", len(orders)) )
-    pprint.pprint(orders)
-
-    #orders_df = pd.DataFrame(orders)
-    #print(orders_df)
+    pd.set_option('display.max_rows', None)
+    orders_df = pd.DataFrame(orders)
+    if len(args.ignore)>1:
+        orders_df = orders_df.drop(orders_df[orders_df[args.ignore[0]].isin(args.ignore[1:])].index)
+    
+    print(orders_df)
 
 
 
