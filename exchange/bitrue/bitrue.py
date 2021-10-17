@@ -39,6 +39,10 @@ class Bitrue(Exchange):
     kline_idx_volume      = kl.get_kline_index(kl.KLINE_KEY_VOLUME, kline_column_names)
     max_count_of_single_download_kl = 1000
 
+    BALANCE_ASSET_KEY  = 'asset'
+    BALANCE_FREE_KEY   = 'free'
+    BALANCE_LOCKED_KEY = 'locked'
+
     Order_Id_Key = 'orderId'
     Order_Time_Key = 'time'
 
@@ -106,6 +110,8 @@ class Bitrue(Exchange):
     Trade_Key_Qty = 'qty'
     Trade_Key_Price = 'price'
 
+    TRADE_ORDER_ID_KEY = 'orderId'
+
     def _get_coinkey(self, coin):
         return coin.upper()
 
@@ -123,9 +129,12 @@ class Bitrue(Exchange):
         return int(time.time() * 1000)
 
     def check_status_is_close(self, order):
-        print(order)
-        return order[self.ORDER_STATUS_KEY] in [self.ORDER_STATUS_FILLED,
-            self.ORDER_STATUS_CANCELED, self.ORDER_STATUS_REJECTED, self.ORDER_STATUS_EXPIRED]
+        #print(order)
+        order_status = order[self.ORDER_STATUS_KEY]
+        close_statuses = [self.ORDER_STATUS_FILLED, self.ORDER_STATUS_CANCELED,
+            self.ORDER_STATUS_REJECTED, self.ORDER_STATUS_EXPIRED]
+        #print(order_status, close_statuses)
+        return order_status in close_statuses
 
     def _order_status_is_close(self, exchange_symbol, order_id):
         order = self._get_order(exchange_symbol, order_id)

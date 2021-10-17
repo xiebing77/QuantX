@@ -76,27 +76,20 @@ class BitrueSpot(Bitrue):
         return account
 
 
-    def get_all_balances(self):
+    def get_balances(self):
         """获取余额"""
-        balances = []
         account = self.account()
-        for item in account['balances']:
-            balance = create_balance(item['asset'], item['free'], item['locked'])
-            balances.append(balance)
-        return balances
+        return account['balances']
 
 
-    def get_balances(self, *coins):
+    def get_balances_by_assets(self, *coins):
         """获取余额"""
         coin_balances = []
-        account = self.account()
-        balances = account['balances']
+        balances = self.get_all_balances()
         for coin in coins:
-            coinKey = self.__get_coinkey(coin)
             for item in balances:
-                if coinKey == item['asset']:
-                    balance = create_balance(coin, item['free'], item['locked'])
-                    coin_balances.append(balance)
+                if item[self.BALANCE_ASSET_KEY] in [coin.upper, coin.lower]:
+                    coin_balances.append(item)
                     break
         if len(coin_balances) <= 0:
             return
@@ -113,7 +106,7 @@ class BitrueSpot(Bitrue):
     def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, client_order_id=None):
         ret = self.__api.new_order(symbol=ex_symbol, side=ex_side, type=ex_type,
             timeInForce=TIME_IN_FORCE_GTC, price=price, quantity=qty)
-        #log.debug(ret)
+        #print('_new_order:  ', ret)
         try:
             if ret['orderId']:
 
@@ -136,7 +129,10 @@ class BitrueSpot(Bitrue):
         return self.__api.get_order(symbol=exchange_symbol, orderId=order_id)
 
     def _get_orders(self, exchange_symbol, limit):
-        return self.__api.get_orders(symbol=exchange_symbol, limit=limit)
+        orders = self.__api.get_orders(symbol=exchange_symbol, limit=limit)
+        for o in orders:
+            o[self.Order_Id_Key] = int(o[self.Order_Id_Key])
+        return orders
 
     def _cancel_order(self, exchange_symbol, order_id):
         self.__api.cancel_order(symbol=exchange_symbol, orderId=order_id)

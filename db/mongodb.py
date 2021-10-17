@@ -43,6 +43,7 @@ class MongoDB:
     def insert_many(self, collection, records):
         """insert_many"""
         try:
+            log.debug("mongodb %s insert many : %s" % (collection, records))
             ret = self.__client[collection].insert_many(records)
             return ret
         except BulkWriteError as exc:

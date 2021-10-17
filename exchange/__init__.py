@@ -28,6 +28,12 @@ class Account():
     def get_open_orders(self, symbol):
         return self._get_open_orders(self._trans_symbol(symbol))
 
+    def search_order(self, order_id, orders):
+        for order in orders:
+            if order_id == int(order[self.Order_Id_Key]):
+                return order
+        return None
+
     def check_orders_close_status(self, symbol, order_ids):
         orders = self.get_orders(symbol)
         close_order_ids = []
@@ -41,9 +47,15 @@ class Account():
     def order_status_is_close(self, symbol, order_id):
         return self._order_status_is_close(self._trans_symbol(symbol), order_id)
 
-    def my_trades(self, symbol, limit):
+    def my_trades(self, symbol, limit=None):
         return self._my_trades(self._trans_symbol(symbol), limit=limit)
 
+    def search_trades(self, order_id, trades):
+        r_trades = []
+        for trade in trades:
+            if order_id == int(trade[self.TRADE_ORDER_ID_KEY]):
+                r_trades.append(trade)
+        return r_trades
 
     #
     def cancel_orders_byId(self, symbol, orderIds):
