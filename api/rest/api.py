@@ -1,6 +1,6 @@
 import hmac
 import json
-import logging
+#import logging
 import hashlib
 from json import JSONDecodeError
 import time
@@ -101,7 +101,7 @@ class API(object):
         if payload is None:
             payload = {}
         url = self.base_url + url_path
-        logging.debug("url: " + url)
+        #logging.debug("url: " + url)
         params = cleanNoneValue(
             {
                 "url": url,
@@ -111,7 +111,7 @@ class API(object):
             }
         )
         response = self._dispatch_request(http_method)(**params)
-        logging.debug("raw response from server:" + response.text)
+        #logging.debug("raw response from server:" + response.text)
         self._handle_exception(response)
 
         try:

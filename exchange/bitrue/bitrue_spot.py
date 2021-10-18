@@ -77,7 +77,6 @@ class BitrueSpot(Bitrue):
 
 
     def get_balances(self):
-        """获取余额"""
         account = self.account()
         return account['balances']
 

@@ -1,6 +1,5 @@
 #!/usr/bin/python
 """binance spot"""
-import os
 from datetime import datetime
 from .binance import Binance, api_key, secret_key
 from .spot import Spot
@@ -117,7 +116,7 @@ class BinanceSpot(Binance):
     def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, client_order_id=None):
         ret = self.__api.new_order(symbol=ex_symbol, side=ex_side, type=ex_type,
             timeInForce=TIME_IN_FORCE_GTC, price=price, quantity=qty)
-        log.debug(ret)
+        #log.debug(ret)
         try:
             if ret['orderId']:
 

@@ -1,6 +1,7 @@
 import datetime
 from pprint import pprint
 import common
+import common.log as log
 import setup
 from db.mongodb import get_mongodb
 
@@ -85,7 +86,7 @@ class TradeEngine(object):
         })
 
         if len(orders) > 1:
-            print(symbol,type(order_id), orders)
+            log.debug('%s: %s' % (symbol, orders))
         elif len(orders) == 1:
             return orders[0]
         else:
@@ -93,15 +94,19 @@ class TradeEngine(object):
 
     def get_position(self, symbol):
         pst_qty = 0
+        pst_cost = 0
         close_bills = self.get_bills(symbol, common.BILL_STATUS_CLOSE)
         for bill in close_bills:
             order = self.get_order_from_db(symbol, bill[common.BILL_ORDER_ID_KEY])
             #print('deal order:',order)
             if order:
                 executed_qty = float(order[self.trader.Order_Key_ExecutedQty])
+                value = float(order[self.trader.Order_Key_CummulativeQuoteQty])
                 if self.trader.order_is_buy(order):
                     pst_qty += executed_qty
+                    pst_cost -= value
                 else:
                     pst_qty -= executed_qty
-        return pst_qty
+                    pst_cost += value
+        return pst_qty, pst_cost
 

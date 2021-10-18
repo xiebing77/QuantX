@@ -8,6 +8,9 @@ import logging.handlers
 logger = logging.getLogger('QuantLogger')
 logger.setLevel(logging.DEBUG)
 
+print_switch = False
+log_switch = False
+
 def init(path, logname, server_ip=None, server_port=None):
     global logger
     #logpath = os.path.join(os.getcwd(), "log")
@@ -31,16 +34,31 @@ def init(path, logname, server_ip=None, server_port=None):
         logger = logging.LoggerAdapter(logger, extra)
 
 def info(info):
-    logger.info(info)
+    if print_switch:
+        print(info)
+    if log_switch:
+        logger.info(info)
 
 def warning(info):
-    logger.warning(info)
+    if print_switch:
+        print(info)
+    if log_switch:
+        logger.warning(info)
 
 def error(info):
-    logger.error(info)
+    if print_switch:
+        print(info)
+    if log_switch:
+        logger.error(info)
 
 def critical(info):
-    logger.critical(info)
+    if print_switch:
+        print(info)
+    if log_switch:
+        logger.critical(info)
 
 def debug(info):
-    logger.debug(info)
+    if print_switch:
+        print(info)
+    if log_switch:
+        logger.debug(info)
