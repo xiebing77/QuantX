@@ -122,6 +122,8 @@ class BitrueSpot(Bitrue):
 
     def _get_open_orders(self, exchange_symbol):
         orders = self.__api.get_open_orders(symbol=exchange_symbol)
+        for o in orders:
+            o[self.Order_Id_Key] = int(o[self.Order_Id_Key])
         return orders
 
     def _get_order(self, exchange_symbol, order_id):
