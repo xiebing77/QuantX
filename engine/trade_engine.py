@@ -57,6 +57,10 @@ class TradeEngine(object):
                 if not orders:
                     orders = self.trader.get_orders(symbol)
                 order = self.trader.search_order(order_id, orders)
+                if not order:
+                    order = self.trader.get_order(symbol, order_id)
+                if not order:
+                    log.debug('error bill: %s' % bill)
                 if order and self.trader.check_status_is_close(order):
                     if float(order[self.trader.Order_Key_ExecutedQty]) > 0:
                         if not trades:

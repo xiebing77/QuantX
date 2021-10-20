@@ -5,7 +5,7 @@ import os
 import logging
 import logging.handlers
 
-logger = logging.getLogger('QuantLogger')
+logger = logging.getLogger('QuantX')
 logger.setLevel(logging.DEBUG)
 
 print_switch = False

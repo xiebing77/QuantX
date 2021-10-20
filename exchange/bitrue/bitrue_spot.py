@@ -127,7 +127,10 @@ class BitrueSpot(Bitrue):
         return orders
 
     def _get_order(self, exchange_symbol, order_id):
-        return self.__api.get_order(symbol=exchange_symbol, orderId=order_id)
+        order = self.__api.get_order(symbol=exchange_symbol, orderId=order_id)
+        if order:
+            order[self.Order_Id_Key] = int(order[self.Order_Id_Key])
+        return order
 
     def _get_orders(self, exchange_symbol, limit):
         orders = self.__api.get_orders(symbol=exchange_symbol, limit=limit)

@@ -2,8 +2,9 @@
 import sys
 sys.path.append('../')
 import argparse
+from decimal import *
 from exchange.exchange_factory import get_exchange_names, create_exchange
-import pprint
+from pprint import pprint
 import pandas as pd
 
 
@@ -11,6 +12,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='quary open orders')
     parser.add_argument('-exchange', choices=get_exchange_names(), help='exchange name')
     parser.add_argument('-symbol', required=True, help='symbol, eg: btc_usdt')
+    parser.add_argument('-orderId',required=True, help='order id')
     args = parser.parse_args()
     # print(args)
     if not (args.exchange):
@@ -24,13 +26,7 @@ if __name__ == "__main__":
     exchange.connect()
 
     symbol = args.symbol
-    open_orders = exchange.get_open_orders(symbol)
-    print("%-25s: %s" % ("open orders length", len(open_orders)) )
-    for o in open_orders:
-        o['datatime'] = exchange.get_time_from_data_ts(o[exchange.Order_Time_Key])
-    #pprint.pprint(open_orders)
+    order = exchange.get_order(symbol,args.orderId)
+    print(order)
 
-    pd.set_option('display.max_rows', None)
-    open_orders_df = pd.DataFrame(open_orders)
-    print(open_orders_df)
 
