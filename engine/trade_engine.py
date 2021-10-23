@@ -84,6 +84,13 @@ class TradeEngine(object):
         orderIds = [bill[common.BILL_ORDER_ID_KEY] for bill in bills]
         self.trader.cancel_orders_byId(symbol, orderIds)
 
+    def get_trades_from_db(self, symbol, order_ids):
+        query = {
+            self.trader.TRADE_ORDER_ID_KEY: {"$in": order_ids},
+        }
+        trades = self.trade_db.find(self.trades_collection_name, query)
+        return trades
+
     def get_orders_from_db(self, symbol, order_ids):
         query = {
             self.trader.Order_Id_Key: {"$in": order_ids},
@@ -104,20 +111,18 @@ class TradeEngine(object):
             return None
 
     def get_position(self, symbol):
-        order_count = {}
-        pst_qty = 0
-        pst_cost = 0
         close_bills = self.get_bills(symbol, common.BILL_STATUS_CLOSE)
-        '''
-        for bill in close_bills:
-            order_id = bill[common.BILL_ORDER_ID_KEY]
-            order = self.get_order_from_db(symbol, bill[common.BILL_ORDER_ID_KEY])
-            #print('deal order:',order)
-            if not order:
-                log.debug('error order id: %s' % (order_id))
-                continue
-        '''
         order_ids = [b[common.BILL_ORDER_ID_KEY] for b in close_bills]
+        return self.calc_position_by_order(symbol, order_ids)
+        #return self.calc_position_by_trade(symbol, order_ids)
+
+    def calc_position_by_order(self, symbol, order_ids):
+        order_count = {}
+        pst_base_qty = 0
+        pst_quote_qty = 0
+        deal_base_qty = 0
+        deal_quote_qty = 0
+
         orders = self.get_orders_from_db(symbol, order_ids)
         for order in orders:
             order_status = order[self.trader.ORDER_STATUS_KEY]
@@ -131,11 +136,46 @@ class TradeEngine(object):
                 continue
             value = float(order[self.trader.Order_Key_CummulativeQuoteQty])
             if self.trader.order_is_buy(order):
-                pst_qty += executed_qty
-                pst_cost -= value
+                pst_base_qty += executed_qty
+                pst_quote_qty -= value
             else:
-                pst_qty -= executed_qty
-                pst_cost += value
+                pst_base_qty -= executed_qty
+                pst_quote_qty += value
+            deal_base_qty += executed_qty
+            deal_quote_qty += value
         log.info('order count: %s' % (order_count))
-        return pst_qty, pst_cost
+        return pst_base_qty, pst_quote_qty, deal_base_qty, deal_quote_qty
+
+
+    def calc_position_by_trade(self, symbol, order_ids):
+        pst_base_qty = 0
+        pst_quote_qty = 0
+        deal_base_qty = 0
+        deal_quote_qty = 0
+        commission = None
+        commission_asset = None
+
+        trades = self.get_trades_from_db(symbol, order_ids)
+        for trade in trades:
+            qty = float(trade[self.trader.Trade_Key_Qty])
+            price = float(trade[self.trader.Trade_Key_Price])
+            value = qty * price
+            if trade[self.trader.Trade_Key_IsBuyer]:
+                pst_base_qty += qty
+                pst_quote_qty -= value
+            else:
+                pst_base_qty -= qty
+                pst_quote_qty += value
+            deal_base_qty += qty
+            deal_quote_qty += value
+
+            if self.trader.Trade_Key_CommissionAsset in trade:
+                if not commission_asset:
+                    commission_asset = trade[self.trader.Trade_Key_CommissionAsset]
+                    commission = float([self.trader.Trade_Key_CommissionQty])
+                else:
+                    commission += float([self.trader.Trade_Key_CommissionQty])
+
+        return pst_base_qty, pst_quote_qty, deal_base_qty, deal_quote_qty
+
 
