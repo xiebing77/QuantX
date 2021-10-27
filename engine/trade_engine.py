@@ -14,6 +14,13 @@ class TradeEngine(object):
         self.bills_collection_name = 'bills'
         self.orders_collection_name = trader.name+'_orders'
         self.trades_collection_name = trader.name+'_trades'
+        self.symbol_precs = {}
+
+    def get_symbol_prec(self, symbol):
+        if symbol not in self.symbol_precs:
+            b_prec, q_prec = self.trader.get_assetPrecision(symbol)
+            self.symbol_precs[symbol] = (b_prec, q_prec)
+        return self.symbol_precs[symbol]
 
     def new_bill(self, side, type, symbol, price, qty):
         order_id = self.trader.new_order(side, type, symbol, price, qty)
@@ -110,11 +117,23 @@ class TradeEngine(object):
         else:
             return None
 
-    def get_position(self, symbol):
+    def get_position(self, symbol, ticker_price):
         close_bills = self.get_bills(symbol, common.BILL_STATUS_CLOSE)
         order_ids = [b[common.BILL_ORDER_ID_KEY] for b in close_bills]
-        return self.calc_position_by_order(symbol, order_ids)
-        #return self.calc_position_by_trade(symbol, order_ids)
+        pst_base_qty, pst_quote_qty, deal_base_qty, deal_quote_qty = self.calc_position_by_order(symbol, order_ids)
+        # self.calc_position_by_trade(symbol, order_ids)
+        b_prec, q_prec = self.get_symbol_prec(symbol)
+        base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
+        fmt = '%11s:  %15s %5s,  %20s %5s'
+        log.info(fmt % ('deal qty', round(deal_base_qty, b_prec), base_asset_name,
+            round(deal_quote_qty, 10), quote_asset_name))
+        log.info(fmt % ('positon qty', round(pst_base_qty, b_prec), base_asset_name,
+            round(pst_quote_qty, 10), quote_asset_name))
+
+        floating_gross_profit = pst_quote_qty + pst_base_qty * ticker_price
+        log.info('positon floating gross profit: %s %s' % (
+            round(floating_gross_profit, 10), quote_asset_name))
+        return pst_base_qty
 
     def calc_position_by_order(self, symbol, order_ids):
         order_count = {}
