@@ -4,6 +4,7 @@ sys.path.append('../')
 import argparse
 from exchange.exchange_factory import get_exchange_names, create_exchange
 import pprint
+import numpy as np
 import pandas as pd
 
 
@@ -32,5 +33,7 @@ if __name__ == "__main__":
 
     pd.set_option('display.max_rows', None)
     open_orders_df = pd.DataFrame(open_orders)
+    open_orders_df.replace(to_replace=r'^\s*$', value=np.nan, regex=True, inplace=True)
+    open_orders_df = open_orders_df.dropna(axis=1, how='all')
     print(open_orders_df)
 

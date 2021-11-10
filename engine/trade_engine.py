@@ -16,6 +16,8 @@ class TradeEngine(object):
         self.trades_collection_name = trader.name+'_trades'
         self.symbol_precs = {}
 
+        self.position = {}
+
     def get_symbol_prec(self, symbol):
         if symbol not in self.symbol_precs:
             b_prec, q_prec = self.trader.get_assetPrecision(symbol)
@@ -79,6 +81,7 @@ class TradeEngine(object):
                     self.trade_db.update_one(self.bills_collection_name, open_bill['_id'], {
                         common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE,
                     })
+                    self.update_position_by_order(order, self.position)
                     continue
 
             if open_bill[common.SIDE_KEY] == common.SIDE_BUY:
@@ -118,10 +121,23 @@ class TradeEngine(object):
             return None
 
     def get_position(self, symbol, ticker_price):
-        close_bills = self.get_bills(symbol, common.BILL_STATUS_CLOSE)
-        order_ids = [b[common.BILL_ORDER_ID_KEY] for b in close_bills]
-        pst_base_qty, pst_quote_qty, deal_base_qty, deal_quote_qty = self.calc_position_by_order(symbol, order_ids)
-        # self.calc_position_by_trade(symbol, order_ids)
+        if not self.position:
+            calc_pst_start = datetime.datetime.now()
+            close_bills = self.get_bills(symbol, common.BILL_STATUS_CLOSE)
+            order_ids = [b[common.BILL_ORDER_ID_KEY] for b in close_bills]
+            self.position = self.calc_position_by_order(symbol, order_ids)
+            #pst_base_qty, pst_quote_qty, deal_base_qty, deal_quote_qty = self.calc_position_by_order(symbol, order_ids)
+            #pst_base_qty, pst_quote_qty, deal_base_qty, deal_quote_qty = self.calc_position_by_trade(symbol, order_ids)
+
+            log.info("calc cost: %s" % (datetime.datetime.now() - calc_pst_start))
+            log.info("close bills: %s" % (len(close_bills)))
+
+        log.info('position: %s' % (self.position))
+        pst_base_qty = self.position['base_qty']
+        pst_quote_qty = self.position['quote_qty']
+        deal_base_qty = self.position['deal_base_qty']
+        deal_quote_qty = self.position['deal_quote_qty']
+
         b_prec, q_prec = self.get_symbol_prec(symbol)
         base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
         fmt = '%11s:  %15s %5s,  %20s %5s'
@@ -135,35 +151,39 @@ class TradeEngine(object):
             round(floating_gross_profit, 10), quote_asset_name))
         return pst_base_qty
 
-    def calc_position_by_order(self, symbol, order_ids):
-        order_count = {}
-        pst_base_qty = 0
-        pst_quote_qty = 0
-        deal_base_qty = 0
-        deal_quote_qty = 0
+    def update_position_by_order(self, order, pst):
+        order_status = order[self.trader.ORDER_STATUS_KEY]
+        if order_status in pst['order_count']:
+            pst['order_count'][order_status] += 1
+        else:
+            pst['order_count'][order_status] = 1
 
+        executed_qty = float(order[self.trader.Order_Key_ExecutedQty])
+        if executed_qty == 0:
+            return
+        value = float(order[self.trader.Order_Key_CummulativeQuoteQty])
+        if self.trader.order_is_buy(order):
+            pst['base_qty'] += executed_qty
+            pst['quote_qty'] -= value
+        else:
+            pst['base_qty'] -= executed_qty
+            pst['quote_qty'] += value
+        pst['deal_base_qty'] += executed_qty
+        pst['deal_quote_qty'] += value
+        return
+
+    def calc_position_by_order(self, symbol, order_ids):
+        pst = {
+            "order_count": {},
+            "base_qty": 0,
+            "quote_qty": 0,
+            "deal_base_qty": 0,
+            "deal_quote_qty": 0
+        }
         orders = self.get_orders_from_db(symbol, order_ids)
         for order in orders:
-            order_status = order[self.trader.ORDER_STATUS_KEY]
-            if order_status in order_count:
-                order_count[order_status] += 1
-            else:
-                order_count[order_status] = 1
-
-            executed_qty = float(order[self.trader.Order_Key_ExecutedQty])
-            if executed_qty == 0:
-                continue
-            value = float(order[self.trader.Order_Key_CummulativeQuoteQty])
-            if self.trader.order_is_buy(order):
-                pst_base_qty += executed_qty
-                pst_quote_qty -= value
-            else:
-                pst_base_qty -= executed_qty
-                pst_quote_qty += value
-            deal_base_qty += executed_qty
-            deal_quote_qty += value
-        log.info('order count: %s' % (order_count))
-        return pst_base_qty, pst_quote_qty, deal_base_qty, deal_quote_qty
+            self.update_position_by_order(order, pst)
+        return pst
 
 
     def calc_position_by_trade(self, symbol, order_ids):
