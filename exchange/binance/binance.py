@@ -14,6 +14,7 @@ secret_key = os.environ.get('BINANCE_SECRET_KEY')
 
 class Binance(Exchange):
     name = 'binance'
+    unit = 'ms'
     min_value = 10
     kl_bt_accuracy = kl.KLINE_INTERVAL_1MINUTE
 

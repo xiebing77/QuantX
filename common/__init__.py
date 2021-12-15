@@ -16,6 +16,22 @@ def get_json_config(config_path):
     fo.close()
     return config
 
+from datetime import datetime, timedelta, time
+def trans_time_from_str(t):
+    time_fmt = '%Y-%m-%d'
+    if 'T' in t:
+        time_fmt += 'T%H'
+        if ':' in t:
+            time_fmt += ':%M'
+    return datetime.strptime(t, time_fmt)
+
+def parse_date_range(date_range):
+    #print("time range: [ %s )" % date_range)
+    dates = date_range.split("~")
+    start_time = trans_time_from_str(dates[0])
+    end_time = trans_time_from_str(dates[1])
+    return start_time, end_time
+
 
 def cleanNoneValue(d) -> dict:
     out = {}

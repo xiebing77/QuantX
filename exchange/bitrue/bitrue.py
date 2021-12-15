@@ -13,6 +13,7 @@ secret_key = os.environ.get('BITRUE_SECRET_KEY')
 
 class Bitrue(Exchange):
     name = 'bitrue'
+    unit = 'ms'
     min_value = 10
     kl_bt_accuracy = kl.KLINE_INTERVAL_1MINUTE
 
