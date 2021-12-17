@@ -44,10 +44,15 @@ class Binance(Exchange):
     Order_Id_Key = 'orderId'
     Order_Time_Key = 'time'
 
+    Order_Key_Type = 'type'
+    Order_Key_Side = 'side'
+
     Order_Key_Price = 'price'
     Order_Key_OrigQty = 'origQty'
     Order_Key_ExecutedQty = 'executedQty'
+    Order_Key_CummulativeQuoteQty = 'cummulativeQuoteQty'
 
+    ORDER_STATUS_KEY = 'status'
     ORDER_STATUS_NEW = 'NEW'
     ORDER_STATUS_PARTIALLY_FILLED = 'PARTIALLY_FILLED'
     ORDER_STATUS_FILLED = 'FILLED'
@@ -103,6 +108,8 @@ class Binance(Exchange):
     Trade_Key_Qty = 'qty'
     Trade_Key_Price = 'price'
 
+    TRADE_ORDER_ID_KEY = 'orderId'
+
     def _get_coinkey(self, coin):
         return coin.upper()
 
@@ -118,6 +125,14 @@ class Binance(Exchange):
 
     def get_timestamp(self):
         return int(time.time() * 1000)
+
+    def check_status_is_close(self, order):
+        #print(order)
+        order_status = order[self.ORDER_STATUS_KEY]
+        close_statuses = [self.ORDER_STATUS_FILLED, self.ORDER_STATUS_CANCELED,
+            self.ORDER_STATUS_REJECTED, self.ORDER_STATUS_EXPIRED]
+        #print(order_status, close_statuses)
+        return order_status in close_statuses
 
     def _order_status_is_close(self, exchange_symbol, order_id):
         order = self._get_order(exchange_symbol, order_id)
