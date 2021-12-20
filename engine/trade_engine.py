@@ -26,6 +26,8 @@ class TradeEngine(object):
 
     def new_bill(self, side, type, symbol, price, qty):
         order_id = self.trader.new_order(side, type, symbol, price, qty)
+        if not order_id:
+            return None
         _id = self.trade_db.insert_one(self.bills_collection_name, {
             "create_time": datetime.datetime.now(),#time.time(),
             "instance_id": self.instance_id,
@@ -109,7 +111,7 @@ class TradeEngine(object):
         orders = self.trade_db.find(self.orders_collection_name, query)
         return orders
 
-    def _get_order_from_db(self, symbol, order_id):
+    def get_order_from_db(self, symbol, order_id):
         orders = self.trade_db.find(self.orders_collection_name, {
             self.trader.Order_Id_Key: order_id,
         })
@@ -153,7 +155,7 @@ class TradeEngine(object):
         floating_gross_profit = pst_quote_qty + pst_base_qty * ticker_price
         log.info('positon floating gross profit: %s %s' % (
             round(floating_gross_profit, 10), quote_asset_name))
-        return pst_base_qty, deal_quote_qty, floating_gross_profit
+        return pst_base_qty, pst_quote_qty, deal_quote_qty, floating_gross_profit
 
     def _update_position_by_order(self, symbol, order):
         if not self.position:

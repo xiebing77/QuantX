@@ -114,6 +114,9 @@ class BinanceSpot(Binance):
         return trades
 
     def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, client_order_id=None):
+        b_prec, q_prec = self._get_assetPrecision(ex_symbol)
+        price = '{:.{prec}f}'.format(price, prec=q_prec) #'%.8f'%price
+        #print(price)
         ret = self.__api.new_order(symbol=ex_symbol, side=ex_side, type=ex_type,
             timeInForce=TIME_IN_FORCE_GTC, price=price, quantity=qty)
         #log.debug(ret)

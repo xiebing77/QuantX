@@ -69,7 +69,7 @@ def real_hand(args):
     instance_id = args.iid
     ss = td_db.find(INSTANCE_COLLECTION_NAME, {"instance_id": instance_id})
     if not ss:
-        print('%s not exist')
+        print('%s not exist' % (instance_id))
         exit(1)
     s = ss[0]
     symbol = s['symbol']
@@ -113,13 +113,13 @@ def real_list(args):
     title_head_fmt = "%-30s  %12s"
     head_fmt       = "%-30s  %12s"
 
-    title_pst_fmt = "%18s  %18s  %18s  %12s"
+    title_pst_fmt = "%18s  %18s  %18s  %18s  %12s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
     title_tail_fmt = "    %-20s  %-10s  %-s"
 
     print(title_head_fmt % ("instance_id", "symbol") +
-        title_pst_fmt % ('pst_base_qty', 'deal_quote_qty', "profit", "commission") +
+        title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "profit", "commission") +
         title_tail_fmt % ("exchange", "status", "config_path"))
     for s in ss:
         instance_id = s["instance_id"]
@@ -134,32 +134,32 @@ def real_list(args):
         config_path = s["config_path"]
         #all_value += value
         profit_info = ""
-        try:
-            exchange = create_exchange(exchange_name)
-            if not exchange:
-                print("exchange name error!")
-                exit(1)
-            exchange.connect()
-            exchange.ping()
+        #try:
+        exchange = create_exchange(exchange_name)
+        if not exchange:
+            print("exchange name error!")
+            exit(1)
+        exchange.connect()
+        exchange.ping()
 
-            if config_path:
-                config = common.get_json_config(config_path)
-                symbol = config['symbol']
-            else:
-                symbol = s['symbol']
+        if config_path:
+            config = common.get_json_config(config_path)
+            symbol = config['symbol']
+        else:
+            symbol = s['symbol']
 
-            ticker_price = exchange.ticker_price(symbol)
-            trade_engine = TradeEngine(instance_id, exchange)
-            pst_base_qty, deal_quote_qty, gross_profit = trade_engine.get_position(symbol, ticker_price)
+        ticker_price = exchange.ticker_price(symbol)
+        trade_engine = TradeEngine(instance_id, exchange)
+        pst_base_qty, pst_quote_qty, deal_quote_qty, gross_profit = trade_engine.get_position(symbol, ticker_price)
 
-            commission = deal_quote_qty * 0.001
-            all_commission += commission
-            b_prec, q_prec = trade_engine.get_symbol_prec(symbol)
-            profit_info = pst_fmt % (round(pst_base_qty, b_prec),
-                round(deal_quote_qty, q_prec), round(gross_profit, q_prec), round(commission, q_prec))
+        commission = deal_quote_qty * 0.001
+        all_commission += commission
+        b_prec, q_prec = trade_engine.get_symbol_prec(symbol)
+        profit_info = pst_fmt % (round(pst_base_qty, b_prec), round(pst_quote_qty, q_prec),
+            round(deal_quote_qty, q_prec), round(gross_profit, q_prec), round(commission, q_prec))
 
-        except Exception as ept:
-            profit_info = "error:  %s" % (ept)
+        #except Exception as ept:
+        #    profit_info = "error:  %s" % (ept)
 
         print(head_fmt % (instance_id, symbol) +
             profit_info +
@@ -202,6 +202,34 @@ def real_update(args):
 
     if record:
         update_instance({"instance_id": args.iid}, record)
+
+
+def real_analyze(args):
+    instance_id = args.iid
+    ss = td_db.find(INSTANCE_COLLECTION_NAME, {"instance_id": instance_id})
+    if not ss:
+        print('%s not exist' % (instance_id))
+        exit(1)
+    s = ss[0]
+    symbol = s['symbol']
+    exchange_name = s['exchange']
+    exchange = create_exchange(exchange_name)
+    if not exchange:
+        print("exchange name error!")
+        exit(1)
+    exchange.connect()
+    trade_engine = TradeEngine(instance_id, exchange)
+    b_prec, q_prec = trade_engine.get_symbol_prec(symbol)
+    close_bills = trade_engine.get_bills(symbol, common.BILL_STATUS_CLOSE)
+    cb_fmt = '%26s  %10s  %10s  %10s  %10s  %12s  %12s'
+    print(cb_fmt % ('create_time', 'order_id', 'side', 'status', 'qty', 'limit_price', 'deal_price'))
+    for cb in close_bills:
+        #print(cb)
+        order = trade_engine.get_order_from_db(symbol, cb['order_id'])
+        #print(order)
+        deal_price = float(order['cummulativeQuoteQty'])/float(order['executedQty'])
+        print(cb_fmt % (cb['create_time'], cb['order_id'], cb['side'], cb['status'],
+            cb['qty'], cb['price'], round(deal_price,q_prec)))
 
 
 if __name__ == "__main__":
@@ -254,6 +282,10 @@ if __name__ == "__main__":
     parser_update.add_argument('--exchange', help='instance exchange')
     parser_update.add_argument('--status', choices=instance_statuses, help='instance status')
     parser_update.set_defaults(func=real_update)
+
+    parser_analyze = subparsers.add_parser('analyze', help='analyze instance')
+    parser_analyze.add_argument('-iid', required=True, help='instance id')
+    parser_analyze.set_defaults(func=real_analyze)
 
     args = parser.parse_args()
 
