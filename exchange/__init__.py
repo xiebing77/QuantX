@@ -117,7 +117,7 @@ class MarketData():
 
     def klines(self, symbol, interval, size=kline_default_size, since=None):
         return self._klines(self._trans_symbol(symbol),
-            self.ex_interval[interval], size, since)
+            self.ex_intervals[interval], size, since)
 
     def klines_1day(self, symbol, size=kline_default_size, since=None):
         return self.klines(symbol, kl.KLINE_INTERVAL_1DAY, size, since)

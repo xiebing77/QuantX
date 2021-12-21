@@ -25,9 +25,10 @@ def trans_time_from_str(t):
             time_fmt += ':%M'
     return datetime.strptime(t, time_fmt)
 
+time_range_split = "~"
 def parse_date_range(date_range):
     #print("time range: [ %s )" % date_range)
-    dates = date_range.split("~")
+    dates = date_range.split(time_range_split)
     start_time = trans_time_from_str(dates[0])
     end_time = trans_time_from_str(dates[1])
     return start_time, end_time

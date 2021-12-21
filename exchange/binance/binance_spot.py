@@ -59,11 +59,11 @@ class BinanceSpot(Binance):
     def _ticker_price(self, exchange_symbol):
         return float(self.__api.ticker_price(exchange_symbol)['price'])
 
-    def _get_klines(self, exchange_symbol, interval, size, since):
+    def _klines(self, exchange_symbol, interval, size, since):
         if since is None:
-            klines = self.__api.get_klines(symbol=exchange_symbol, interval=interval, limit=size)
+            klines = self.__api.klines(symbol=exchange_symbol, interval=interval, limit=size)
         else:
-            klines = self.__api.get_klines(symbol=exchange_symbol, interval=interval, limit=size, startTime=since)
+            klines = self.__api.klines(symbol=exchange_symbol, interval=interval, limit=size, startTime=since)
 
         return klines
 
