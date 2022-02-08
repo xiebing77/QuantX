@@ -45,14 +45,14 @@ if __name__ == "__main__":
     depth_limit = exchange.depth_limits[-1]
     book = exchange.depth(symbol, depth_limit)
     #pprint(book)
-    maker_asks = book['asks']
-    maker_bids = book['bids']
+    asks = book['asks']
+    bids = book['bids']
     print('depth limit: %s,  sell: %s,  buy: %s' % (
-        depth_limit, len(maker_asks), len(maker_bids)))
+        depth_limit, len(asks), len(bids)))
 
     # Handicap spread
-    sell1_price = float(maker_asks[0][0])
-    buy1_price = float(maker_bids[0][0])
+    sell1_price = float(asks[0][0])
+    buy1_price = float(bids[0][0])
     print('sell 1 price: %s' % (sell1_price))
     print("ticker price: %s" % (ticker_price))
     print(' buy 1 price: %s' % (buy1_price))
@@ -61,20 +61,20 @@ if __name__ == "__main__":
 
     #slippage
     #print('  slippage  '.ljust(80, '~'))
-    maker_asks_total_qty = calc_total_qty(maker_asks)
-    maker_bids_total_qty = calc_total_qty(maker_bids)
+    asks_total_qty = calc_total_qty(asks)
+    bids_total_qty = calc_total_qty(bids)
     qtys = []
     qty = 1
-    while qty < min(maker_bids_total_qty, maker_asks_total_qty):
+    while qty < min(bids_total_qty, asks_total_qty):
         qtys.append(qty)
         qty *= 10
-    qtys += [maker_bids_total_qty, maker_asks_total_qty]
-    qtys += calc_qty_by_diff(maker_asks, ticker_price, 0.01)
-    qtys += calc_qty_by_diff(maker_bids, ticker_price, 0.01)
-    qtys += calc_qty_by_diff(maker_asks, ticker_price, 0.1)
-    qtys += calc_qty_by_diff(maker_bids, ticker_price, 0.1)
-    qtys += calc_qty_by_diff(maker_asks, ticker_price, 0.3)
-    qtys += calc_qty_by_diff(maker_bids, ticker_price, 0.3)
+    qtys += [bids_total_qty, asks_total_qty]
+    qtys += calc_qty_by_diff(asks, ticker_price, 0.01)
+    qtys += calc_qty_by_diff(bids, ticker_price, 0.01)
+    qtys += calc_qty_by_diff(asks, ticker_price, 0.1)
+    qtys += calc_qty_by_diff(bids, ticker_price, 0.1)
+    qtys += calc_qty_by_diff(asks, ticker_price, 0.3)
+    qtys += calc_qty_by_diff(bids, ticker_price, 0.3)
 
     qtys = list(set(qtys))
     qtys.sort()
@@ -82,13 +82,13 @@ if __name__ == "__main__":
         qtys = qtys[1:]
 
     slippage_fmt = '10.5f'
-    print('%15s | %s | %s' % ('', ' buy (take asks) '.center(80, '-'), ' sell (take bids) '.center(80, '-')))
+    print('%15s | %s | %s' % ('', ' asks '.center(80, '-'), ' bids '.center(80, '-')))
     t_fmt = '%15s | %11s  %20s %16s %15s(%11s)  | %11s  %20s %16s %15s(%11s)'
     print(t_fmt % ('qty', 'slippage', 'cost', 'avg price', 'edge price', 'slippage',
         'slippage', 'cost', 'avg price', 'edge price', 'slippage'))
     for qty in qtys:
-        taker_buy_avg_price, taker_buy_cost, taker_buy_edge_price = calc_average_price(maker_asks, qty)
-        taker_sell_avg_price, taker_sell_cost, taker_sell_edge_price = calc_average_price(maker_bids, qty)
+        taker_buy_avg_price, taker_buy_cost, taker_buy_edge_price = calc_average_price(asks, qty)
+        taker_sell_avg_price, taker_sell_cost, taker_sell_edge_price = calc_average_price(bids, qty)
         taker_buy_slippage = diff_price(taker_buy_avg_price, ticker_price)
         taker_sell_slippage = diff_price(taker_sell_avg_price, ticker_price)
         taker_buy_diff_et = diff_price(taker_buy_edge_price, ticker_price)

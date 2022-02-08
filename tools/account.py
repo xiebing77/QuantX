@@ -8,12 +8,9 @@ import pprint
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='account infomation')
-    parser.add_argument('-exchange', choices=get_exchange_names(), help='exchange name')
+    parser.add_argument('-exchange', required=True, choices=get_exchange_names(), help='exchange name')
     args = parser.parse_args()
     # print(args)
-    if not (args.exchange):
-        parser.print_help()
-        exit(1)
 
     exchange = create_exchange(args.exchange)
     if not exchange:

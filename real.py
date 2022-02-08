@@ -105,13 +105,13 @@ def real_list(args):
         query["status"] = args.status
     ss = td_db.find(INSTANCE_COLLECTION_NAME, query)
     #print(ss)
-    all_value = 0
-    all_his_profit = 0
-    all_flo_profit = 0
+    all_pst_quote_qty = 0
+    all_deal_quote_qty = 0
+    all_gross_profit = 0
     all_commission = 0
 
-    title_head_fmt = "%-30s  %12s"
-    head_fmt       = "%-30s  %12s"
+    title_head_fmt = "%-20s  %12s"
+    head_fmt       = "%-20s  %12s"
 
     title_pst_fmt = "%18s  %18s  %18s  %18s  %12s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
@@ -151,6 +151,9 @@ def real_list(args):
         ticker_price = exchange.ticker_price(symbol)
         trade_engine = TradeEngine(instance_id, exchange)
         pst_base_qty, pst_quote_qty, deal_quote_qty, gross_profit = trade_engine.get_position(symbol, ticker_price)
+        all_pst_quote_qty += pst_quote_qty
+        all_deal_quote_qty += deal_quote_qty
+        all_gross_profit += gross_profit
 
         commission = deal_quote_qty * 0.001
         all_commission += commission
@@ -166,8 +169,9 @@ def real_list(args):
             title_tail_fmt % (exchange_name, status, config_path))
 
     if args.stat:
-        print(head_fmt % ("all", '', all_profit) +
-            pst_fmt % (all_his_profit, all_his_profit/all_value*100, all_flo_profit, all_flo_profit/all_value*100, all_commission))
+        print(title_head_fmt % ("all", "") +
+            title_pst_fmt % ('', all_pst_quote_qty, all_deal_quote_qty,
+            round(all_gross_profit, q_prec), round(all_commission, q_prec)))
 
 
 def real_add(args):
@@ -227,7 +231,10 @@ def real_analyze(args):
         #print(cb)
         order = trade_engine.get_order_from_db(symbol, cb['order_id'])
         #print(order)
-        deal_price = float(order['cummulativeQuoteQty'])/float(order['executedQty'])
+        if float(order['executedQty']) == 0:
+            deal_price = 0
+        else:
+            deal_price = float(order['cummulativeQuoteQty'])/float(order['executedQty'])
         print(cb_fmt % (cb['create_time'], cb['order_id'], cb['side'], cb['status'],
             cb['qty'], cb['price'], round(deal_price,q_prec)))
 
@@ -262,9 +269,9 @@ if __name__ == "__main__":
 
     parser_add = subparsers.add_parser('add', help='add new instance')
     parser_add.add_argument('-user', required=True, help='user name')
-    parser_add.add_argument('-exchange', choices=get_exchange_names(), help='exchange name')
+    parser_add.add_argument('-exchange', required=True, choices=get_exchange_names(), help='exchange name')
     parser_add.add_argument('-iid', required=True, help='instance id')
-    parser_add.add_argument('-symbol', help='bymbol')
+    parser_add.add_argument('-symbol', required=True, help='bymbol')
     parser_add.add_argument('-config_path', help='config path')
     parser_add.add_argument('-status', choices=instance_statuses, default=INSTANCE_STATUS_START, help='instance status')
     parser_add.set_defaults(func=real_add)
