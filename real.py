@@ -105,10 +105,7 @@ def real_list(args):
         query["status"] = args.status
     ss = td_db.find(INSTANCE_COLLECTION_NAME, query)
     #print(ss)
-    all_pst_quote_qty = 0
-    all_deal_quote_qty = 0
-    all_gross_profit = 0
-    all_commission = 0
+    all_asset_stat = {}
 
     title_head_fmt = "%-20s  %12s"
     head_fmt       = "%-20s  %12s"
@@ -151,12 +148,23 @@ def real_list(args):
         ticker_price = exchange.ticker_price(symbol)
         trade_engine = TradeEngine(instance_id, exchange)
         pst_base_qty, pst_quote_qty, deal_quote_qty, gross_profit = trade_engine.get_position(symbol, ticker_price)
-        all_pst_quote_qty += pst_quote_qty
-        all_deal_quote_qty += deal_quote_qty
-        all_gross_profit += gross_profit
 
         commission = deal_quote_qty * 0.001
-        all_commission += commission
+        base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
+        if quote_asset_name not in all_asset_stat:
+            all_asset_stat[quote_asset_name] = {
+                "pst_quote_qty": 0,
+                "deal_quote_qty": 0,
+                "gross_profit": 0,
+                "commission": 0
+            }
+
+        asset_stat = all_asset_stat[quote_asset_name]
+        asset_stat['pst_quote_qty'] += pst_quote_qty
+        asset_stat['deal_quote_qty'] += deal_quote_qty
+        asset_stat['gross_profit'] += gross_profit
+        asset_stat['commission'] += commission
+
         b_prec, q_prec = trade_engine.get_symbol_prec(symbol)
         profit_info = pst_fmt % (round(pst_base_qty, b_prec), round(pst_quote_qty, q_prec),
             round(deal_quote_qty, q_prec), round(gross_profit, q_prec), round(commission, q_prec))
@@ -169,9 +177,12 @@ def real_list(args):
             title_tail_fmt % (exchange_name, status, config_path))
 
     if args.stat:
-        print(title_head_fmt % ("all", "") +
-            title_pst_fmt % ('', all_pst_quote_qty, all_deal_quote_qty,
-            round(all_gross_profit, q_prec), round(all_commission, q_prec)))
+        print('assert stat:')
+        for coin_name in all_asset_stat:
+            asset_stat = all_asset_stat[coin_name]
+            print(title_head_fmt % (coin_name, "") +
+                title_pst_fmt % ('', asset_stat['pst_quote_qty'], asset_stat['deal_quote_qty'],
+                round(asset_stat['gross_profit'], q_prec), round(asset_stat['commission'], q_prec)))
 
 
 def real_add(args):
@@ -225,18 +236,31 @@ def real_analyze(args):
     trade_engine = TradeEngine(instance_id, exchange)
     b_prec, q_prec = trade_engine.get_symbol_prec(symbol)
     close_bills = trade_engine.get_bills(symbol, common.BILL_STATUS_CLOSE)
-    cb_fmt = '%26s  %10s  %10s  %10s  %10s  %12s  %12s'
-    print(cb_fmt % ('create_time', 'order_id', 'side', 'status', 'qty', 'limit_price', 'deal_price'))
+    pst_qty = 0
+    pst_quote_qty = 0
+    cb_fmt = '%26s  %10s  %5s  %7s  %10s  %12s  %12s  %12s  %12s'
+    print(cb_fmt % ('create_time', 'order_id', 'side', 'status', 'qty', 'limit_price', 'deal_price', 'pst_qty', 'pst_cost'))
     for cb in close_bills:
         #print(cb)
         order = trade_engine.get_order_from_db(symbol, cb['order_id'])
         #print(order)
-        if float(order['executedQty']) == 0:
+        executedQty = float(order['executedQty'])
+        if executedQty == 0:
             deal_price = 0
         else:
+            cummulativeQuoteQty = float(order['cummulativeQuoteQty'])
+            if exchange.order_is_buy(order):
+                pst_qty += executedQty
+                pst_quote_qty += cummulativeQuoteQty
+            else:
+                pst_qty -= executedQty
+                pst_quote_qty -= cummulativeQuoteQty
+
             deal_price = float(order['cummulativeQuoteQty'])/float(order['executedQty'])
+            pst_cost = float(pst_quote_qty / pst_qty)
         print(cb_fmt % (cb['create_time'], cb['order_id'], cb['side'], cb['status'],
-            cb['qty'], cb['price'], round(deal_price,q_prec)))
+            cb['qty'], cb['price'], round(deal_price,q_prec),
+            round(pst_qty, b_prec), round(pst_cost, q_prec)))
 
 
 if __name__ == "__main__":
