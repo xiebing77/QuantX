@@ -15,7 +15,7 @@ class DBQuoteEngine(QuoteEngine):
         return
 
     def get_original_klines(self, collection, s_time, e_time):
-        print(collection, s_time, e_time, self.quoter.kline_key_open_time)
+        #print(collection, s_time, e_time, self.quoter.kline_key_open_time)
         """ 获取k线 """
         ks = self._db.find(
             collection,

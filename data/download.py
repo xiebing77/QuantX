@@ -97,6 +97,7 @@ if __name__ == "__main__":
 
     print("%s connecting..." % (args.source), end='')
     exchange.connect()
+    exchange.ping()
     print('ok!')
 
     db = get_mongodb(args.source)

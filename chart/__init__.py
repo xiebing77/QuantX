@@ -9,6 +9,7 @@ import talib
 from datetime import datetime,timedelta
 from pprint import pprint
 
+from common import SIDE_KEY
 from chart.overlap_studies import *
 from chart.price_transform import *
 from chart.momentum_indicators import *
@@ -20,8 +21,8 @@ from chart.pattern_recognition import *
 from chart.statistic_functions import *
 
 
-def chart_mpf2(title, args, symbol, kdf, md, display_count, signalsets=[], subplotsets=[]):
-    kdf.index = pd.to_datetime(kdf[md.kline_key_open_time],
+def chart_mpf2(title, args, symbol, kdf, md, signalsets=[], subplotsets=[]):
+    kdf.index = pd.to_datetime(kdf[md.kline_key_close_time],
         unit=md.unit, utc=True)
     kdf.index = kdf.index.tz_convert('Asia/Shanghai')
 
@@ -36,10 +37,9 @@ def chart_mpf2(title, args, symbol, kdf, md, display_count, signalsets=[], subpl
     panel_idx = 0
     panel_ratios = [6]
 
-    reals = handle_overlap_studies2(args, apds, kdf)
-    if reals:
-        for name, real in reals:
-            apds.append(mpf2.make_addplot(real[-display_count:], ylabel=name, panel=panel_idx))
+    ss = handle_overlap_studies2(args, apds, kdf)
+    for name, real, params in ss:
+        apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx, secondary_y=False, **params))
 
     for signalset in signalsets:
         is_empty = True
@@ -53,43 +53,58 @@ def chart_mpf2(title, args, symbol, kdf, md, display_count, signalsets=[], subpl
         kwargs = {}
         if 'color' in signalset:
             kwargs['color'] = signalset['color']
-        apds.append(mpf2.make_addplot(signalset['data'][-display_count:],
-            panel=panel_idx, type='scatter', markersize=100, marker='^',
+        if signalset[SIDE_KEY] == 'sell':
+            marker = 'v'
+        else:
+            marker='^'
+        apds.append(mpf2.make_addplot(signalset['data'],
+            panel=panel_idx, type='scatter', markersize=100, marker=marker,
             **kwargs))
 
     if args.volume:
         panel_idx += 1
         panel_ratios.append(2)
 
-    for subplotset in subplotsets:
-        panel_idx += 1
-        panel_ratios.append(2)
-        for ss in subplotset:
-            kwargs = {}
-            if 'color' in ss:
-                kwargs['color'] = ss['color']
-            apds.append(mpf2.make_addplot(ss['data'][-display_count:],
-                ylabel=ss['name'], panel=panel_idx, **kwargs))
-
-    reals = handle_volatility_indicators2(args, apds, kdf)
+    reals = handle_volatility_indicators2(args, kdf)
     if reals:
         panel_idx += 1
         panel_ratios.append(2)
         for name, real in reals:
-            apds.append(mpf2.make_addplot(real[-display_count:], ylabel=name, panel=panel_idx))
+            apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx))
+
+    sss = handle_momentum_indicators2(args, kdf)
+    #print(sss)
+    for ss in sss:
+        #print(ss)
+        panel_idx += 1
+        panel_ratios.append(2)
+        if not ss:
+            continue
+        for name, real, params in ss:
+            apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx, secondary_y=False, **params))
 
     reals = []#handle_other_indicators2(args, apds, kdf)
     if reals:
         panel_idx += 1
         panel_ratios.append(2)
         for name, real in reals:
-            apds.append(mpf2.make_addplot(real[-display_count:], ylabel=name, panel=panel_idx))
+            apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx))
+
+    for idx, subplotset in enumerate(subplotsets):
+        panel_idx += 1
+        panel_ratios.append(2)
+        for ss in subplotset:
+            kwargs = {}
+            if 'color' in ss:
+                kwargs['color'] = ss['color']
+            apds.append(mpf2.make_addplot(ss['data'], panel=panel_idx,
+                ylabel=ss['name'], secondary_y=False, **kwargs))
 
     customstyle = mpf2.make_mpf_style(base_mpf_style='binance',
         y_on_right=False#, facecolor='w'
     )
     mpf2.plot(kdf, type='candle', style=customstyle, show_nontrading=True,
-        tight_layout=True, warn_too_much_data=10000, figratio=(3,1), #figscale=1.2
+        tight_layout=True, warn_too_much_data=80000, figratio=(3,1), #figscale=1.2
         title=title, yscale=args.yscale,
         addplot=apds, panel_ratios=panel_ratios,
         datetime_format='%Y-%m-%d %H', xrotation=20,

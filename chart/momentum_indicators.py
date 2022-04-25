@@ -41,6 +41,7 @@ def add_argument_momentum_indicators(parser):
     group.add_argument('--ROCR', action="store_true", help='Rate of change ratio: (price/prevPrice)')
     group.add_argument('--ROCR100', action="store_true", help='Rate of change ratio 100 scale: (price/prevPrice)*100')
     group.add_argument('--RSI', type=int, nargs='*', help='Relative Strength Index')
+    group.add_argument('--RSIRank', type=int, nargs='*', help='Relative Strength Index Rank')
     group.add_argument('--STOCH', action="store_true", help='Stochastic')
     group.add_argument('--STOCHF', action="store_true", help='Stochastic Fast')
     group.add_argument('--STOCHRSI', action="store_true", help='Stochastic Relative Strength Index')
@@ -447,3 +448,251 @@ def handle_momentum_indicators(args, axes, i, klines_df, close_times, display_co
         axes[i].grid(True)
         axes[i].plot(close_times, real[-display_count:], "y:", label=name)
 
+def handle_momentum_indicators2(args, kdf):
+    sss = []
+    '''
+    if args.macd: # macd
+        name = 'macd'
+        kdf = ic.pd_macd(kdf)
+        difs = [round(a, 2) for a in kdf["dif"]]
+        deas = [round(a, 2) for a in kdf["dea"]]
+        macds = [round(a, 2) for a in kdf["macd"]]
+        sss.append([('dif', difs, {'color': 'm'}),
+                    ('dea', deas, {'color': 'y'}),
+                    (name, macds, {'type': 'bar', 'color': 'g'})])
+
+    if args.mr: # macd rate
+        name = 'macd rate'
+        kdf = ic.pd_macd(kdf)
+        closes = kdf["close"]
+        closes = pd.to_numeric(closes)
+        mrs = [round(a, 4) for a in (kdf["macd"] / closes)]
+        sss.append([(name, mrr, {'color': 'r'})])
+
+    if args.kdj: # kdj
+        name = 'kdj'
+        ks, ds, js = ic.pd_kdj(kdf)
+        sss.append([('k', ks, {'color': 'y'}),
+                    ('d', ds, {'color': 'b'}),
+                    ('j', js, {'color': 'm'})])
+    '''
+
+    # talib
+    if args.ADX: # ADX
+        name = 'ADX'
+        tp = 14
+        real = talib.ADX(kdf["high"], kdf["low"], kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.ADXR: # ADXR
+        name = 'ADXR'
+        tp = 14
+        real = talib.ADXR(kdf["high"], kdf["low"], kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.APO: # APO
+        name = 'APO'
+        fp = 12
+        sp = 26
+        real = talib.APO(kdf["close"], fastperiod=fp, slowperiod=sp, matype=0)
+        sss.append([('%s %s %s'%(name, fp, sp), real, {})])
+
+    if args.AROON: # AROON
+        name = 'AROON'
+        tp = 14
+        aroondown, aroonup = talib.AROON(kdf["high"], kdf["low"], timeperiod=tp)
+        sss.append([('%s %s down'%(name, tp), aroondown, {'color': 'r'}),
+                    ('%s %s up'%(name, tp), aroonup, {'color': 'g'})])
+
+    if args.AROONOSC: # AROONOSC
+        name = 'AROONOSC'
+        tp = 14
+        real = talib.AROONOSC(kdf["high"], kdf["low"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.BOP: # BOP
+        name = 'BOP'
+        real = talib.BOP(kdf["open"], kdf["high"], kdf["low"], kdf["close"])
+        sss.append([('%s'%(name), real, {})])
+
+    if args.CCI: # CCI
+        name = 'CCI'
+        tp = 14
+        real = talib.CCI(kdf["high"], kdf["low"], kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.CMO: # CMO
+        name = 'CMO'
+        tp = 14
+        real = talib.CMO(kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.DX: # DX
+        name = 'DX'
+        tp = 14
+        real = talib.DX(kdf["high"], kdf["low"], kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.MACD: # MACD
+        name = 'MACD'
+        fastperiod = 12
+        slowperiod = 26
+        signalperiod = 9
+        macd, macdsignal, macdhist = talib.MACD(kdf["close"], fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
+        sss.append([('dif', macd, {'color': 'm'}),
+                    ('dea', macdsignal, {'color': 'y'}),
+                    (name, macdhist, {'type': 'bar', 'color': 'g'})])
+
+    if args.MACDEXT: # MACDEXT
+        name = 'MACDEXT'
+        fastperiod = 12
+        slowperiod = 26
+        signalperiod = 9
+        macd, macdsignal, macdhist = talib.MACDEXT(kdf["close"],
+            fastperiod=fastperiod, fastmatype=0, slowperiod=slowperiod, slowmatype=0, signalperiod=signalperiod, signalmatype=0)
+        sss.append([('dif', macd, {'color': 'm'}),
+                    ('dea', macdsignal, {'color': 'y'}),
+                    (name, macdhist, {'type': 'bar', 'color': 'g'})])
+
+    if args.MACDFIX: # MACDFIX
+        name = 'MACDFIX'
+        signalperiod = 9
+        macd, macdsignal, macdhist = talib.MACDFIX(kdf["close"], signalperiod=signalperiod)
+        sss.append([('dif', macd, {'color': 'm'}),
+                    ('dea', macdsignal, {'color': 'y'}),
+                    (name, macdhist, {'type': 'bar', 'color': 'g'})])
+
+    if args.MFI: # 
+        name = 'MFI'
+        real = talib.MFI(kdf["high"], kdf["low"], kdf["close"], kdf["volume"])
+        sss.append([('%s'%(name), real, {})])
+
+    if args.MINUS_DI: # 
+        name = 'MINUS_DI'
+        tp = 14
+        real = talib.MINUS_DI(kdf["high"], kdf["low"], kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.MINUS_DM: # 
+        name = 'MINUS_DM'
+        tp = 14
+        real = talib.MINUS_DM(kdf["high"], kdf["low"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.MOM: # 
+        name = 'MOM'
+        tp = 10
+        real = talib.MOM(kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.PLUS_DI: # 
+        name = 'PLUS_DI'
+        tp = 14
+        real = talib.PLUS_DI(kdf["high"], kdf["low"], kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.PLUS_DM: # 
+        name = 'PLUS_DM'
+        tp = 14
+        real = talib.PLUS_DM(kdf["high"], kdf["low"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.PPO: # 
+        name = 'PPO'
+        fp = 12
+        sp = 26
+        real = talib.PPO(kdf["close"], fastperiod=fp, slowperiod=sp, matype=0)
+        sss.append([('%s %s %s'%(name, fp, sp), real, {})])
+
+    if args.ROC: # 
+        name = 'ROC'
+        tp = 10
+        real = talib.ROC(kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.ROCP: # 
+        name = 'ROCP'
+        tp = 10
+        real = talib.ROCP(kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.ROCR: # 
+        name = 'ROCR'
+        tp = 10
+        real = talib.ROCR(kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.ROCR100: # 
+        name = 'ROCR100'
+        tp = 10
+        real = talib.ROCR100(kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    if args.RSI is not None: # RSI
+        name = 'RSI'
+        if len(args.RSI) == 0:
+            tps = [14]
+        else:
+            tps = args.RSI
+
+        ss = []
+        for idx, tp in enumerate(tps):
+            rsis = talib.RSI(kdf["close"], timeperiod=tp)
+            rsis = [round(a, 3) for a in rsis]
+            ss.append(('%s_%s'%(name, tp), rsis, {}))
+
+        if args.RSIRank:
+            for rsi in args.RSIRank:
+                ss.append(('%s_%s'%(name, rsi), [rsi]*len(kdf), {}))
+        sss.append(ss)
+
+    if args.STOCH: # STOCH
+        name = 'STOCH'
+        slowk, slowd = talib.STOCH(kdf["high"], kdf["low"], kdf["close"],
+            fastk_period=5, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
+        sss.append([('slowk', slowk, {'color': 'y'}),
+                    ('slowd', slowd, {'color': 'b'})])
+
+    if args.STOCHF: # 
+        name = 'STOCHF'
+        fastk, fastd = talib.STOCHF(kdf["high"], kdf["low"], kdf["close"],
+            fastk_period=5, fastd_period=3, fastd_matype=0)
+        sss.append([('fastk', fastk, {'color': 'y'}),
+                    ('fastd', fastd, {'color': 'b'})])
+
+    if args.STOCHRSI: # 
+        name = 'STOCHRSI'
+        fastk, fastd = talib.STOCHRSI(kdf["close"],
+            timeperiod=14, fastk_period=5, fastd_period=3, fastd_matype=0)
+        sss.append([('fastk', fastk, {'color': 'y'}),
+                    ('fastd', fastd, {'color': 'b'})])
+
+    if args.TRIX is not None: #
+        name = 'TRIX'
+        if len(args.TRIX) == 0:
+            tps = [30]
+        else:
+            tps = args.TRIX
+
+        ss = []
+        for idx, tp in enumerate(tps):
+            real = talib.TRIX(kdf["close"], timeperiod=tp)
+            ss.append(('%s_%s'%(name, tp), real, {}))
+        sss.append(ss)
+
+    if args.ULTOSC: # 
+        name = 'ULTOSC'
+        tp1 = 7
+        tp2 = 14
+        tp3 =28
+        real = talib.ULTOSC(kdf["high"], kdf["low"], kdf["close"],
+                            timeperiod1=tp1, timeperiod2=tp2, timeperiod3=tp3)
+        sss.append([('%s %s %s %s'%(name, tp1, tp2, tp3), real, {})])
+
+    if args.WILLR:
+        name = 'WILLR'
+        tp = 14
+        real = talib.WILLR(kdf["high"], kdf["low"], kdf["close"], timeperiod=tp)
+        sss.append([('%s %s'%(name, tp), real, {})])
+
+    return sss

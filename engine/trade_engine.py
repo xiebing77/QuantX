@@ -2,6 +2,7 @@ import datetime
 from pprint import pprint
 import common
 import common.log as log
+from common.position import init_position, update_position_by_order
 import setup
 from db.mongodb import get_mongodb
 
@@ -84,7 +85,9 @@ class TradeEngine(object):
                     self.trade_db.update_one(self.bills_collection_name, open_bill['_id'], {
                         common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE,
                     })
-                    self._update_position_by_order(symbol, order)
+                    if not self.position:
+                        self._init_position(symbol)
+                    update_position_by_order(self.trader, symbol, self.position, order)
                     continue
 
             if open_bill[common.SIDE_KEY] == common.SIDE_BUY:
@@ -127,7 +130,10 @@ class TradeEngine(object):
         calc_pst_start = datetime.datetime.now()
         close_bills = self.get_bills(symbol, common.BILL_STATUS_CLOSE)
         order_ids = [b[common.BILL_ORDER_ID_KEY] for b in close_bills]
-        self._init_position_by_order(symbol, order_ids)
+        orders = self._get_orders_from_db(symbol, order_ids)
+        self.position = init_position()
+        for order in orders:
+            update_position_by_order(self.trader, symbol, self.position, order)
         #pst_base_qty, pst_quote_qty, deal_base_qty, deal_quote_qty = self.calc_position_by_order(symbol, order_ids)
         #pst_base_qty, pst_quote_qty, deal_base_qty, deal_quote_qty = self.calc_position_by_trade(symbol, order_ids)
         log.info("calc cost: %s" % (datetime.datetime.now() - calc_pst_start))
@@ -156,43 +162,6 @@ class TradeEngine(object):
         log.info('positon floating gross profit: %s %s' % (
             round(floating_gross_profit, 10), quote_asset_name))
         return pst_base_qty, pst_quote_qty, deal_quote_qty, floating_gross_profit
-
-    def _update_position_by_order(self, symbol, order):
-        if not self.position:
-            self._init_position(symbol)
-        pst = self.position
-        order_status = order[self.trader.ORDER_STATUS_KEY]
-        if order_status in pst['order_count']:
-            pst['order_count'][order_status] += 1
-        else:
-            pst['order_count'][order_status] = 1
-
-        executed_qty = float(order[self.trader.Order_Key_ExecutedQty])
-        if executed_qty == 0:
-            return
-        value = float(order[self.trader.Order_Key_CummulativeQuoteQty])
-        if self.trader.order_is_buy(order):
-            pst['base_qty'] += executed_qty
-            pst['quote_qty'] -= value
-        else:
-            pst['base_qty'] -= executed_qty
-            pst['quote_qty'] += value
-        pst['deal_base_qty'] += executed_qty
-        pst['deal_quote_qty'] += value
-        return
-
-    def _init_position_by_order(self, symbol, order_ids):
-        self.position = {
-            "order_count": {},
-            "base_qty": 0,
-            "quote_qty": 0,
-            "deal_base_qty": 0,
-            "deal_quote_qty": 0
-        }
-        orders = self._get_orders_from_db(symbol, order_ids)
-        for order in orders:
-            self._update_position_by_order(symbol, order)
-
 
     def _calc_position_by_trade(self, symbol, order_ids):
         pst_base_qty = 0

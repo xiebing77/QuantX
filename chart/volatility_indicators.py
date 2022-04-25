@@ -57,7 +57,7 @@ def handle_volatility_indicators(args, axes, i, klines_df, close_times, display_
         axes[i].plot(close_times, real[-display_count:], "y:", label=name)
 
 
-def handle_volatility_indicators2(args, apds, kdf):
+def handle_volatility_indicators2(args, kdf):
     # talib
     ss = []
     if args.ATR:
