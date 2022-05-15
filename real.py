@@ -7,6 +7,7 @@ from common import SIDE_BUY, SIDE_SELL
 from common import ORDER_TYPE_LIMIT
 from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INSTANCE_STATUS_STOP, instance_statuses, add_instance, delete_instance, update_instance
 from exchange.exchange_factory import get_exchange_names, create_exchange
+from engine.quote import QuoteEngine
 from engine.trade_engine import TradeEngine
 from db.mongodb import get_mongodb
 import setup
@@ -39,9 +40,10 @@ def real_run(args):
         exit(1)
     exchange.connect()
     exchange.ping()
+    quote_engine = QuoteEngine(exchange)
     trade_engine = TradeEngine(instance_id, exchange)
 
-    strategy = common.createInstance(module_name, class_name, instance_id, config, exchange, trade_engine)
+    strategy = common.createInstance(module_name, class_name, instance_id, config, quote_engine, trade_engine)
     if not args.loop:
         strategy.on_tick()
         exit(1)

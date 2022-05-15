@@ -104,7 +104,7 @@ def chart_mpf2(title, args, symbol, kdf, md, signalsets=[], subplotsets=[]):
         y_on_right=False#, facecolor='w'
     )
     mpf2.plot(kdf, type='candle', style=customstyle, show_nontrading=True,
-        tight_layout=True, warn_too_much_data=80000, figratio=(3,1), #figscale=1.2
+        tight_layout=True, warn_too_much_data=500000, figratio=(3,1), #figscale=1.2
         title=title, yscale=args.yscale,
         addplot=apds, panel_ratios=panel_ratios,
         datetime_format='%Y-%m-%d %H', xrotation=20,
