@@ -38,6 +38,13 @@ def get_total_profit(pst, price, commission_rate):
     return total_profit
 
 
+def get_add_value(pst):
+    add_value = pst[POSITION_HISTORY_QUOTE_QTY_KEY]
+    if pst[POSITION_BASE_QTY_KEY] == 0:
+        add_value += pst[POSITION_QUOTE_QTY_KEY]
+    return add_value
+
+
 def get_win_loss(bills, value):
     wins = []
     losses = []
@@ -54,31 +61,6 @@ def get_win_loss(bills, value):
     return wins, losses
 
 
-def update_bill_position(pst, bill):
-    new_pst = pst.copy()
-    if pst[POSITION_BASE_QTY_KEY]==0:
-        new_pst[POSITION_HISTORY_QUOTE_QTY_KEY] += pst[POSITION_QUOTE_QTY_KEY]
-
-    bill_base_qty = bill['qty']
-    bill_quote_qty = bill['qty'] * bill['price']
-
-    if new_pst[POSITION_BASE_QTY_KEY]==0:
-        new_pst[POSITION_QUOTE_QTY_KEY] = 0
-
-    if bill[common.SIDE_KEY] == common.SIDE_BUY:
-        new_pst[POSITION_BASE_QTY_KEY] += bill_base_qty
-        new_pst[POSITION_QUOTE_QTY_KEY] -= bill_quote_qty
-    else:
-        new_pst[POSITION_BASE_QTY_KEY] -= bill_base_qty
-        new_pst[POSITION_QUOTE_QTY_KEY] += bill_quote_qty
-
-    new_pst[POSITION_DEAL_BASE_QTY_KEY] += bill_base_qty
-    new_pst[POSITION_DEAL_QUOTE_QTY_KEY] += bill_quote_qty
-
-    bill[POSITION_KEY] = new_pst
-    return
-
-
 def init_positon():
     return {
         POSITION_BASE_QTY_KEY: 0,
@@ -89,22 +71,15 @@ def init_positon():
     }
 
 
-def calc_position(bills):
-    if len(bills) == 0:
-        return init_positon()
+def get_limit_price(side, price, slippage_rate):
+    if side == common.SIDE_BUY:
+        limit_price = price * (1+slippage_rate)
+    else:
+        limit_price = price * (1-slippage_rate)
+    return limit_price
 
-    if POSITION_KEY in bills[-1]:
-        pst = bills[-1][POSITION_KEY]
-        return pst
 
-    if len(bills)>=2 and POSITION_KEY in bills[-2]:
-        update_bill_position(bills[-2][POSITION_KEY],bills[-1])
-        pst = bills[-1][POSITION_KEY]
-        return pst
-
-    pst = init_positon()
-    for bill in bills:
-        update_bill_position(pst,bill)
-        pst = bill[POSITION_KEY]
-    return pst
+class TradeEngine(object):
+    def __init__(self):
+        pass
 

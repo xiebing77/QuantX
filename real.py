@@ -8,7 +8,8 @@ from common import ORDER_TYPE_LIMIT
 from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INSTANCE_STATUS_STOP, instance_statuses, add_instance, delete_instance, update_instance
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from engine.quote import QuoteEngine
-from engine.trade_engine import TradeEngine
+import engine.trade as trade
+from engine.trade.exchange import ExchangeTradeEngine
 from db.mongodb import get_mongodb
 import setup
 
@@ -17,13 +18,20 @@ td_db = get_mongodb(setup.trade_db_name)
 
 
 def real_run(args):
-    config = common.get_json_config(args.config)
+    instance_id = args.iid
+    ss = td_db.find(INSTANCE_COLLECTION_NAME, {"instance_id": instance_id})
+    if not ss:
+        print('%s not exist' % (instance_id))
+        exit(1)
+    s = ss[0]
+    symbol = s['symbol']
+    exchange_name = s['exchange']
+    config_path = s["config_path"]
+    config = common.get_json_config(config_path)
     module_name = config["module_name"].replace("/", ".")
     class_name = config["class_name"]
     log.info("strategy name: %s;  config: %s" % (class_name, config))
 
-    instance_id = args.iid
-    exchange_name = args.exchange
     if args.print:
         log.print_switch = True
     if args.log:
@@ -41,9 +49,15 @@ def real_run(args):
     exchange.connect()
     exchange.ping()
     quote_engine = QuoteEngine(exchange)
-    trade_engine = TradeEngine(instance_id, exchange)
+    trade_engine = ExchangeTradeEngine(instance_id, exchange)
 
     strategy = common.createInstance(module_name, class_name, instance_id, config, quote_engine, trade_engine)
+
+    if hasattr(strategy, 'set_value'):
+        strategy.set_value(s['value'])
+    if hasattr(strategy, 'set_slippage_rate'):
+        strategy.set_slippage_rate(s['slippage_rate'])
+
     if not args.loop:
         strategy.on_tick()
         exit(1)
@@ -92,10 +106,9 @@ def real_hand(args):
         exit(1)
     exchange.connect()
     exchange.ping()
-    trade_engine = TradeEngine(instance_id, exchange)
-    order_id = trade_engine.new_bill(
+    trade_engine = ExchangeTradeEngine(instance_id, exchange)
+    order_id = trade_engine.new_limit_bill(
         side=args.side,
-        type=ORDER_TYPE_LIMIT,
         symbol=symbol,
         price=args.price,
         qty=args.qty)
@@ -115,11 +128,11 @@ def real_list(args):
     title_pst_fmt = "%18s  %18s  %18s  %18s  %12s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
-    title_tail_fmt = "    %-20s  %-10s  %-s"
+    title_tail_fmt = "    %18s  %-20s  %-10s  %-s"
 
     print(title_head_fmt % ("instance_id", "symbol") +
         title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "profit", "commission") +
-        title_tail_fmt % ("exchange", "status", "config_path"))
+        title_tail_fmt % ('value', "exchange", "status", "config_path"))
     for s in ss:
         instance_id = s["instance_id"]
         exchange_name = s["exchange"]
@@ -147,23 +160,28 @@ def real_list(args):
         else:
             symbol = s['symbol']
 
+        trade_engine = ExchangeTradeEngine(instance_id, exchange)
+        pst = trade_engine.get_position(symbol)
+        pst_base_qty = trade.get_pst_qty(pst)
+        pst_quote_qty = pst[trade.POSITION_QUOTE_QTY_KEY]
+        deal_quote_qty = pst[trade.POSITION_DEAL_QUOTE_QTY_KEY]
+
         ticker_price = exchange.ticker_price(symbol)
-        trade_engine = TradeEngine(instance_id, exchange)
-        pst_base_qty, pst_quote_qty, deal_quote_qty, gross_profit = trade_engine.get_position(symbol, ticker_price)
+        gross_profit, gross_hist_profit = trade.get_gross_profit(pst, ticker_price)
 
         commission = deal_quote_qty * 0.001
         base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
         if quote_asset_name not in all_asset_stat:
             all_asset_stat[quote_asset_name] = {
-                "pst_quote_qty": 0,
-                "deal_quote_qty": 0,
+                trade.POSITION_QUOTE_QTY_KEY: 0,
+                trade.POSITION_DEAL_QUOTE_QTY_KEY: 0,
                 "gross_profit": 0,
                 "commission": 0
             }
 
         asset_stat = all_asset_stat[quote_asset_name]
-        asset_stat['pst_quote_qty'] += pst_quote_qty
-        asset_stat['deal_quote_qty'] += deal_quote_qty
+        asset_stat[trade.POSITION_QUOTE_QTY_KEY] += pst_quote_qty
+        asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY] += deal_quote_qty
         asset_stat['gross_profit'] += gross_profit
         asset_stat['commission'] += commission
 
@@ -174,9 +192,14 @@ def real_list(args):
         #except Exception as ept:
         #    profit_info = "error:  %s" % (ept)
 
+        if 'value' in s:
+            value_info = '%s'%s['value']
+        else:
+            value_info = ''
+
         print(head_fmt % (instance_id, symbol) +
             profit_info +
-            title_tail_fmt % (exchange_name, status, config_path))
+            title_tail_fmt % (value_info, exchange_name, status, config_path))
 
     if args.stat:
         print('assert stat:')
@@ -216,6 +239,8 @@ def real_update(args):
         record["exchange"] = args.exchange
     if args.status:
         record["status"] = args.status
+    if args.value:
+        record["value"] = args.value
 
     if record:
         update_instance({"instance_id": args.iid}, record)
@@ -235,7 +260,7 @@ def real_analyze(args):
         print("exchange name error!")
         exit(1)
     exchange.connect()
-    trade_engine = TradeEngine(instance_id, exchange)
+    trade_engine = ExchangeTradeEngine(instance_id, exchange)
     b_prec, q_prec = trade_engine.get_symbol_prec(symbol)
     close_bills = trade_engine.get_bills(symbol, common.BILL_STATUS_CLOSE)
     pst_qty = 0
@@ -314,6 +339,7 @@ if __name__ == "__main__":
     parser_update.add_argument('--config_path', help='config path')
     parser_update.add_argument('--exchange', help='instance exchange')
     parser_update.add_argument('--status', choices=instance_statuses, help='instance status')
+    parser_update.add_argument('--value', type=int, help='value')
     parser_update.set_defaults(func=real_update)
 
     parser_analyze = subparsers.add_parser('analyze', help='analyze instance')
