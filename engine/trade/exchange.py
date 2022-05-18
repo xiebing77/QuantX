@@ -1,4 +1,7 @@
+import datetime
 import common
+import setup
+from db.mongodb import get_mongodb
 from . import *
 
 POSITION_ORDER_COUNT = 'order_count'
@@ -6,12 +9,13 @@ POSITION_ORDER_COUNT = 'order_count'
 
 def update_position_by_order(trader, position, order):
     pst = position
+    '''
     order_status = order[trader.ORDER_STATUS_KEY]
     if order_status in pst[POSITION_ORDER_COUNT]:
         pst[POSITION_ORDER_COUNT][order_status] += 1
     else:
         pst[POSITION_ORDER_COUNT][order_status] = 1
-
+    '''
     executed_qty = float(order[trader.Order_Key_ExecutedQty])
     if executed_qty == 0:
         return
@@ -37,7 +41,7 @@ class ExchangeTradeEngine(TradeEngine):
         self.orders_collection_name = trader.name+'_orders'
         self.trades_collection_name = trader.name+'_trades'
         self.symbol_precs = {}
-        self.position = self._init_position(symbol)
+        self.position = None
 
     def get_symbol_prec(self, symbol):
         if symbol not in self.symbol_precs:
@@ -110,6 +114,8 @@ class ExchangeTradeEngine(TradeEngine):
         return pst
 
     def get_position(self, symbol):
+        if not self.position:
+            self.position = self._init_position(symbol)
         return self.position
 
     def sync_bills(self, symbol, open_bills):
@@ -141,7 +147,8 @@ class ExchangeTradeEngine(TradeEngine):
                     self.trade_db.update_one(self.bills_collection_name, open_bill['_id'], {
                         common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE,
                     })
-                    update_position_by_order(self.trader, self.position, order)
+                    pst = self.get_position(symbol)
+                    update_position_by_order(self.trader, pst, order)
                     continue
             keep_open_bills.append(open_bill)
         return keep_open_bills

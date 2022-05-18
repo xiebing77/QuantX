@@ -5,7 +5,7 @@ import pandas as pd
 import common
 import common.kline as kl
 from exchange.exchange_factory import get_exchange_names, create_exchange
-from engine.quote import DBQuoteEngine
+from engine.quote import QuoteEngine
 from chart import chart_mpf2, chart_add_all_argument
 
 
@@ -30,7 +30,7 @@ if __name__ == "__main__":
         print("exchange name error!")
         exit(1)
     exchange.name = 'binance'
-    quote_engine = DBQuoteEngine(exchange)
+    quote_engine = QuoteEngine(exchange)
 
     start_time, end_time = common.parse_date_range(args.range)
     #display_count = int((end_time - start_time).total_seconds()/kl.get_interval_seconds(interval))

@@ -122,17 +122,17 @@ def real_list(args):
     #print(ss)
     all_asset_stat = {}
 
-    title_head_fmt = "%-20s  %12s"
-    head_fmt       = "%-20s  %12s"
+    title_head_fmt = "%-22s  %12s"
+    head_fmt       = "%-22s  %12s"
 
     title_pst_fmt = "%18s  %18s  %18s  %18s  %12s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
-    title_tail_fmt = "    %18s  %-20s  %-10s  %-s"
+    title_tail_fmt = "    %16s  %13s  %-20s  %-10s  %-s"
 
     print(title_head_fmt % ("instance_id", "symbol") +
         title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "profit", "commission") +
-        title_tail_fmt % ('value', "exchange", "status", "config_path"))
+        title_tail_fmt % ('value', 'slippage_rate', "exchange", "status", "config_path"))
     for s in ss:
         instance_id = s["instance_id"]
         exchange_name = s["exchange"]
@@ -197,17 +197,25 @@ def real_list(args):
         else:
             value_info = ''
 
+        if 'slippage_rate' in s:
+            sr_info = '%s'%s['slippage_rate']
+        else:
+            sr_info = ''
+
         print(head_fmt % (instance_id, symbol) +
             profit_info +
-            title_tail_fmt % (value_info, exchange_name, status, config_path))
+            title_tail_fmt % (value_info, sr_info, exchange_name, status, config_path))
 
     if args.stat:
         print('assert stat:')
         for coin_name in all_asset_stat:
             asset_stat = all_asset_stat[coin_name]
             print(title_head_fmt % (coin_name, "") +
-                title_pst_fmt % ('', asset_stat['pst_quote_qty'], asset_stat['deal_quote_qty'],
-                round(asset_stat['gross_profit'], q_prec), round(asset_stat['commission'], q_prec)))
+                title_pst_fmt % ('',
+                asset_stat[trade.POSITION_QUOTE_QTY_KEY],
+                asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY],
+                round(asset_stat['gross_profit'], q_prec),
+                round(asset_stat['commission'], q_prec)))
 
 
 def real_add(args):
@@ -241,6 +249,8 @@ def real_update(args):
         record["status"] = args.status
     if args.value:
         record["value"] = args.value
+    if args.slippage_rate:
+        record["slippage_rate"] = args.slippage_rate
 
     if record:
         update_instance({"instance_id": args.iid}, record)
@@ -290,7 +300,7 @@ def real_analyze(args):
             round(pst_qty, b_prec), round(pst_cost, q_prec)))
 
 
-if __name__ == "__main__":
+def real():
     parser = argparse.ArgumentParser(description='real run one')
     subparsers = parser.add_subparsers(help='sub-command help')
 
@@ -340,6 +350,7 @@ if __name__ == "__main__":
     parser_update.add_argument('--exchange', help='instance exchange')
     parser_update.add_argument('--status', choices=instance_statuses, help='instance status')
     parser_update.add_argument('--value', type=int, help='value')
+    parser_update.add_argument('--slippage_rate', type=float, help='value')
     parser_update.set_defaults(func=real_update)
 
     parser_analyze = subparsers.add_parser('analyze', help='analyze instance')
@@ -350,4 +361,8 @@ if __name__ == "__main__":
 
     if hasattr(args, 'func'):
         args.func(args)
+
+
+if __name__ == "__main__":
+    real()
 

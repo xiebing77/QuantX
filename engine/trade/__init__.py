@@ -61,7 +61,7 @@ def get_win_loss(bills, value):
     return wins, losses
 
 
-def init_positon():
+def init_position():
     return {
         POSITION_BASE_QTY_KEY: 0,
         POSITION_QUOTE_QTY_KEY: 0,
