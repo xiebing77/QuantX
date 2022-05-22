@@ -1,5 +1,6 @@
 import datetime
 import common
+import common.log as log
 import setup
 from db.mongodb import get_mongodb
 from . import *
@@ -49,10 +50,9 @@ class ExchangeTradeEngine(TradeEngine):
             self.symbol_precs[symbol] = (b_prec, q_prec)
         return self.symbol_precs[symbol]
 
-    def new_limit_bill(self, side, symbol, price, qty, slippage_rate=0, rmk=''):
+    def new_limit_bill(self, side, symbol, price, qty, rmk=''):
         typ = common.ORDER_TYPE_LIMIT
-        limit_price = get_limit_price(price, slippage_rate)
-        order_id = self.trader.new_order(side, typ, symbol, limit_price, qty)
+        order_id = self.trader.new_order(side, typ, symbol, price, qty)
         if not order_id:
             return None
         _id = self.trade_db.insert_one(self.bills_collection_name, {
@@ -63,7 +63,6 @@ class ExchangeTradeEngine(TradeEngine):
             common.SIDE_KEY: side,
             common.ORDER_TYPE_KEY: typ,
             "price": price,
-            "slippage_rate": slippage_rate,
             "qty": qty,
             common.BILL_ORDER_ID_KEY: order_id,
             "rmk": rmk,
@@ -116,9 +115,14 @@ class ExchangeTradeEngine(TradeEngine):
     def get_position(self, symbol):
         if not self.position:
             self.position = self._init_position(symbol)
+        keep_open_bills = self.sync_bills(symbol)
         return self.position
 
-    def sync_bills(self, symbol, open_bills):
+    def sync_bills(self, symbol):
+        open_bills = self.get_bills(symbol, common.BILL_STATUS_OPEN)
+        if not open_bills:
+            return []
+
         open_orders = self.trader.get_open_orders(symbol)
         open_order_ids = [o[self.trader.Order_Id_Key] for o in open_orders]
         orders = None
@@ -147,8 +151,9 @@ class ExchangeTradeEngine(TradeEngine):
                     self.trade_db.update_one(self.bills_collection_name, open_bill['_id'], {
                         common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE,
                     })
-                    pst = self.get_position(symbol)
-                    update_position_by_order(self.trader, pst, order)
+                    if not self.position:
+                        self.position = self._init_position(symbol)
+                    update_position_by_order(self.trader, self.position, order)
                     continue
             keep_open_bills.append(open_bill)
         return keep_open_bills

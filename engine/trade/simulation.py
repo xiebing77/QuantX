@@ -53,7 +53,7 @@ class SimulationTradeEngine(TradeEngine):
         self.bills = []
         self.now_time = None
 
-    def new_limit_bill(self, side, symbol, price, qty, slippage_rate=0, rmk=''):
+    def new_limit_bill(self, side, symbol, price, qty, rmk=''):
         self.bills.append({
             common.ORDER_TYPE_KEY: common.ORDER_TYPE_LIMIT,
             "create_time": self.now_time,
@@ -61,7 +61,6 @@ class SimulationTradeEngine(TradeEngine):
             common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE,
             common.SIDE_KEY: side,
             "price": price,
-            "slippage_rate": slippage_rate,
             "qty": qty,
             "rmk": rmk
         })

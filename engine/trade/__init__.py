@@ -71,14 +71,6 @@ def init_position():
     }
 
 
-def get_limit_price(side, price, slippage_rate):
-    if side == common.SIDE_BUY:
-        limit_price = price * (1+slippage_rate)
-    else:
-        limit_price = price * (1-slippage_rate)
-    return limit_price
-
-
 class TradeEngine(object):
     def __init__(self):
         pass

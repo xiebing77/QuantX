@@ -30,7 +30,6 @@ def real_run(args):
     config = common.get_json_config(config_path)
     module_name = config["module_name"].replace("/", ".")
     class_name = config["class_name"]
-    log.info("strategy name: %s;  config: %s" % (class_name, config))
 
     if args.print:
         log.print_switch = True
@@ -39,8 +38,9 @@ def real_run(args):
         logfilename = instance_id + ".log"
         print(logfilename)
         log.init('real', logfilename)
-        info = 'instance_id: %s,  exchange_name: %s' % (instance_id, exchange_name)
-        log.info("%s" % (info))
+
+    #log.info("strategy name: %s;  config: %s" % (class_name, config))
+    log.info('instance_id: %s,  exchange_name: %s' % (instance_id, exchange_name))
 
     exchange = create_exchange(exchange_name)
     if not exchange:
@@ -68,17 +68,20 @@ def real_run(args):
         log.info("%s  %s tick start  %s" % (prefix, tick_start, '.'*72))
 
         if args.debug:
-            strategy.on_tick()
+            delay_seconds = strategy.on_tick()
         else:
             try:
-                strategy.on_tick()
+                delay_seconds = strategy.on_tick()
             except Exception as ept:
                 log.critical(ept)
 
         tick_end = datetime.datetime.now()
-        log.info("%s  %s tick end, cost: %s\n\n" % (prefix, tick_end, tick_end - tick_start))
+        cost_td = tick_end - tick_start
+        delay_seconds -= cost_td.total_seconds()
+        delay_seconds -= 0.1
+        log.info("%s  %s tick end,  cost: %s,  delay seconds: %s\n\n" % (prefix, tick_end, cost_td, delay_seconds))
 
-        time.sleep(config["loop_sec"])
+        time.sleep(delay_seconds)
 
 
 def real_hand(args):
@@ -270,12 +273,17 @@ def real_analyze(args):
         print("exchange name error!")
         exit(1)
     exchange.connect()
+
+    config_path = s["config_path"]
+    config = common.get_json_config(config_path)
+    price_prec = config['prec']['price']
+
     trade_engine = ExchangeTradeEngine(instance_id, exchange)
     b_prec, q_prec = trade_engine.get_symbol_prec(symbol)
     close_bills = trade_engine.get_bills(symbol, common.BILL_STATUS_CLOSE)
     pst_qty = 0
     pst_quote_qty = 0
-    cb_fmt = '%26s  %10s  %5s  %7s  %10s  %12s  %12s  %12s  %12s'
+    cb_fmt = '%26s  %12s  %5s  %7s  %10s  %12s  %12s  %12s  %12s'
     print(cb_fmt % ('create_time', 'order_id', 'side', 'status', 'qty', 'limit_price', 'deal_price', 'pst_qty', 'pst_cost'))
     for cb in close_bills:
         #print(cb)
@@ -294,10 +302,13 @@ def real_analyze(args):
                 pst_quote_qty -= cummulativeQuoteQty
 
             deal_price = float(order['cummulativeQuoteQty'])/float(order['executedQty'])
-            pst_cost = float(pst_quote_qty / pst_qty)
+            if pst_qty == 0:
+                pst_cost = 0
+            else:
+                pst_cost = float(pst_quote_qty / pst_qty)
         print(cb_fmt % (cb['create_time'], cb['order_id'], cb['side'], cb['status'],
-            cb['qty'], cb['price'], round(deal_price,q_prec),
-            round(pst_qty, b_prec), round(pst_cost, q_prec)))
+            cb['qty'], cb['price'], round(deal_price,price_prec),
+            round(pst_qty, b_prec), round(pst_cost, price_prec)))
 
 
 def real():
