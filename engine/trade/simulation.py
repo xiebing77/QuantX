@@ -29,7 +29,7 @@ def update_bill_position(pst, bill):
 
 def calc_position(bills):
     if len(bills) == 0:
-        return init_positon()
+        return init_position()
 
     if POSITION_KEY in bills[-1]:
         pst = bills[-1][POSITION_KEY]
@@ -40,7 +40,7 @@ def calc_position(bills):
         pst = bills[-1][POSITION_KEY]
         return pst
 
-    pst = init_positon()
+    pst = init_position()
     for bill in bills:
         update_bill_position(pst,bill)
         pst = bill[POSITION_KEY]

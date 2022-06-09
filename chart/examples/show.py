@@ -29,7 +29,6 @@ if __name__ == "__main__":
     if not exchange:
         print("exchange name error!")
         exit(1)
-    exchange.name = 'binance'
     quote_engine = QuoteEngine(exchange)
 
     start_time, end_time = common.parse_date_range(args.range)

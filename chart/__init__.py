@@ -21,7 +21,7 @@ from chart.pattern_recognition import *
 from chart.statistic_functions import *
 
 
-def chart_mpf2(title, args, symbol, kdf, md, signalsets=[], subplotsets=[]):
+def chart_mpf2(title, args, symbol, kdf, md, signalsets=[], subplotsets=[], need_calc=True):
     kdf.index = pd.to_datetime(kdf[md.kline_key_close_time],
         unit=md.unit, utc=True)
     kdf.index = kdf.index.tz_convert('Asia/Shanghai')
@@ -37,9 +37,10 @@ def chart_mpf2(title, args, symbol, kdf, md, signalsets=[], subplotsets=[]):
     panel_idx = 0
     panel_ratios = [6]
 
-    ss = handle_overlap_studies2(args, apds, kdf)
-    for name, real, params in ss:
-        apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx, secondary_y=False, **params))
+    if need_calc:
+        ss = handle_overlap_studies2(args, apds, kdf)
+        for name, real, params in ss:
+            apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx, secondary_y=False, **params))
 
     for signalset in signalsets:
         is_empty = True
@@ -65,30 +66,31 @@ def chart_mpf2(title, args, symbol, kdf, md, signalsets=[], subplotsets=[]):
         panel_idx += 1
         panel_ratios.append(2)
 
-    reals = handle_volatility_indicators2(args, kdf)
-    if reals:
-        panel_idx += 1
-        panel_ratios.append(2)
-        for name, real in reals:
-            apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx))
+    if need_calc:
+        reals = handle_volatility_indicators2(args, kdf)
+        if reals:
+            panel_idx += 1
+            panel_ratios.append(2)
+            for name, real in reals:
+                apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx))
 
-    sss = handle_momentum_indicators2(args, kdf)
-    #print(sss)
-    for ss in sss:
-        #print(ss)
-        panel_idx += 1
-        panel_ratios.append(2)
-        if not ss:
-            continue
-        for name, real, params in ss:
-            apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx, secondary_y=False, **params))
+        sss = handle_momentum_indicators2(args, kdf)
+        #print(sss)
+        for ss in sss:
+            #print(ss)
+            panel_idx += 1
+            panel_ratios.append(2)
+            if not ss:
+                continue
+            for name, real, params in ss:
+                apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx, secondary_y=False, **params))
 
-    reals = []#handle_other_indicators2(args, apds, kdf)
-    if reals:
-        panel_idx += 1
-        panel_ratios.append(2)
-        for name, real in reals:
-            apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx))
+        reals = []#handle_other_indicators2(args, apds, kdf)
+        if reals:
+            panel_idx += 1
+            panel_ratios.append(2)
+            for name, real in reals:
+                apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx))
 
     for idx, subplotset in enumerate(subplotsets):
         panel_idx += 1
