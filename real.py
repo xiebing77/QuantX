@@ -58,6 +58,7 @@ def real_run(args):
     if hasattr(strategy, 'set_slippage_rate'):
         strategy.set_slippage_rate(s['slippage_rate'])
     if hasattr(strategy, 'load_model'):
+        strategy.load_train()
         strategy.load_model()
 
     if not args.loop:
@@ -127,13 +128,13 @@ def real_list(args):
     #print(ss)
     all_asset_stat = {}
 
-    title_head_fmt = "%-22s  %12s"
-    head_fmt       = "%-22s  %12s"
+    title_head_fmt = "%-25s  %12s"
+    head_fmt       = "%-25s  %12s"
 
-    title_pst_fmt = "%18s  %18s  %18s  %18s  %12s"
+    title_pst_fmt = "%16s  %16s  %16s  %14s  %12s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
-    title_tail_fmt = "    %16s  %13s  %-20s  %-10s  %-s"
+    title_tail_fmt = "  %10s  %13s  %-16s  %-6s  %-s"
 
     print(title_head_fmt % ("instance_id", "symbol") +
         title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "profit", "commission") +

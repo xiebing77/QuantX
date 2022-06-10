@@ -1,10 +1,12 @@
 from pprint import pprint
 import common
+import common.log as log
+
 class Account():
 
     # adpation
     def new_order(self, side, type, symbol, price, qty, client_order_id=None):
-        #log.info('create order: pair(%s), side(%s), type(%s), price(%s), qty(%s)' % (symbol, side, type, price, qty))
+        log.info('create order: pair(%s), side(%s), type(%s), price(%s), qty(%s)' % (symbol, side, type, price, qty))
         ex_side = self.ex_sides[side]
         if hasattr(self, '_before_create_order'):
             target_coin, base_coin = common.get_symbol_coins(symbol)
