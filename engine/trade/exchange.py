@@ -29,6 +29,10 @@ def update_position_by_order(trader, position, order):
         pst[POSITION_QUOTE_QTY_KEY] += value
     pst[POSITION_DEAL_BASE_QTY_KEY] += executed_qty
     pst[POSITION_DEAL_QUOTE_QTY_KEY] += value
+
+    if pst[POSITION_BASE_QTY_KEY] == 0:
+        pst[POSITION_HISTORY_QUOTE_QTY_KEY] += pst[POSITION_QUOTE_QTY_KEY]
+        pst[POSITION_QUOTE_QTY_KEY] = 0
     return
 
 
