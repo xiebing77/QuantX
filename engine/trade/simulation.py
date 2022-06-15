@@ -3,26 +3,12 @@ from . import *
 
 
 def update_bill_position(pst, bill):
+    side = bill[common.SIDE_KEY]
+    base_qty = bill['qty']
+    quote_qty = bill['qty'] * bill['price']
+
     new_pst = pst.copy()
-    if pst[POSITION_BASE_QTY_KEY]==0:
-        new_pst[POSITION_HISTORY_QUOTE_QTY_KEY] += pst[POSITION_QUOTE_QTY_KEY]
-
-    bill_base_qty = bill['qty']
-    bill_quote_qty = bill['qty'] * bill['price']
-
-    if new_pst[POSITION_BASE_QTY_KEY]==0:
-        new_pst[POSITION_QUOTE_QTY_KEY] = 0
-
-    if bill[common.SIDE_KEY] == common.SIDE_BUY:
-        new_pst[POSITION_BASE_QTY_KEY] += bill_base_qty
-        new_pst[POSITION_QUOTE_QTY_KEY] -= bill_quote_qty
-    else:
-        new_pst[POSITION_BASE_QTY_KEY] -= bill_base_qty
-        new_pst[POSITION_QUOTE_QTY_KEY] += bill_quote_qty
-
-    new_pst[POSITION_DEAL_BASE_QTY_KEY] += bill_base_qty
-    new_pst[POSITION_DEAL_QUOTE_QTY_KEY] += bill_quote_qty
-
+    update_position(new_pst, side, base_qty, quote_qty)
     bill[POSITION_KEY] = new_pst
     return
 

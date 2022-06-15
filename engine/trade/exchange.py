@@ -9,7 +9,6 @@ POSITION_ORDER_COUNT = 'order_count'
 
 
 def update_position_by_order(trader, position, order):
-    pst = position
     '''
     order_status = order[trader.ORDER_STATUS_KEY]
     if order_status in pst[POSITION_ORDER_COUNT]:
@@ -17,22 +16,15 @@ def update_position_by_order(trader, position, order):
     else:
         pst[POSITION_ORDER_COUNT][order_status] = 1
     '''
-    executed_qty = float(order[trader.Order_Key_ExecutedQty])
-    if executed_qty == 0:
+    base_qty = float(order[trader.Order_Key_ExecutedQty])
+    if base_qty == 0:
         return
-    value = float(order[trader.Order_Key_CummulativeQuoteQty])
+    quote_qty = float(order[trader.Order_Key_CummulativeQuoteQty])
     if trader.order_is_buy(order):
-        pst[POSITION_BASE_QTY_KEY] += executed_qty
-        pst[POSITION_QUOTE_QTY_KEY] -= value
+        side = common.SIDE_BUY
     else:
-        pst[POSITION_BASE_QTY_KEY] -= executed_qty
-        pst[POSITION_QUOTE_QTY_KEY] += value
-    pst[POSITION_DEAL_BASE_QTY_KEY] += executed_qty
-    pst[POSITION_DEAL_QUOTE_QTY_KEY] += value
-
-    if pst[POSITION_BASE_QTY_KEY] == 0:
-        pst[POSITION_HISTORY_QUOTE_QTY_KEY] += pst[POSITION_QUOTE_QTY_KEY]
-        pst[POSITION_QUOTE_QTY_KEY] = 0
+        side = common.SIDE_SELL
+    update_position(position, side, base_qty, quote_qty)
     return
 
 

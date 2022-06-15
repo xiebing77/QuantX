@@ -137,7 +137,7 @@ def real_list(args):
     title_tail_fmt = "  %10s  %13s  %-16s  %-6s  %-s"
 
     print(title_head_fmt % ("instance_id", "symbol") +
-        title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "floa_profit", "hist_profit", "commission") +
+        title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission") +
         title_tail_fmt % ('value', 'slippage_rate', "exchange", "status", "config_path"))
     for s in ss:
         instance_id = s["instance_id"]
@@ -173,7 +173,7 @@ def real_list(args):
         deal_quote_qty = pst[trade.POSITION_DEAL_QUOTE_QTY_KEY]
 
         ticker_price = exchange.ticker_price(symbol)
-        gross_profit, gross_hist_profit = trade.get_gross_profit(pst, ticker_price)
+        float_profit, total_profit = trade.get_gross_profit(pst, ticker_price)
 
         commission = deal_quote_qty * 0.001
         base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
@@ -181,16 +181,16 @@ def real_list(args):
             all_asset_stat[quote_asset_name] = {
                 trade.POSITION_QUOTE_QTY_KEY: 0,
                 trade.POSITION_DEAL_QUOTE_QTY_KEY: 0,
-                "floa_profit": 0,
-                "hist_profit": 0,
+                "float_profit": 0,
+                "total_profit": 0,
                 "commission": 0
             }
 
         asset_stat = all_asset_stat[quote_asset_name]
         asset_stat[trade.POSITION_QUOTE_QTY_KEY] += pst_quote_qty
         asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY] += deal_quote_qty
-        asset_stat['floa_profit'] += gross_profit
-        asset_stat['hist_profit'] += gross_hist_profit
+        asset_stat['float_profit'] += float_profit
+        asset_stat['total_profit'] += total_profit
         asset_stat['commission'] += commission
 
         b_prec, q_prec = trade_engine.get_symbol_prec(symbol)
@@ -198,8 +198,8 @@ def real_list(args):
         profit_info = pst_fmt % (round(pst_base_qty, b_prec),
             round(pst_quote_qty, q_prec),
             round(deal_quote_qty, q_prec),
-            round(gross_profit, q_prec),
-            round(gross_hist_profit, q_prec),
+            round(float_profit, q_prec),
+            round(total_profit, q_prec),
             round(commission, q_prec))
 
         #except Exception as ept:
@@ -227,8 +227,8 @@ def real_list(args):
                 title_pst_fmt % ('',
                 round(asset_stat[trade.POSITION_QUOTE_QTY_KEY], q_prec),
                 round(asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY], q_prec),
-                round(asset_stat['floa_profit'], q_prec),
-                round(asset_stat['hist_profit'], q_prec),
+                round(asset_stat['float_profit'], q_prec),
+                round(asset_stat['total_profit'], q_prec),
                 round(asset_stat['commission'], q_prec)))
 
 

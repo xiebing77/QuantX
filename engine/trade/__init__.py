@@ -21,21 +21,18 @@ def get_pst_qty(pst):
 
 
 def get_gross_profit(pst, price):
+    total_profit = pst[POSITION_HISTORY_QUOTE_QTY_KEY]
     if pst[POSITION_BASE_QTY_KEY] == 0:
-        profit = pst[POSITION_QUOTE_QTY_KEY]
+        float_profit = 0
+        total_profit += pst[POSITION_QUOTE_QTY_KEY]
     else:
-        profit = price * pst[POSITION_BASE_QTY_KEY] + pst[POSITION_QUOTE_QTY_KEY]
-    return profit, pst[POSITION_HISTORY_QUOTE_QTY_KEY]
+        float_profit = price * pst[POSITION_BASE_QTY_KEY] + pst[POSITION_QUOTE_QTY_KEY]
+        total_profit += float_profit
+    return float_profit, total_profit
 
 
 def calc_commission(pst, commission_rate):
     return pst[POSITION_DEAL_QUOTE_QTY_KEY] * commission_rate
-
-
-def get_total_profit(pst, price, commission_rate):
-    profit, hist_profit = get_gross_profit(pst, price)
-    total_profit = profit + hist_profit - calc_commission(pst, commission_rate)
-    return total_profit
 
 
 def get_add_value(pst):
@@ -69,6 +66,24 @@ def init_position():
         POSITION_DEAL_BASE_QTY_KEY: 0,
         POSITION_DEAL_QUOTE_QTY_KEY: 0
     }
+
+
+def update_position(pst, side, base_qty, quote_qty):
+    if pst[POSITION_BASE_QTY_KEY] == 0:
+        pst[POSITION_HISTORY_QUOTE_QTY_KEY] += pst[POSITION_QUOTE_QTY_KEY]
+        pst[POSITION_QUOTE_QTY_KEY] = 0
+
+    if side == common.SIDE_BUY:
+        pst[POSITION_BASE_QTY_KEY] += base_qty
+        pst[POSITION_QUOTE_QTY_KEY] -= quote_qty
+    else:
+        pst[POSITION_BASE_QTY_KEY] -= base_qty
+        pst[POSITION_QUOTE_QTY_KEY] += quote_qty
+
+    pst[POSITION_DEAL_BASE_QTY_KEY] += base_qty
+    pst[POSITION_DEAL_QUOTE_QTY_KEY] += quote_qty
+
+    return pst
 
 
 class TradeEngine(object):
