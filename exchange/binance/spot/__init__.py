@@ -7,6 +7,17 @@ class Spot(API):
             kwargs["base_url"] = "https://api.binance.com"
         super().__init__(key, secret, **kwargs)
 
+
+    def sign_request(self, http_method, url_path, payload=None):
+        if payload is None:
+            payload = {}
+        payload["timestamp"] = self.exchange.get_timestamp()
+        query_string = self._prepare_params(payload)
+        signature = self._get_sign(query_string)
+        payload["signature"] = signature
+        return self.send_request(http_method, url_path, payload)
+
+
     # MARKETS
     from .market import ping
     from .market import time

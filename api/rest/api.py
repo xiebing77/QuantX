@@ -28,7 +28,6 @@ class API(object):
         proxies=None,
         show_limit_usage=False,
         show_header=False,
-        user_agent='',
         exchange=None,
     ):
         self.key = key
@@ -38,13 +37,9 @@ class API(object):
         self.show_header = False
         self.proxies = None
         self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "Content-Type": "application/json;charset=utf-8",
-                "User-Agent": user_agent,
-                "X-MBX-APIKEY": key,
-            }
-        )
+
+        self.key_err_code = 'code'
+        self.key_err_msg = 'msg'
 
         if base_url:
             self.base_url = base_url
@@ -62,6 +57,16 @@ class API(object):
             self.exchange = exchange
         return
 
+
+    def update_header(self, param):
+        self.session.headers.update(param)
+
+
+    def set_err_key(self, key_code, key_msg):
+        self.key_err_code = key_code
+        self.key_err_msg = key_msg
+
+
     def query(self, url_path, payload=None):
         return self.send_request("GET", url_path, payload=payload)
 
@@ -70,15 +75,6 @@ class API(object):
 
         check_required_parameter(self.key, "apiKey")
         return self.send_request(http_method, url_path, payload=payload)
-
-    def sign_request(self, http_method, url_path, payload=None):
-        if payload is None:
-            payload = {}
-        payload["timestamp"] = self.exchange.get_timestamp()
-        query_string = self._prepare_params(payload)
-        signature = self._get_sign(query_string)
-        payload["signature"] = signature
-        return self.send_request(http_method, url_path, payload)
 
     def limited_encoded_sign_request(self, http_method, url_path, payload=None):
         """This is used for some endpoints has special symbol in the url.
@@ -165,5 +161,5 @@ class API(object):
                 err = json.loads(response.text)
             except JSONDecodeError:
                 raise ClientError(status_code, None, response.text, response.headers)
-            raise ClientError(status_code, err["code"], err["msg"], response.headers)
+            raise ClientError(status_code, err[self.key_err_code], err[self.key_err_msg], response.headers)
         raise ServerError(status_code, response.text)

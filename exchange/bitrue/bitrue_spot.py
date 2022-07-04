@@ -21,7 +21,11 @@ class BitrueSpot(Bitrue):
 
     def connect(self):
         self.__api = Spot(key=api_key, secret=secret_key,
-            user_agent=Bitrue.name+'/python', exchange=self)
+            exchange=self)
+        self.__api.update_header({
+            "Content-Type": "application/json;charset=utf-8",
+            "User-Agent": Bitrue.name+'/python',
+            "X-MBX-APIKEY": api_key})
 
     def _get_assetPrecision(self, ex_symbol):
         if ex_symbol not in self.symbol_info_map:

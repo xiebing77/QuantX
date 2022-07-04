@@ -4,29 +4,30 @@ from api.rest.api import API
 class Spot(API):
     def __init__(self, key=None, secret=None, **kwargs):
         if "base_url" not in kwargs:
-            kwargs["base_url"] = "https://www.bitrue.com"
+            kwargs["base_url"] = 'https://api.bybit.com' + '/spot' # https://api.bybit.com https://api.bytick.com
         super().__init__(key, secret, **kwargs)
-
+        self.set_err_key(key_code='ret_code', key_msg='ret_msg')
 
     def sign_request(self, http_method, url_path, payload=None):
         if payload is None:
             payload = {}
+        payload['api_key'] = self.key
         payload["timestamp"] = self.exchange.get_timestamp()
         query_string = self._prepare_params(payload)
         signature = self._get_sign(query_string)
-        payload["signature"] = signature
+        payload["sign"] = signature
         return self.send_request(http_method, url_path, payload)
 
 
     # MARKETS
-    from .market import ping
+    #from .market import ping
     from .market import time
     from .market import exchange_info
     from .market import depth
     from .market import trades
-    from .market import historical_trades
-    from .market import agg_trades
-    #from binance.spot.market import klines
+    #from .market import historical_trades
+    #from .market import agg_trades
+    from .market import klines
     #from binance.spot.market import avg_price
     #from binance.spot.market import ticker_24hr
     from .market import ticker_price
@@ -38,15 +39,14 @@ class Spot(API):
     #from binance.spot.account import cancel_open_orders
     from .account import get_order
     from .account import get_open_orders
-    from .account import get_orders
+    from .account import get_history_orders
     #from binance.spot.account import new_oco_order
     #from binance.spot.account import cancel_oco_order
     #from binance.spot.account import get_oco_order
     #from binance.spot.account import get_oco_orders
     #from binance.spot.account import get_oco_open_orders
     from .account import account
-    from .account import my_trades_v1
-    from .account import my_trades_v2
+    from .account import my_trades
 
     '''
     # STREAMS
