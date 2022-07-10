@@ -63,7 +63,7 @@ if __name__ == "__main__":
     if not my_trades:
         exit(1)
     for trade in my_trades:
-        trade['datatime'] = exchange.get_time_from_data_ts(trade['time'])
+        trade['datatime'] = exchange.get_time_from_data_ts(trade[exchange.Order_Time_Key])
 
     #pprint.pprint(my_trades)
     my_trades_df = pd.DataFrame(my_trades)

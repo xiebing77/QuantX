@@ -7,12 +7,13 @@ from exchange import Exchange
 import common
 
 
-api_key = os.environ.get('BYBIT_API_KEY')
-secret_key = os.environ.get('BYBIT_SECRET_KEY')
+api_key = os.environ.get('KUCOIN_API_KEY')
+secret_key = os.environ.get('KUCOIN_SECRET_KEY')
+passphrase = os.environ.get('KUCOIN_PASSPHRASE')
 
 
-class Bybit(Exchange):
-    name = 'bybit'
+class Kucoin(Exchange):
+    name = 'kucoin'
     unit = 'ms'
     min_value = 10
     kl_bt_accuracy = kl.KLINE_INTERVAL_1MINUTE
@@ -44,16 +45,16 @@ class Bybit(Exchange):
     BALANCE_FREE_KEY   = 'free'
     BALANCE_LOCKED_KEY = 'locked'
 
-    Order_Id_Key = 'orderId'
-    Order_Time_Key = 'time'
+    Order_Id_Key = 'id'
+    Order_Time_Key = 'createdAt'
 
     Order_Key_Type = 'type'
     Order_Key_Side = 'side'
 
     Order_Key_Price = 'price'
-    Order_Key_OrigQty = 'origQty'
-    Order_Key_ExecutedQty = 'executedQty'
-    Order_Key_CummulativeQuoteQty = 'cummulativeQuoteQty'
+    Order_Key_OrigQty = 'size'
+    Order_Key_ExecutedQty = 'dealSize'
+    Order_Key_CummulativeQuoteQty = 'dealFunds'
 
     ORDER_STATUS_KEY = 'status'
     ORDER_STATUS_NEW = 'NEW'
@@ -83,13 +84,13 @@ class Bybit(Exchange):
     }
 
     ex_sides = {
-        common.SIDE_BUY: 'Buy',
-        common.SIDE_SELL: 'Sell',
+        common.SIDE_BUY: 'buy',
+        common.SIDE_SELL: 'sell',
     }
 
     ex_order_types = {
-        common.ORDER_TYPE_LIMIT: 'LIMIT',
-        common.ORDER_TYPE_MARKET: 'MARKET',
+        common.ORDER_TYPE_LIMIT: 'limit',
+        common.ORDER_TYPE_MARKET: 'market',
         #ORDER_TYPE_STOP_LOSS = 'STOP_LOSS'
         #ORDER_TYPE_STOP_LOSS_LIMIT = 'STOP_LOSS_LIMIT'
         #ORDER_TYPE_TAKE_PROFIT = 'TAKE_PROFIT'
@@ -108,7 +109,7 @@ class Bybit(Exchange):
     Trade_Key_CommissionQty = 'commission'
     Trade_Key_CommissionAsset = 'commissionAsset'
     Trade_Key_IsBuyer = 'isBuyer'
-    Trade_Key_Qty = 'qty'
+    Trade_Key_Qty = 'size'
     Trade_Key_Price = 'price'
 
     TRADE_ORDER_ID_KEY = 'orderId'
@@ -118,7 +119,7 @@ class Bybit(Exchange):
 
     def _trans_symbol(self, symbol):
         target_coin, base_coin = common.split_symbol_coins(symbol)
-        return '%s%s' % (self._get_coinkey(target_coin), self._get_coinkey(base_coin))
+        return '%s-%s' % (self._get_coinkey(target_coin), self._get_coinkey(base_coin))
 
     def get_time_from_data_ts(self, ts):
         return datetime.fromtimestamp(int(ts) / 1000)
@@ -131,11 +132,7 @@ class Bybit(Exchange):
 
     def check_status_is_close(self, order):
         #print(order)
-        order_status = order[self.ORDER_STATUS_KEY]
-        close_statuses = [self.ORDER_STATUS_FILLED, self.ORDER_STATUS_CANCELED,
-            self.ORDER_STATUS_REJECTED, self.ORDER_STATUS_EXPIRED]
-        #print(order_status, close_statuses)
-        return order_status in close_statuses
+        return not order['isActive']
 
     def _order_status_is_close(self, exchange_symbol, order_id):
         order = self._get_order(exchange_symbol, order_id)

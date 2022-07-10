@@ -1,26 +1,122 @@
 from api.rest.api import API
+import hmac
+import hashlib
+from ..kucoin import passphrase
+import base64
+import json
+import time
+from common import cleanNoneValue
 
 
 class Spot(API):
     def __init__(self, key=None, secret=None, **kwargs):
         if "base_url" not in kwargs:
-            # https://api-testnet.bybit.com
-            # https://api.bybit.com
-            # https://api.bytick.com
-            kwargs["base_url"] = 'https://api.bybit.com' + '/spot'
+            kwargs["base_url"] = 'https://openapi-v2.kucoin.com' + '/api'
         super().__init__(key, secret, **kwargs)
-        self.set_err_key(key_code='ret_code', key_msg='ret_msg')
 
-    def sign_request(self, http_method, url_path, payload=None):
+    def _handle_exception(self, response):
+        status_code = response.status_code
+        if status_code < 400:
+            return
+        elif status_code < 500:
+            try:
+                err = json.loads(response.text)
+            except JSONDecodeError:
+                raise ClientError(status_code, None, response.text, response.headers)
+            raise ClientError(status_code, err[self.key_err_code], err[self.key_err_msg], response.headers)
+        elif status_code < 200000:
+            raise ServerError(status_code, response.text)
+        elif status_code == 200000:
+            return
+        else:
+            raise ServerError(status_code, response.text)
+
+
+    def send_request(self, http_method, url_path, payload=None):
         if payload is None:
             payload = {}
-        payload['api_key'] = self.key
-        payload["timestamp"] = self.exchange.get_timestamp()
-        payload = dict(sorted(payload.items()))
+        url = self.base_url + url_path
+        #logging.debug("url: " + url)
+        params = cleanNoneValue(
+            {
+                "url": url,
+                "timeout": self.timeout,
+                "proxies": self.proxies,
+            }
+        )
+        if http_method == 'POST':
+            params['data'] = json.dumps(payload, separators=(',', ':'))
+        else:
+            params['params'] = self._prepare_params(payload)
+        print(params)
+        response = self._dispatch_request(http_method)(**params)
+        #logging.debug("raw response from server:" + response.text)
+        self._handle_exception(response)
 
-        query_string = self._prepare_params(payload)
-        signature = self._get_sign(query_string)
-        payload["sign"] = signature
+        try:
+            data = response.json()
+        except ValueError:
+            data = response.text
+        result = {}
+
+        if self.show_limit_usage:
+            limit_usage = {}
+            for key in response.headers.keys():
+                key = key.lower()
+                if (
+                    key.startswith("x-mbx-used-weight")
+                    or key.startswith("x-mbx-order-count")
+                    or key.startswith("x-sapi-used")
+                ):
+                    limit_usage[key] = response.headers[key]
+            result["limit_usage"] = limit_usage
+
+        if self.show_header:
+            result["header"] = response.headers
+
+        if len(result) != 0:
+            result["data"] = data
+            return result
+
+        return data
+
+
+    def get_sign(self, data):
+        return base64.standard_b64encode(
+            hmac.new(self.secret.encode('utf-8'), data.encode('utf-8'), hashlib.sha256).digest())
+
+    def sign_request(self, http_method, url_path, payload=None, version='2'):
+        if version == '1':
+            self.update_header({"KC-API-PASSPHRASE": passphrase})
+        else:
+            pp_enconde = self.get_sign(passphrase)
+            self.update_header({
+                "KC-API-KEY-VERSION": '2',
+                "KC-API-PASSPHRASE": pp_enconde})
+
+        #ts = self.exchange.get_timestamp()
+        ts = int(time.time() * 1000)
+        if payload is None:
+            payload = {}
+            body = ''
+        else:
+            body = json.dumps(payload, separators=(',', ':'))
+            self.update_header({"Content-Type": "application/json;charset=utf-8"})
+        endpoint = '/api' + url_path
+        str_to_sign = str(ts) + http_method + endpoint
+        if (http_method == 'GET') or (http_method == 'DELETE'):
+            if payload:
+                str_to_sign += '?' + self._prepare_params(payload)
+        else:
+            str_to_sign += body
+
+        print(str_to_sign)
+        signature = self.get_sign(str_to_sign)
+
+        self.update_header({
+            "KC-API-TIMESTAMP": str(ts),
+            "KC-API-SIGN": signature})
+        #print(self.session.headers)
         return self.send_request(http_method, url_path, payload)
 
 
@@ -28,7 +124,8 @@ class Spot(API):
     #from .market import ping
     from .market import time
     from .market import exchange_info
-    from .market import depth
+    from .market import depth_part
+    from .market import depth_all
     from .market import trades
     #from .market import historical_trades
     #from .market import agg_trades
@@ -44,7 +141,7 @@ class Spot(API):
     #from binance.spot.account import cancel_open_orders
     from .account import get_order
     from .account import get_open_orders
-    from .account import get_history_orders
+    from .account import get_orders
     #from binance.spot.account import new_oco_order
     #from binance.spot.account import cancel_oco_order
     #from binance.spot.account import get_oco_order

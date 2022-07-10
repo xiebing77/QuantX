@@ -36,6 +36,8 @@ if __name__ == "__main__":
     #pprint(orders)
 
     pd.set_option('display.max_rows', None)
+    #print(pd.get_option("display.max_columns"))
+    pd.set_option('display.max_columns', None)
     orders_df = pd.DataFrame(orders)
     if len(args.ignore)>1:
         orders_df = orders_df.drop(orders_df[orders_df[args.ignore[0]].isin(args.ignore[1:])].index)

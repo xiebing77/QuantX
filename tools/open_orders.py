@@ -32,6 +32,8 @@ if __name__ == "__main__":
     #pprint.pprint(open_orders)
 
     pd.set_option('display.max_rows', None)
+    #print(pd.get_option("display.max_columns"))
+    pd.set_option('display.max_columns', None)
     open_orders_df = pd.DataFrame(open_orders)
     open_orders_df.replace(to_replace=r'^\s*$', value=np.nan, regex=True, inplace=True)
     open_orders_df = open_orders_df.dropna(axis=1, how='all')

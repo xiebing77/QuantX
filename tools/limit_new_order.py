@@ -12,7 +12,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='limit new order')
     parser.add_argument('-exchange', choices=get_exchange_names(), help='')
     parser.add_argument('-symbol', required=True, help='eg: btc_usdt')
-    parser.add_argument('-side', choices=[SIDE_BUY, SIDE_SELL], help='')
+    parser.add_argument('-side', required=True, choices=[SIDE_BUY, SIDE_SELL], help='')
     parser.add_argument('-price', required=True, type=float, help='price')
     parser.add_argument('-qty', required=True, type=float, help='quantity')
     args = parser.parse_args()

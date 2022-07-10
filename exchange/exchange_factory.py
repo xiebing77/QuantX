@@ -4,9 +4,10 @@
 from exchange.binance.binance_spot import BinanceSpot
 from exchange.bitrue.bitrue_spot import BitrueSpot
 from exchange.bybit.bybit_spot import BybitSpot
+from exchange.kucoin.kucoin_spot import KucoinSpot
 
 
-exchangeClasses = [BinanceSpot, BitrueSpot, BybitSpot]
+exchangeClasses = [BinanceSpot, BitrueSpot, BybitSpot, KucoinSpot]
 
 
 def get_exchange_names():
