@@ -55,7 +55,7 @@ def trades(self, symbol: str, **kwargs):
     """
     check_required_parameter(symbol, "symbol")
     params = {"symbol": symbol, **kwargs}
-    return self.query("/quote/v1/trades", params)
+    return self.query("/v1/market/histories", params)
 
 
 def klines(self, symbol: str, interval: str, **kwargs):

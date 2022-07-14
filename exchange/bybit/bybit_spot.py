@@ -15,7 +15,7 @@ class BybitSpot(Bybit):
 
     symbol_info_map = {}
 
-    depth_limits = [5, 10, 20, 50, 100, 500, 1000]
+    depth_limits = [5, 10, 20, 50, 100]
 
     def __init__(self, debug=False):
         return
@@ -34,7 +34,7 @@ class BybitSpot(Bybit):
                 if ex_symbol == sy_info['name']:
                     self.symbol_info_map[sy_info['name']] = sy_info
         sy_info = self.symbol_info_map[ex_symbol]
-        print(sy_info)
+        #print(sy_info)
         return int(-math.log10(float(sy_info['basePrecision']))), int(-math.log10(float(sy_info['quotePrecision'])))
 
     # MARKETS
@@ -50,8 +50,8 @@ class BybitSpot(Bybit):
     def _depth(self, exchange_symbol, limit):
         return self.__api.depth(symbol=exchange_symbol, limit=limit)['result']
 
-    def _trades(self, exchange_symbol):
-        trades = self.__api.trades(symbol=exchange_symbol)
+    def _trades(self, exchange_symbol, limit):
+        trades = self.__api.trades(symbol=exchange_symbol, limit=limit)['result']
         return trades
 
     def _historical_trades(self, exchange_symbol):

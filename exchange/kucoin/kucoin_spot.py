@@ -55,8 +55,8 @@ class KucoinSpot(Kucoin):
         print(ret)
         return ret['data']
 
-    def _trades(self, exchange_symbol):
-        trades = self.__api.trades(symbol=exchange_symbol)
+    def _trades(self, exchange_symbol, limit):
+        trades = self.__api.trades(symbol=exchange_symbol)['data']
         return trades
 
     def _historical_trades(self, exchange_symbol):

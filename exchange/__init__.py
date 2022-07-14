@@ -102,8 +102,8 @@ class MarketData():
     def depth(self, symbol, limit):
         return self._depth(self._trans_symbol(symbol), limit=limit)
 
-    def trades(self, symbol):
-        trades = self._trades(symbol=self._trans_symbol(symbol))
+    def trades(self, symbol, limit):
+        trades = self._trades(exchange_symbol=self._trans_symbol(symbol), limit=limit)
         return trades
 
     def historical_trades(self, symbol):

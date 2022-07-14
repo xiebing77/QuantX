@@ -111,6 +111,8 @@ class Kucoin(Exchange):
     Trade_Key_IsBuyer = 'isBuyer'
     Trade_Key_Qty = 'size'
     Trade_Key_Price = 'price'
+    Trade_Key_Time = 'time'
+
 
     TRADE_ORDER_ID_KEY = 'orderId'
 
@@ -130,6 +132,10 @@ class Kucoin(Exchange):
     def get_timestamp(self):
         return int(time.time() * 1000)
 
+    def get_time_from_trade_data(self, trade):
+        ts = trade[self.Trade_Key_Time]
+        return datetime.fromtimestamp(int(ts) / 1000000000)
+
     def check_status_is_close(self, order):
         #print(order)
         return not order['isActive']
@@ -137,3 +143,7 @@ class Kucoin(Exchange):
     def _order_status_is_close(self, exchange_symbol, order_id):
         order = self._get_order(exchange_symbol, order_id)
         return self.check_status_is_close(order)
+
+    def taker_is_buyer(self, trade):
+        return trade['side'] == 'buy'
+

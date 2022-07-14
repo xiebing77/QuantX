@@ -28,7 +28,7 @@ def depth(self, symbol: str, **kwargs):
     """
     check_required_parameter(symbol, "symbol")
     params = {"symbol": symbol, **kwargs}
-    return self.query("/quote/v1/depth/merged", params)
+    return self.query("/quote/v1/depth", params)
 
 
 def trades(self, symbol: str, **kwargs):

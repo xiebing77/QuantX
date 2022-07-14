@@ -110,6 +110,7 @@ class Bybit(Exchange):
     Trade_Key_IsBuyer = 'isBuyer'
     Trade_Key_Qty = 'qty'
     Trade_Key_Price = 'price'
+    Trade_Key_Time = 'time'
 
     TRADE_ORDER_ID_KEY = 'orderId'
 
@@ -129,6 +130,10 @@ class Bybit(Exchange):
     def get_timestamp(self):
         return int(time.time() * 1000)
 
+    def get_time_from_trade_data(self, trade):
+        ts = trade[self.Trade_Key_Time]
+        return self.get_time_from_data_ts(ts)
+
     def check_status_is_close(self, order):
         #print(order)
         order_status = order[self.ORDER_STATUS_KEY]
@@ -140,3 +145,8 @@ class Bybit(Exchange):
     def _order_status_is_close(self, exchange_symbol, order_id):
         order = self._get_order(exchange_symbol, order_id)
         return self.check_status_is_close(order)
+
+    def taker_is_buyer(self, trade):
+        isBuyerMaker = trade['isBuyerMaker']
+        return not isBuyerMaker
+
