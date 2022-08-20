@@ -57,7 +57,6 @@ if __name__ == "__main__":
     exchange.connect()
 
     symbol = args.symbol
-    b_prec, q_prec = exchange.get_assetPrecision(symbol)
     my_trades = exchange.my_trades(symbol, args.limit)
     print("%-25s: %s" % ("length", len(my_trades)) )
     if not my_trades:
@@ -72,6 +71,7 @@ if __name__ == "__main__":
     print(my_trades_df)
 
     if args.stat:
+        b_prec, q_prec = exchange.get_assetPrecision(symbol)
         head_dt = exchange.get_time_from_data_ts(my_trades[0][exchange.Order_Time_Key])
         tail_dt = exchange.get_time_from_data_ts(my_trades[-1][exchange.Order_Time_Key])
         print("%-25s: %s  ~  %s" % ("time range", head_dt, tail_dt) )

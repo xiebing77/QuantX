@@ -8,18 +8,17 @@ def time(self):
     """Check Server Time
     Test connectivity to the Rest API and get the current server time.
     """
-    return self.query('/v1/time')
+    return self.query('/spot/v1/public/time')
 
 
-def exchange_info(self, symbol):
+def exchange_info(self):
     """Exchange Information
     Current exchange trading rules and symbol information
     """
-    params = {"symbol": symbol}
-    return self.query('/v1/symbols', params)
+    return self.query('/spot/v1/public/products')
 
 
-def depth(self, symbol: str, **kwargs):
+def depth(self, symbol: str, limit: int, **kwargs):
     """Get orderbook.
 
     Args:
@@ -29,7 +28,7 @@ def depth(self, symbol: str, **kwargs):
     """
     check_required_parameter(symbol, "symbol")
     params = {"symbol": symbol, **kwargs}
-    return self.query("/quote/v1/depth", params)
+    return self.query("/spot/v1/market/depth", params)
 
 
 def trades(self, symbol: str, **kwargs):
@@ -43,7 +42,7 @@ def trades(self, symbol: str, **kwargs):
     """
     check_required_parameter(symbol, "symbol")
     params = {"symbol": symbol, **kwargs}
-    return self.query("/quote/v1/trades", params)
+    return self.query("/spot/v1/market/fills", params)
 
 
 def klines(self, symbol: str, interval: str, **kwargs):
@@ -74,7 +73,7 @@ def ticker_price(self, symbol: str = None):
     params = {
         "symbol": symbol,
     }
-    return self.query("/quote/v1/ticker/price", params)
+    return self.query("/spot/v1/market/ticker", params)
 
 
 def book_ticker(self, symbol: str = None):

@@ -1,22 +1,27 @@
 #!/usr/bin/python
 from common import check_required_parameter, check_required_parameters, check_type_parameter, convert_list_to_json_array
 
-# https://bybit-exchange.github.io/docs/spot
+
+def ping(self):
+    """Test Connectivity
+    Test connectivity to the Rest API.
+    """
+    return self.query('/openApi/spot/v1/ping')
 
 
 def time(self):
     """Check Server Time
     Test connectivity to the Rest API and get the current server time.
     """
-    return self.query('/v1/time')
+    return self.query('/openApi/spot/v1/time')
 
 
-def exchange_info(self, symbol):
+def exchange_info(self, symbol: str):
     """Exchange Information
     Current exchange trading rules and symbol information
     """
     params = {"symbol": symbol}
-    return self.query('/v1/symbols', params)
+    return self.query('/openApi/spot/v1/common/symbols', params)
 
 
 def depth(self, symbol: str, **kwargs):
@@ -29,7 +34,7 @@ def depth(self, symbol: str, **kwargs):
     """
     check_required_parameter(symbol, "symbol")
     params = {"symbol": symbol, **kwargs}
-    return self.query("/quote/v1/depth", params)
+    return self.query("/openApi/spot/v1/market/depth", params)
 
 
 def trades(self, symbol: str, **kwargs):
@@ -43,24 +48,8 @@ def trades(self, symbol: str, **kwargs):
     """
     check_required_parameter(symbol, "symbol")
     params = {"symbol": symbol, **kwargs}
-    return self.query("/quote/v1/trades", params)
+    return self.query('/openApi/spot/v1/market/trades', params)
 
-
-def klines(self, symbol: str, interval: str, **kwargs):
-    """Kline/Candlestick Data
-
-    Args:
-        symbol (str): the trading pair
-        interval (str): the interval of kline, e.g 1m, 5m, 1h, 1d, etc.
-    Keyword Args:
-        limit (int, optional): limit the results. Default 1000; max 1000.
-        startTime (int, optional): Timestamp in ms to get aggregate trades from INCLUSIVE.
-        endTime (int, optional): Timestamp in ms to get aggregate trades until INCLUSIVE.
-    """
-    check_required_parameters([[symbol, "symbol"], [interval, "interval"]])
-
-    params = {"symbol": symbol, "interval": interval, **kwargs}
-    return self.query("/quote/v1/kline", params)
 
 
 def ticker_price(self, symbol: str = None):
@@ -74,7 +63,7 @@ def ticker_price(self, symbol: str = None):
     params = {
         "symbol": symbol,
     }
-    return self.query("/quote/v1/ticker/price", params)
+    return self.query("/api/v1/market/getTicker", params)
 
 
 def book_ticker(self, symbol: str = None):
@@ -88,5 +77,5 @@ def book_ticker(self, symbol: str = None):
     params = {
         "symbol": symbol,
     }
-    return self.query("/quote/v1/ticker/bookTicker", params)
+    return self.query("/api/v3/ticker/bookTicker", params)
 
