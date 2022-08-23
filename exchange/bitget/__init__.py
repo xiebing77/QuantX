@@ -41,11 +41,11 @@ class Bitget(Exchange):
     kline_idx_volume      = kl.get_kline_index(kl.KLINE_KEY_VOLUME, kline_column_names)
     max_count_of_single_download_kl = 1000
 
-    BALANCE_ASSET_KEY  = 'asset'
-    BALANCE_FREE_KEY   = 'free'
-    BALANCE_LOCKED_KEY = 'locked'
+    BALANCE_ASSET_KEY  = 'coinName'
+    BALANCE_FREE_KEY   = 'available'
+    BALANCE_LOCKED_KEY = 'lock'
 
-    Order_Id_Key = 'id'
+    Order_Id_Key = 'orderId'
     Order_Time_Key = 'cTime'
 
     Order_Key_Type = 'type'
@@ -138,7 +138,9 @@ class Bitget(Exchange):
 
     def check_status_is_close(self, order):
         #print(order)
-        return not order['isActive']
+        order_status = order[self.ORDER_STATUS_KEY]
+        close_statuses = [self.ORDER_STATUS_FILLED, self.ORDER_STATUS_CANCELED]
+        return order_status in close_statuses
 
     def _order_status_is_close(self, exchange_symbol, order_id):
         order = self._get_order(exchange_symbol, order_id)

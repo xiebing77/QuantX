@@ -104,6 +104,8 @@ class ExchangeTradeEngine(TradeEngine):
         close_bills = self.get_bills(symbol, common.BILL_STATUS_CLOSE)
         order_ids = [b[common.BILL_ORDER_ID_KEY] for b in close_bills]
         orders = self._get_orders_from_db(symbol, order_ids)
+        if order_ids and not orders:
+            log.critical("_init_position: not find orders")
         for order in orders:
             update_position_by_order(self.trader, pst, order)
         return pst
@@ -153,4 +155,55 @@ class ExchangeTradeEngine(TradeEngine):
                     continue
             keep_open_bills.append(open_bill)
         return keep_open_bills
+
+
+    def handle_open_bills(self, symbol):
+        open_bills = self.get_bills(symbol, common.BILL_STATUS_OPEN)
+        if not open_bills:
+            return [], []
+
+        open_orders = self.trader.get_open_orders(symbol)
+        open_order_ids = [o[self.trader.Order_Id_Key] for o in open_orders]
+        orders = None
+        trades = None
+        buy_open_bills = []
+        sell_open_bills = []
+        for open_bill in open_bills:
+            order_id = open_bill[common.BILL_ORDER_ID_KEY]
+            #log.info('%s %s %s'%(order_id, open_order_ids, order_id in open_order_ids))
+            if order_id not in open_order_ids:
+                if not orders:
+                    orders = self.trader.get_orders(symbol)
+                order = self.trader.search_order(order_id, orders)
+                if not order:
+                    order = self.trader.get_order(symbol, order_id)
+                if not order:
+                    log.debug('error bill: %s' % bill)
+                if order and self.trader.check_status_is_close(order):
+                    if float(order[self.trader.Order_Key_ExecutedQty]) > 0:
+                        if not trades:
+                            trades = self.trader.my_trades(symbol)
+                        r_trades = self.trader.search_trades(order_id, trades)
+                        if r_trades:
+                            # to continue. long time part filled
+                            self.trade_db.insert_many(self.trades_collection_name, r_trades)
+                    self.trade_db.insert_one(self.orders_collection_name, order)
+                    self.trade_db.update_one(self.bills_collection_name, open_bill['_id'], {
+                        common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE,
+                    })
+                    if not self.position:
+                        self.position = self._init_position(symbol)
+                    update_position_by_order(self.trader, self.position, order)
+                    continue
+
+            if open_bill[common.SIDE_KEY] == common.SIDE_BUY:
+                buy_open_bills.append(open_bill)
+            else:
+                sell_open_bills.append(open_bill)
+        return buy_open_bills, sell_open_bills
+
+
+    def cancel_bills(self, symbol, bills):
+        orderIds = [bill[common.BILL_ORDER_ID_KEY] for bill in bills]
+        self.trader.cancel_orders_byId(symbol, orderIds)
 

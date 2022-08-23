@@ -27,7 +27,7 @@ if __name__ == "__main__":
     exchange.connect()
 
     symbol = args.symbol
-    orders = exchange.get_orders(symbol, args.limit)
+    orders = exchange.get_orders(symbol, limit=args.limit)
     print("%-25s: %s" % ("orders length", len(orders)))
     for o in orders:
         o['datatime'] = exchange.get_time_from_data_ts(o[exchange.Order_Time_Key])

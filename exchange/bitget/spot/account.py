@@ -16,8 +16,8 @@ def cancel_order(self, symbol: str, orderId: str):
 
 def get_order(self, symbol: str, orderId: str, **kwargs):
     check_required_parameter(orderId, "orderId")
-    payload = {"symbol": symbol, **kwargs}
-    return self.sign_request("GET", '/spot/v1/trade/orderInfo', payload)
+    payload = {"symbol": symbol, "orderId": orderId, **kwargs}
+    return self.sign_request("POST", '/spot/v1/trade/orderInfo', payload)
 
 
 def get_open_orders(self, symbol=None, **kwargs):

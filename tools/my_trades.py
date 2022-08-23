@@ -57,7 +57,7 @@ if __name__ == "__main__":
     exchange.connect()
 
     symbol = args.symbol
-    my_trades = exchange.my_trades(symbol, args.limit)
+    my_trades = exchange.my_trades(symbol, limit=args.limit)
     print("%-25s: %s" % ("length", len(my_trades)) )
     if not my_trades:
         exit(1)

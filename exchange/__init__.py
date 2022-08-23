@@ -24,8 +24,8 @@ class Account():
     def get_order(self, symbol, order_id):
         return self._get_order(self._trans_symbol(symbol), order_id)
 
-    def get_orders(self, symbol, limit=None):
-        return self._get_orders(self._trans_symbol(symbol), limit=limit)
+    def get_orders(self, symbol, **kwargs):
+        return self._get_orders(self._trans_symbol(symbol), **kwargs)
 
     def get_open_orders(self, symbol):
         return self._get_open_orders(self._trans_symbol(symbol))
@@ -49,8 +49,8 @@ class Account():
     def order_status_is_close(self, symbol, order_id):
         return self._order_status_is_close(self._trans_symbol(symbol), order_id)
 
-    def my_trades(self, symbol, limit=None):
-        return self._my_trades(self._trans_symbol(symbol), limit=limit)
+    def my_trades(self, symbol, **kwargs):
+        return self._my_trades(self._trans_symbol(symbol), **kwargs)
 
     def search_trades(self, order_id, trades):
         r_trades = []

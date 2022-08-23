@@ -34,9 +34,9 @@ class BitgetSpot(Bitget):
             for sy_info in sy_infos:
                 if ex_symbol == sy_info['symbol']:
                     self.symbol_info_map[sy_info['symbol']] = sy_info
+            print(sy_info)
         sy_info = self.symbol_info_map[ex_symbol]
-        print(sy_info)
-        return int(-math.log10(float(sy_info['quantityScale']))), int(-math.log10(float(sy_info['priceScale'])))
+        return int(sy_info['quantityScale']), int(sy_info['priceScale'])
 
     # MARKETS
     def ping(self):
@@ -50,7 +50,7 @@ class BitgetSpot(Bitget):
 
     def _depth(self, exchange_symbol, limit):
         ret = self.__api.depth(symbol=exchange_symbol, limit=limit)
-        print(ret)
+        #print(ret)
         return ret['data']
 
     def _trades(self, exchange_symbol, limit):
@@ -90,7 +90,8 @@ class BitgetSpot(Bitget):
 
     def get_balances(self):
         account = self.account()
-        return account['balances']
+        #print(account)
+        return account
 
 
     def get_balances_by_assets(self, *coins):
@@ -109,8 +110,8 @@ class BitgetSpot(Bitget):
         else:
             return tuple(coin_balances)
 
-    def _my_trades(self, exchange_symbol, limit):
-        trades = self.__api.my_trades(symbol=exchange_symbol, limit=limit)['data']
+    def _my_trades(self, exchange_symbol, **kwargs):
+        trades = self.__api.my_trades(symbol=exchange_symbol, **kwargs)['data']
         return trades
 
     def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, client_order_id=None):
@@ -142,12 +143,12 @@ class BitgetSpot(Bitget):
         return orders
 
     def _get_order(self, exchange_symbol, order_id):
-        order = self.__api.get_order(symbol=exchange_symbol, orderId=order_id)['data']
+        order = self.__api.get_order(symbol=exchange_symbol, orderId=order_id)['data'][0]
         if order:
             order[self.Order_Id_Key] = int(order[self.Order_Id_Key])
         return order
 
-    def _get_orders(self, exchange_symbol, limit):
+    def _get_orders(self, exchange_symbol, limit=500):
         orders = self.__api.get_orders(symbol=exchange_symbol, limit=limit)['data']
         #print(orders)
         #for o in orders:

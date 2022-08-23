@@ -65,11 +65,7 @@ def real_run(args):
         strategy.on_tick()
         exit(1)
 
-    prefix = '.'*10
     while(True):
-        tick_start = datetime.datetime.now()
-        log.info("%s  %s tick start  %s" % (prefix, tick_start, '.'*72))
-
         if args.debug:
             delay_seconds = strategy.on_tick()
         else:
@@ -77,13 +73,6 @@ def real_run(args):
                 delay_seconds = strategy.on_tick()
             except Exception as ept:
                 log.critical(ept)
-
-        tick_end = datetime.datetime.now()
-        cost_td = tick_end - tick_start
-        delay_seconds -= cost_td.total_seconds()
-        delay_seconds -= 0.1
-        log.info("%s  %s tick end,  cost: %s,  delay seconds: %s\n\n" % (prefix, tick_end, cost_td, delay_seconds))
-
         time.sleep(delay_seconds)
 
 
