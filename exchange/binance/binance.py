@@ -149,3 +149,5 @@ class Binance(Exchange):
         isBuyerMaker = trade['isBuyerMaker']
         return not isBuyerMaker
 
+    def mytrade_is_buyer(self, mytrade):
+        return mytrade['isBuyer']

@@ -32,7 +32,7 @@ class Account():
 
     def search_order(self, order_id, orders):
         for order in orders:
-            if order_id == int(order[self.Order_Id_Key]):
+            if order_id == order[self.Order_Id_Key]:
                 return order
         return None
 
@@ -40,7 +40,7 @@ class Account():
         orders = self.get_orders(symbol)
         close_order_ids = []
         for order in orders:
-            order_id = int(order[self.Order_Id_Key])
+            order_id = order[self.Order_Id_Key]
             #print(order_id, order_ids, order_id in order_ids, type(order_id), type(order_ids[0]))
             if order_id in order_ids and self.check_status_is_close(order):
                 close_order_ids.append(order_id)
@@ -55,7 +55,7 @@ class Account():
     def search_trades(self, order_id, trades):
         r_trades = []
         for trade in trades:
-            if order_id == int(trade[self.TRADE_ORDER_ID_KEY]):
+            if order_id == trade[self.TRADE_ORDER_ID_KEY]:
                 r_trades.append(trade)
         return r_trades
 

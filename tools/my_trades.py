@@ -13,6 +13,10 @@ def calc_trades(exchange, trades):
     cost = 0
 
     for trade in trades:
+        if hasattr(exchange, 'mytrade_check_symbol'):
+            if not exchange.mytrade_check_symbol(symbol, trade):
+                continue
+
         if trade[exchange.Trade_Key_CommissionQty]:
             trade_commissionQty = float(trade[exchange.Trade_Key_CommissionQty])
             asset_name = trade[exchange.Trade_Key_CommissionAsset]
@@ -28,7 +32,7 @@ def calc_trades(exchange, trades):
 
         trade_qty = float(trade[exchange.Trade_Key_Qty])
         trade_value = float(trade[exchange.Trade_Key_Price]) * trade_qty
-        if trade[exchange.Trade_Key_IsBuyer]:
+        if exchange.mytrade_is_buyer(trade):
             position_qty += trade_qty
             cost -= trade_value
         else:

@@ -34,7 +34,7 @@ class BitgetSpot(Bitget):
             for sy_info in sy_infos:
                 if ex_symbol == sy_info['symbol']:
                     self.symbol_info_map[sy_info['symbol']] = sy_info
-            print(sy_info)
+            #print(sy_info)
         sy_info = self.symbol_info_map[ex_symbol]
         return int(sy_info['quantityScale']), int(sy_info['priceScale'])
 

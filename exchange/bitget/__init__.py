@@ -106,11 +106,12 @@ class Bitget(Exchange):
     ORDER_RESP_TYPE_RESULT = 'RESULT'
     ORDER_RESP_TYPE_FULL = 'FULL'
 
-    Trade_Key_CommissionQty = 'commission'
-    Trade_Key_CommissionAsset = 'commissionAsset'
-    Trade_Key_IsBuyer = 'isBuyer'
+    Trade_Key_CommissionQty = 'fees'
+    Trade_Key_CommissionAsset = 'feeCcy'
+    #Trade_Key_IsBuyer = 'isBuyer'
     Trade_Key_Qty = 'fillQuantity'
     Trade_Key_Price = 'fillPrice'
+    Trade_Key_Value = 'fillTotalAmount'
     Trade_Key_Time = 'fillTime'
 
 
@@ -148,4 +149,10 @@ class Bitget(Exchange):
 
     def taker_is_buyer(self, trade):
         return trade['side'] == 'buy'
+
+    def mytrade_is_buyer(self, mytrade):
+        return mytrade['side'] == 'buy'
+
+    def mytrade_check_symbol(self, symbol, mytrade):
+        return mytrade['symbol'] == self._trans_symbol(symbol)
 

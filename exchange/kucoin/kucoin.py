@@ -124,7 +124,7 @@ class Kucoin(Exchange):
         return '%s-%s' % (self._get_coinkey(target_coin), self._get_coinkey(base_coin))
 
     def get_time_from_data_ts(self, ts):
-        return datetime.fromtimestamp(int(ts) / 1000)
+        return datetime.fromtimestamp(int(ts) / 1000000000)
 
     def get_data_ts_from_time(self, t):
         return int(t.timestamp()) * 1000

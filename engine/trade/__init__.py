@@ -6,6 +6,7 @@ POSITION_QUOTE_QTY_KEY = 'quote_qty'
 POSITION_HISTORY_QUOTE_QTY_KEY = 'history_quote_qty'
 POSITION_DEAL_BASE_QTY_KEY = 'deal_base_qty'
 POSITION_DEAL_QUOTE_QTY_KEY = 'deal_quote_qty'
+POSITION_KEY_COMMISSION = 'commission'
 
 
 def get_pst_info(pst):
@@ -19,6 +20,8 @@ def get_pst_info(pst):
 def get_pst_qty(pst):
     return pst[POSITION_BASE_QTY_KEY]
 
+def get_pst_commission(pst):
+    return pst[POSITION_KEY_COMMISSION]
 
 def get_gross_profit(pst, price):
     total_profit = pst[POSITION_HISTORY_QUOTE_QTY_KEY]
@@ -82,8 +85,16 @@ def update_position(pst, side, base_qty, quote_qty):
 
     pst[POSITION_DEAL_BASE_QTY_KEY] += base_qty
     pst[POSITION_DEAL_QUOTE_QTY_KEY] += quote_qty
-
     return pst
+
+
+def update_pst_commission(pst, commission):
+    pst_commission = pst[POSITION_KEY_COMMISSION]
+    for coin_name, n in commission.items():
+        if coin_name in pst_commission:
+            pst_commission[coin_name] += n
+        else:
+            pst_commission[coin_name] = n
 
 
 class TradeEngine(object):
