@@ -67,11 +67,12 @@ def init_position():
         POSITION_QUOTE_QTY_KEY: 0,
         POSITION_HISTORY_QUOTE_QTY_KEY: 0,
         POSITION_DEAL_BASE_QTY_KEY: 0,
-        POSITION_DEAL_QUOTE_QTY_KEY: 0
+        POSITION_DEAL_QUOTE_QTY_KEY: 0,
+        POSITION_KEY_COMMISSION: {}
     }
 
 
-def update_position(pst, side, base_qty, quote_qty):
+def update_position(pst, side, base_qty, quote_qty, commission):
     if pst[POSITION_BASE_QTY_KEY] == 0:
         pst[POSITION_HISTORY_QUOTE_QTY_KEY] += pst[POSITION_QUOTE_QTY_KEY]
         pst[POSITION_QUOTE_QTY_KEY] = 0
@@ -85,6 +86,15 @@ def update_position(pst, side, base_qty, quote_qty):
 
     pst[POSITION_DEAL_BASE_QTY_KEY] += base_qty
     pst[POSITION_DEAL_QUOTE_QTY_KEY] += quote_qty
+
+    if not pst[POSITION_KEY_COMMISSION]:
+        pst[POSITION_KEY_COMMISSION] = commission
+    else:
+        for coin, qty in commission.items():
+            if coin not in pst[POSITION_KEY_COMMISSION]:
+                pst[POSITION_KEY_COMMISSION][coin] = qty
+            else:
+                pst[POSITION_KEY_COMMISSION][coin] += qty
     return pst
 
 

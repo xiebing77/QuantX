@@ -8,7 +8,7 @@ from . import *
 POSITION_ORDER_COUNT = 'order_count'
 
 
-def update_position_by_order(trader, position, order):
+def update_position_by_order(symbol, trader, position, order, commission):
     '''
     order_status = order[trader.ORDER_STATUS_KEY]
     if order_status in pst[POSITION_ORDER_COUNT]:
@@ -20,11 +20,34 @@ def update_position_by_order(trader, position, order):
     if base_qty == 0:
         return
     quote_qty = float(order[trader.Order_Key_CummulativeQuoteQty])
+
+    base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
+    base_asset_name = trader._get_coinkey(base_asset_name)
+    quote_asset_name = trader._get_coinkey(quote_asset_name)
     if trader.order_is_buy(order):
         side = common.SIDE_BUY
+        if base_asset_name in commission:
+            fee_base = abs(commission[base_asset_name])
+            fee = (fee_base / base_qty) * quote_qty
+            base_qty -= fee_base
+            del commission[base_asset_name]
+            commission[quote_asset_name] = fee
+        elif quote_asset_name in commission:
+            fee = abs(commission[quote_asset_name])
+            quote_qty -= fee
+        else:
+            pass
     else:
         side = common.SIDE_SELL
-    update_position(position, side, base_qty, quote_qty)
+        if quote_asset_name in commission:
+            fee = abs(commission[quote_asset_name])
+            quote_qty -= fee
+        elif base_asset_name in commission:
+            log.critical('{}'.format(commission))
+        else:
+            pass
+
+    update_position(position, side, base_qty, quote_qty, commission)
     return
 
 
@@ -128,10 +151,10 @@ class ExchangeTradeEngine(TradeEngine):
         if order_ids and not orders:
             log.critical("_init_position: not find orders")
         for order in orders:
-            update_position_by_order(self.trader, pst, order)
-
-        trades = self._get_trades_from_db(symbol, order_ids)
-        pst[POSITION_KEY_COMMISSION] = get_commission_from_trades(self.trader, trades)
+            order_id = order[self.trader.Order_Id_Key]
+            trades = self._get_trades_from_db(symbol, [order_id])
+            commission = get_commission_from_trades(self.trader, trades)
+            update_position_by_order(symbol, self.trader, pst, order, commission)
 
         return pst
 
@@ -180,8 +203,7 @@ class ExchangeTradeEngine(TradeEngine):
                     self.trade_db.update_one(self.bills_collection_name, open_bill['_id'], {
                         common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE,
                     })
-                    update_position_by_order(self.trader, self.position, order)
-                    update_pst_commission(self.position, commission)
+                    update_position_by_order(symbol, self.trader, self.position, order, commission)
                     continue
 
             if open_bill[common.SIDE_KEY] == common.SIDE_BUY:
