@@ -147,7 +147,7 @@ class ExchangeTradeEngine(TradeEngine):
         close_bills = self.get_bills(symbol, common.BILL_STATUS_CLOSE)
         order_ids = [b[common.BILL_ORDER_ID_KEY] for b in close_bills]
         orders = self._get_orders_from_db(symbol, order_ids)
-        print('_init_position:  ', len(order_ids), len(orders))
+        log.info('_init_position:  {} {}'.format(len(order_ids), len(orders)))
         if order_ids and not orders:
             log.critical("_init_position: not find orders")
         for order in orders:

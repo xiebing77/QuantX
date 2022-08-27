@@ -1,5 +1,6 @@
 import argparse
-import datetime, time
+import time
+from datetime import timedelta
 import os
 import common
 import common.log as log
@@ -72,6 +73,7 @@ def real_run(args):
             try:
                 delay_seconds = strategy.on_tick()
             except Exception as ept:
+                delay_seconds = timedelta(seconds=config['loop_sec']).total_seconds()
                 log.critical(ept)
         time.sleep(delay_seconds)
 
