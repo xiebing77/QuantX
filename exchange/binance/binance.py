@@ -41,6 +41,9 @@ class Binance(Exchange):
     kline_idx_volume      = kl.get_kline_index(kl.KLINE_KEY_VOLUME, kline_column_names)
     max_count_of_single_download_kl = 1000
 
+    SIDE_BUY  = 'BUY'
+    SIDE_SELL = 'SELL'
+
     Order_Id_Key = 'orderId'
     Order_Time_Key = 'time'
 
@@ -79,11 +82,6 @@ class Binance(Exchange):
         kl.KLINE_INTERVAL_1MONTH: '1M',
     }
 
-    ex_sides = {
-        common.SIDE_BUY: 'BUY',
-        common.SIDE_SELL: 'SELL',
-    }
-
     ex_order_types = {
         common.ORDER_TYPE_LIMIT: 'LIMIT',
         common.ORDER_TYPE_MARKET: 'MARKET',
@@ -104,7 +102,6 @@ class Binance(Exchange):
 
     Trade_Key_CommissionQty = 'commission'
     Trade_Key_CommissionAsset = 'commissionAsset'
-    Trade_Key_IsBuyer = 'isBuyer'
     Trade_Key_Qty = 'qty'
     Trade_Key_Price = 'price'
     Trade_Key_Time = 'time'
@@ -145,9 +142,8 @@ class Binance(Exchange):
             return True
         return False
 
-    def taker_is_buyer(self, trade):
-        isBuyerMaker = trade['isBuyerMaker']
-        return not isBuyerMaker
+    def isBuyerMaker(self, trade):
+        return trade['isBuyerMaker']
 
     def mytrade_is_buyer(self, mytrade):
         return mytrade['isBuyer']

@@ -44,6 +44,9 @@ class Bitrue(Exchange):
     BALANCE_FREE_KEY   = 'free'
     BALANCE_LOCKED_KEY = 'locked'
 
+    SIDE_BUY  = 'BUY'
+    SIDE_SELL = 'SELL'
+
     Order_Id_Key = 'orderId'
     Order_Time_Key = 'time'
 
@@ -82,11 +85,6 @@ class Bitrue(Exchange):
         kl.KLINE_INTERVAL_1MONTH: '1M',
     }
 
-    ex_sides = {
-        common.SIDE_BUY: 'BUY',
-        common.SIDE_SELL: 'SELL',
-    }
-
     ex_order_types = {
         common.ORDER_TYPE_LIMIT: 'LIMIT',
         common.ORDER_TYPE_MARKET: 'MARKET',
@@ -107,7 +105,6 @@ class Bitrue(Exchange):
 
     Trade_Key_CommissionQty = 'commission'
     Trade_Key_CommissionAsset = 'commissionAsset'
-    Trade_Key_IsBuyer = 'isBuyer'
     Trade_Key_Qty = 'qty'
     Trade_Key_Price = 'price'
     Trade_Key_Time = 'time'
@@ -146,7 +143,6 @@ class Bitrue(Exchange):
         order = self._get_order(exchange_symbol, order_id)
         return self.check_status_is_close(order)
 
-    def taker_is_buyer(self, trade):
-        isBuyerMaker = trade['isBuyerMaker']
-        return not isBuyerMaker
+    def isBuyerMaker(self, trade):
+        return trade['isBuyerMaker']
 

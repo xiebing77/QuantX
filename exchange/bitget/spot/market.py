@@ -18,7 +18,7 @@ def exchange_info(self):
     return self.query('/spot/v1/public/products')
 
 
-def depth(self, symbol: str, limit: int, **kwargs):
+def depth(self, symbol: str, **kwargs):
     """Get orderbook.
 
     Args:
@@ -62,30 +62,9 @@ def klines(self, symbol: str, interval: str, **kwargs):
     return self.query("/quote/v1/kline", params)
 
 
-def ticker_price(self, symbol: str = None):
-    """Symbol Price Ticker
-    Latest price for a symbol or symbols.
-
-    Args:
-        symbol (str, optional): the trading pair
-    """
-
+def ticker(self, symbol: str = None):
     params = {
         "symbol": symbol,
     }
     return self.query("/spot/v1/market/ticker", params)
-
-
-def book_ticker(self, symbol: str = None):
-    """Symbol Order Book Ticker
-    Best price/qty on the order book for a symbol or symbols.
-
-    Args:
-        symbol (str, optional): the trading pair
-    """
-
-    params = {
-        "symbol": symbol,
-    }
-    return self.query("/quote/v1/ticker/bookTicker", params)
 

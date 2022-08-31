@@ -4,10 +4,15 @@ import common.log as log
 
 class Account():
 
+    def trans_side(self, side):
+        if side == common.SIDE_BUY:
+            return self.SIDE_BUY
+        return self.SIDE_SELL
+
     # adpation
     def new_order(self, side, type, symbol, price, qty, client_order_id=None):
         log.info('create order: pair(%s), side(%s), type(%s), price(%s), qty(%s)' % (symbol, side, type, price, qty))
-        ex_side = self.ex_sides[side]
+        ex_side = self.trans_side(side)
         if hasattr(self, '_before_create_order'):
             target_coin, base_coin = common.get_symbol_coins(symbol)
             self._before_create_order(ex_side, target_coin, base_coin,
@@ -73,7 +78,7 @@ class Account():
         return [order[self.Order_Id_Key] for order in orders]
 
     def order_is_buy(self, order):
-        return order[self.Order_Key_Side] == self.ex_sides[common.SIDE_BUY]
+        return order[self.Order_Key_Side] == self.SIDE_BUY
 
 
 import common.kline as kl
@@ -99,11 +104,11 @@ class MarketData():
         ex_symbol = self._trans_symbol(symbol)
         return self._get_assetPrecision(ex_symbol)
 
-    def depth(self, symbol, limit):
-        return self._depth(self._trans_symbol(symbol), limit=limit)
+    def depth(self, symbol, **kwargs):
+        return self._depth(self._trans_symbol(symbol), **kwargs)
 
-    def trades(self, symbol, limit):
-        trades = self._trades(exchange_symbol=self._trans_symbol(symbol), limit=limit)
+    def trades(self, symbol, **kwargs):
+        trades = self._trades(self._trans_symbol(symbol), **kwargs)
         return trades
 
     def historical_trades(self, symbol):

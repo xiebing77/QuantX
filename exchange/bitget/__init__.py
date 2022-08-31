@@ -45,6 +45,9 @@ class Bitget(Exchange):
     BALANCE_FREE_KEY   = 'available'
     BALANCE_LOCKED_KEY = 'lock'
 
+    SIDE_BUY  = 'buy'
+    SIDE_SELL = 'sell'
+
     Order_Id_Key = 'orderId'
     Order_Time_Key = 'cTime'
 
@@ -83,11 +86,6 @@ class Bitget(Exchange):
         kl.KLINE_INTERVAL_1MONTH: '1M',
     }
 
-    ex_sides = {
-        common.SIDE_BUY: 'buy',
-        common.SIDE_SELL: 'sell',
-    }
-
     ex_order_types = {
         common.ORDER_TYPE_LIMIT: 'limit',
         common.ORDER_TYPE_MARKET: 'market',
@@ -108,7 +106,6 @@ class Bitget(Exchange):
 
     Trade_Key_CommissionQty = 'fees'
     Trade_Key_CommissionAsset = 'feeCcy'
-    #Trade_Key_IsBuyer = 'isBuyer'
     Trade_Key_Qty = 'fillQuantity'
     Trade_Key_Price = 'fillPrice'
     Trade_Key_Value = 'fillTotalAmount'
@@ -147,11 +144,11 @@ class Bitget(Exchange):
         order = self._get_order(exchange_symbol, order_id)
         return self.check_status_is_close(order)
 
-    def taker_is_buyer(self, trade):
-        return trade['side'] == 'buy'
+    def isBuyerMaker(self, trade):
+        return not trade['side'] == self.SIDE_BUY
 
     def mytrade_is_buyer(self, mytrade):
-        return mytrade['side'] == 'buy'
+        return mytrade['side'] == self.SIDE_BUY
 
     def mytrade_check_symbol(self, symbol, mytrade):
         return mytrade['symbol'] == self._trans_symbol(symbol)

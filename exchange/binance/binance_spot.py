@@ -61,7 +61,8 @@ class BinanceSpot(Binance):
         return trades
 
     def _ticker_price(self, exchange_symbol):
-        return float(self.__api.ticker_price(exchange_symbol)['price'])
+        ticker_price_info = self.__api.ticker_price(exchange_symbol)
+        return float(ticker_price_info['price'])
 
     def _klines(self, exchange_symbol, interval, size, since):
         if since is None:

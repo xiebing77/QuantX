@@ -26,6 +26,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='analyze depth')
     parser.add_argument('-exchange', choices=get_exchange_names(), help='exchange name')
     parser.add_argument('-symbol', required=True, help='symbol, eg: btc_usdt')
+    parser.add_argument('-limit', help='')
 
     args = parser.parse_args()
     # print(args)
@@ -42,8 +43,9 @@ if __name__ == "__main__":
     b_prec, q_prec = exchange.get_assetPrecision(symbol)
     ticker_price = exchange.ticker_price(symbol)
 
-    depth_limit = exchange.depth_limits[-1]
-    book = exchange.depth(symbol, depth_limit)
+    #depth_limit = exchange.depth_limits[-1]
+    depth_limit = args.limit
+    book = exchange.depth(symbol, limit=depth_limit)
     #pprint(book)
     asks = book['asks']
     bids = book['bids']

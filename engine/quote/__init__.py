@@ -2,6 +2,31 @@
 from db.mongodb import get_mongodb
 
 
+def stat_trades(quoter, trades):
+    maker_buyer = {
+        'count': 0,
+        'qty': 0,
+        'asset': 0
+    }
+    maker_seller = {
+        'count': 0,
+        'qty': 0,
+        'asset': 0
+    }
+    for trade in trades:
+        qty = float(trade[quoter.Trade_Key_Qty])
+        asset = qty * float(trade[quoter.Trade_Key_Price])
+        if quoter.isBuyerMaker(trade):
+            maker_buyer['count'] += 1
+            maker_buyer['qty'] += qty
+            maker_buyer['asset'] += asset
+        else:
+            maker_seller['count'] += 1
+            maker_seller['qty'] += qty
+            maker_seller['asset'] += asset
+    return maker_buyer, maker_seller
+
+
 class QuoteEngine(object):
     def __init__(self, quoter):
         self.quoter = quoter

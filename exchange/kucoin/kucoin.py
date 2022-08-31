@@ -45,6 +45,9 @@ class Kucoin(Exchange):
     BALANCE_FREE_KEY   = 'free'
     BALANCE_LOCKED_KEY = 'locked'
 
+    SIDE_BUY  = 'buy'
+    SIDE_SELL = 'sell'
+
     Order_Id_Key = 'id'
     Order_Time_Key = 'createdAt'
 
@@ -83,11 +86,6 @@ class Kucoin(Exchange):
         kl.KLINE_INTERVAL_1MONTH: '1M',
     }
 
-    ex_sides = {
-        common.SIDE_BUY: 'buy',
-        common.SIDE_SELL: 'sell',
-    }
-
     ex_order_types = {
         common.ORDER_TYPE_LIMIT: 'limit',
         common.ORDER_TYPE_MARKET: 'market',
@@ -108,7 +106,6 @@ class Kucoin(Exchange):
 
     Trade_Key_CommissionQty = 'commission'
     Trade_Key_CommissionAsset = 'commissionAsset'
-    Trade_Key_IsBuyer = 'isBuyer'
     Trade_Key_Qty = 'size'
     Trade_Key_Price = 'price'
     Trade_Key_Time = 'time'
@@ -144,6 +141,6 @@ class Kucoin(Exchange):
         order = self._get_order(exchange_symbol, order_id)
         return self.check_status_is_close(order)
 
-    def taker_is_buyer(self, trade):
+    def isBuyerMaker(self, trade):
         return trade['side'] == 'buy'
 

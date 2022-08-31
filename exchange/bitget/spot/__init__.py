@@ -135,8 +135,7 @@ class Spot(API):
     from .market import klines
     #from binance.spot.market import avg_price
     #from binance.spot.market import ticker_24hr
-    from .market import ticker_price
-    from .market import book_ticker
+    from .market import ticker
 
     # ACCOUNT(including orders and trades)
     from .account import new_order

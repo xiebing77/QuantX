@@ -63,7 +63,8 @@ class BybitSpot(Bybit):
         return trades
 
     def _ticker_price(self, exchange_symbol):
-        return float(self.__api.ticker_price(exchange_symbol)['result']['price'])
+        ticker_price_info = self.__api.ticker_price(exchange_symbol)['result']
+        return float(ticker_price_info['price'])
 
     def _klines(self, exchange_symbol, interval, size, since):
         return []

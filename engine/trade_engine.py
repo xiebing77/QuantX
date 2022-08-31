@@ -176,7 +176,7 @@ class TradeEngine(object):
             qty = float(trade[self.trader.Trade_Key_Qty])
             price = float(trade[self.trader.Trade_Key_Price])
             value = qty * price
-            if trade[self.trader.Trade_Key_IsBuyer]:
+            if self.trader.mytrade_is_buyer(trade):
                 pst_base_qty += qty
                 pst_quote_qty -= value
             else:
