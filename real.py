@@ -10,7 +10,7 @@ from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INS
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from engine.quote import QuoteEngine
 import engine.trade as trade
-from engine.trade.exchange import ExchangeTradeEngine
+from engine.trade.exchange import ExchangeTradeEngine, get_commission_from_trades
 from db.mongodb import get_mongodb
 import setup
 
@@ -111,6 +111,12 @@ def real_hand(args):
         qty=args.qty)
 
 
+def round_commission(commission):
+    for coin in commission:
+        commission[coin] = round(commission[coin], 8)
+    return commission
+
+
 def real_list(args):
     query = {"user": args.user}
     if args.status:
@@ -122,7 +128,7 @@ def real_list(args):
     title_head_fmt = "%-25s  %12s"
     head_fmt       = "%-25s  %12s"
 
-    title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %12s"
+    title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
     title_tail_fmt = "  %10s  %13s  %-16s  %-6s  %-s"
@@ -141,21 +147,26 @@ def real_list(args):
         #    continue
 
         config_path = s["config_path"]
-        #all_value += value
-        profit_info = ""
-        #try:
-        exchange = create_exchange(exchange_name)
-        if not exchange:
-            print("exchange name error!")
-            exit(1)
-        exchange.connect()
-        exchange.ping()
-
         if config_path:
             config = common.get_json_config(config_path)
             symbol = config['symbol']
         else:
             symbol = s['symbol']
+
+        #all_value += value
+        profit_info = ""
+        try:
+            exchange = create_exchange(exchange_name)
+            if not exchange:
+                print("exchange name error!")
+                exit(1)
+            exchange.connect()
+            exchange.ping()
+            ticker_price = exchange.ticker_price(symbol)
+        except Exception as ept:
+            log.critical(ept)
+            print(ept)
+            continue
 
         trade_engine = ExchangeTradeEngine(instance_id, exchange)
         pst = trade_engine.get_position(symbol)
@@ -163,10 +174,9 @@ def real_list(args):
         pst_quote_qty = pst[trade.POSITION_QUOTE_QTY_KEY]
         deal_quote_qty = pst[trade.POSITION_DEAL_QUOTE_QTY_KEY]
 
-        ticker_price = exchange.ticker_price(symbol)
         float_profit, total_profit = trade.get_gross_profit(pst, ticker_price)
 
-        commission = deal_quote_qty * 0.001
+        commission = trade.get_pst_commission(pst)
         base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
         if quote_asset_name not in all_asset_stat:
             all_asset_stat[quote_asset_name] = {
@@ -174,7 +184,7 @@ def real_list(args):
                 trade.POSITION_DEAL_QUOTE_QTY_KEY: 0,
                 "float_profit": 0,
                 "total_profit": 0,
-                "commission": 0
+                "commission": {}
             }
 
         asset_stat = all_asset_stat[quote_asset_name]
@@ -182,7 +192,11 @@ def real_list(args):
         asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY] += deal_quote_qty
         asset_stat['float_profit'] += float_profit
         asset_stat['total_profit'] += total_profit
-        asset_stat['commission'] += commission
+        for coin in commission:
+            if coin in asset_stat['commission']:
+                asset_stat['commission'][coin] += commission[coin]
+            else:
+                asset_stat['commission'][coin] = 0
 
         b_prec, q_prec = trade_engine.get_symbol_prec(symbol)
         q_prec = 2
@@ -191,7 +205,7 @@ def real_list(args):
             round(deal_quote_qty, q_prec),
             round(float_profit, q_prec),
             round(total_profit, q_prec),
-            round(commission, q_prec))
+            round_commission(commission))
 
         #except Exception as ept:
         #    profit_info = "error:  %s" % (ept)
@@ -220,7 +234,7 @@ def real_list(args):
                 round(asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY], q_prec),
                 round(asset_stat['float_profit'], q_prec),
                 round(asset_stat['total_profit'], q_prec),
-                round(asset_stat['commission'], q_prec)))
+                round_commission(asset_stat['commission'])))
 
 
 def real_add(args):
@@ -281,35 +295,40 @@ def real_analyze(args):
     price_prec = config['prec']['price']
 
     trade_engine = ExchangeTradeEngine(instance_id, exchange)
+    trader = trade_engine.trader
     b_prec, q_prec = trade_engine.get_symbol_prec(symbol)
     close_bills = trade_engine.get_bills(symbol, common.BILL_STATUS_CLOSE)
     pst_qty = 0
     pst_quote_qty = 0
-    cb_fmt = '%26s  %12s  %5s  %7s  %10s  %12s  %12s  %12s  %12s'
-    print(cb_fmt % ('create_time', 'order_id', 'side', 'status', 'qty', 'limit_price', 'deal_price', 'pst_qty', 'pst_cost'))
+    cb_fmt = '%26s  %12s  %5s  %7s  %10s  %12s  %12s  %12s  %12s  %12s'
+    print(cb_fmt % ('create_time', 'order_id', 'side', 'status', 'qty', 'limit_price', 'deal_price', 'commission', 'pst_qty', 'pst_cost'))
     for cb in close_bills:
         #print(cb)
+        order_id = cb['order_id']
         order = trade_engine.get_order_from_db(symbol, cb['order_id'])
         #print(order)
-        executedQty = float(order['executedQty'])
+        trades = trade_engine._get_trades_from_db(symbol, [order_id])
+        commission = get_commission_from_trades(trader, trades)
+
+        executedQty = float(order[trader.Order_Key_ExecutedQty])
         if executedQty == 0:
             deal_price = 0
         else:
-            cummulativeQuoteQty = float(order['cummulativeQuoteQty'])
+            cummulativeQuoteQty = float(order[trader.Order_Key_CummulativeQuoteQty])
             if exchange.order_is_buy(order):
                 pst_qty += executedQty
                 pst_quote_qty += cummulativeQuoteQty
             else:
                 pst_qty -= executedQty
                 pst_quote_qty -= cummulativeQuoteQty
-
-            deal_price = float(order['cummulativeQuoteQty'])/float(order['executedQty'])
+            deal_price = cummulativeQuoteQty / executedQty
             if pst_qty == 0:
                 pst_cost = 0
             else:
                 pst_cost = float(pst_quote_qty / pst_qty)
+
         print(cb_fmt % (cb['create_time'], cb['order_id'], cb['side'], cb['status'],
-            cb['qty'], cb['price'], round(deal_price,price_prec),
+            cb['qty'], cb['price'], round(deal_price,price_prec), commission,
             round(pst_qty, b_prec), round(pst_cost, price_prec)))
 
 
