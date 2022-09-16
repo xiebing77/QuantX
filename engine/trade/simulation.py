@@ -7,8 +7,9 @@ def update_bill_position(pst, bill):
     base_qty = bill['qty']
     quote_qty = bill['qty'] * bill['price']
 
+    commission = {}
     new_pst = pst.copy()
-    update_position(new_pst, side, base_qty, quote_qty)
+    update_position(new_pst, side, base_qty, quote_qty, commission)
     bill[POSITION_KEY] = new_pst
     return
 

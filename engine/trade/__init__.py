@@ -58,7 +58,7 @@ def get_win_loss(bills, value):
             else:
                 #loss
                 losses.append(profit_rate)
-    return wins, losses
+    return wins, losses, []
 
 
 def init_position():
