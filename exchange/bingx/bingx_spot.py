@@ -51,7 +51,7 @@ class BingXSpot(BingX):
         print(self.__api.depth(symbol=exchange_symbol, limit=limit))
         return self.__api.depth(symbol=exchange_symbol, limit=limit)['data']
 
-    def _trades(self, exchange_symbol, limit):
+    def _trades(self, exchange_symbol, limit=100):
         trades = self.__api.trades(symbol=exchange_symbol, limit=limit)['data']
         return trades
 

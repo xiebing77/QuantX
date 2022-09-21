@@ -17,7 +17,6 @@ class BitgetSpot(Bitget):
     symbol_info_map = {}
 
     depth_limits = [20, 100]
-    max_trade_len = 500
 
     def __init__(self, debug=False):
         return
@@ -54,8 +53,8 @@ class BitgetSpot(Bitget):
         #print(ret)
         return ret['data']
 
-    def _trades(self, exchange_symbol, **kwargs):
-        trades = self.__api.trades(symbol=exchange_symbol, **kwargs)['data']
+    def _trades(self, exchange_symbol, limit=500):
+        trades = self.__api.trades(symbol=exchange_symbol, limit=limit)['data']
         return trades
 
     def _historical_trades(self, exchange_symbol):

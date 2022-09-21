@@ -5,7 +5,8 @@ from .binance import Binance, api_key, secret_key
 from .spot import Spot
 from common import create_balance
 from common import TIME_IN_FORCE_GTC
-
+from pprint import pprint
+import math
 
 class BinanceSpot(Binance):
     name = Binance.name + '_spot'
@@ -32,8 +33,16 @@ class BinanceSpot(Binance):
             for sy_info in sy_infos:
                 if ex_symbol == sy_info['symbol']:
                     self.symbol_info_map[sy_info['symbol']] = sy_info
+
         sy_info = self.symbol_info_map[ex_symbol]
-        return sy_info['baseAssetPrecision'], sy_info['quotePrecision']
+        for f in sy_info['filters']:
+            filterType = f['filterType']
+            if filterType == 'PRICE_FILTER':
+                tickSize = f['tickSize']
+            elif filterType == 'LOT_SIZE':
+                stepSize = f['stepSize']
+
+        return int(-math.log10(float(stepSize))), int(-math.log10(float(tickSize)))
 
     # ACCOUNT(including orders and trades)
     def ping(self):
@@ -48,7 +57,7 @@ class BinanceSpot(Binance):
     def _depth(self, exchange_symbol, limit):
         return self.__api.depth(symbol=exchange_symbol, limit=limit)
 
-    def _trades(self, exchange_symbol, limit):
+    def _trades(self, exchange_symbol, limit=1000):
         trades = self.__api.trades(symbol=exchange_symbol, limit=limit)
         return trades
 
@@ -56,8 +65,8 @@ class BinanceSpot(Binance):
         trades = self.__api.historical_trades(symbol=exchange_symbol)
         return trades
 
-    def _agg_trades(self, exchange_symbol):
-        trades = self.__api.agg_trades(symbol=exchange_symbol)
+    def _agg_trades(self, exchange_symbol, limit=1000):
+        trades = self.__api.agg_trades(symbol=exchange_symbol, limit=limit)
         return trades
 
     def _ticker_price(self, exchange_symbol):
@@ -94,7 +103,11 @@ class BinanceSpot(Binance):
             balances.append(balance)
         return balances
 
+    def get_balances(self):
+        account = self.account()
+        return account['balances']
 
+    '''
     def get_balances(self, *coins):
         """获取余额"""
         coin_balances = []
@@ -113,6 +126,7 @@ class BinanceSpot(Binance):
             return coin_balances[0]
         else:
             return tuple(coin_balances)
+    '''
 
     def _my_trades(self, exchange_symbol, limit):
         trades = self.__api.my_trades(symbol=exchange_symbol, limit=limit)
@@ -146,7 +160,7 @@ class BinanceSpot(Binance):
     def _get_order(self, exchange_symbol, order_id):
         return self.__api.get_order(symbol=exchange_symbol, orderId=order_id)
 
-    def _get_orders(self, exchange_symbol, limit):
+    def _get_orders(self, exchange_symbol, limit=1000):
         return self.__api.get_orders(symbol=exchange_symbol, limit=limit)
 
     def _cancel_order(self, exchange_symbol, order_id):

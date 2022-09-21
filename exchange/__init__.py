@@ -115,8 +115,8 @@ class MarketData():
         trades = self._historical_trades(symbol=self._trans_symbol(symbol))
         return trades
 
-    def agg_trades(self, symbol):
-        trades = self._agg_trades(symbol=self._trans_symbol(symbol))
+    def agg_trades(self, symbol, **kwargs):
+        trades = self._agg_trades(self._trans_symbol(symbol), **kwargs)
         return trades
 
     def ticker_price(self, symbol):

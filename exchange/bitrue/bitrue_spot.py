@@ -49,7 +49,7 @@ class BitrueSpot(Bitrue):
     def _depth(self, exchange_symbol, limit):
         return self.__api.depth(symbol=exchange_symbol, limit=limit)
 
-    def _trades(self, exchange_symbol, limit):
+    def _trades(self, exchange_symbol, limit=1000):
         trades = self.__api.trades(symbol=exchange_symbol, limit=limit)
         return trades
 

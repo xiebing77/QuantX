@@ -14,6 +14,7 @@ if __name__ == "__main__":
     parser.add_argument('-symbol', required=True, help='symbol, eg: btc_usdt')
     parser.add_argument('-limit', help='')
     parser.add_argument('--stat', action="store_true", help=' stat position ...')
+    parser.add_argument('--agg', action="store_true", help=' agg trades ...')
     args = parser.parse_args()
     # print(args)
     if not (args.exchange):
@@ -31,8 +32,17 @@ if __name__ == "__main__":
 
     symbol = args.symbol
     b_prec, q_prec = exchange.get_assetPrecision(symbol)
-    trades = exchange.trades(symbol, limit=args.limit)
-    print("%-25s: %s" % ("length", len(trades)) )
+    params = {}
+    if args.limit:
+        params['limit'] = args.limit
+    if args.agg:
+        trades = exchange.agg_trades(symbol, **params)
+    else:
+        trades = exchange.trades(symbol, **params)
+
+    print('market trades({}): {} ~ {} '.format(len(trades),
+        exchange.get_time_from_trade_data(trades[-1]),
+        exchange.get_time_from_trade_data(trades[0])))
     if not trades:
         exit(1)
     for trade in trades:

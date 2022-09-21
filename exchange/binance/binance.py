@@ -41,6 +41,10 @@ class Binance(Exchange):
     kline_idx_volume      = kl.get_kline_index(kl.KLINE_KEY_VOLUME, kline_column_names)
     max_count_of_single_download_kl = 1000
 
+    BALANCE_ASSET_KEY  = 'asset'
+    BALANCE_FREE_KEY   = 'free'
+    BALANCE_LOCKED_KEY = 'locked'
+
     SIDE_BUY  = 'BUY'
     SIDE_SELL = 'SELL'
 
