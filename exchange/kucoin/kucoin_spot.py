@@ -111,8 +111,8 @@ class KucoinSpot(Kucoin):
         else:
             return tuple(coin_balances)
 
-    def _my_trades(self, exchange_symbol, limit):
-        trades = self.__api.my_trades(symbol=exchange_symbol, limit=limit)['data']['items']
+    def _my_trades(self, exchange_symbol, **kwargs):
+        trades = self.__api.my_trades(symbol=exchange_symbol, **kwargs)['data']['items']
         return trades
 
     def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, client_order_id=None):

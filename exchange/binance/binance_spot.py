@@ -128,8 +128,8 @@ class BinanceSpot(Binance):
             return tuple(coin_balances)
     '''
 
-    def _my_trades(self, exchange_symbol, limit):
-        trades = self.__api.my_trades(symbol=exchange_symbol, limit=limit)
+    def _my_trades(self, exchange_symbol, **kwargs):
+        trades = self.__api.my_trades(symbol=exchange_symbol, **kwargs)
         return trades
 
     def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, client_order_id=None):

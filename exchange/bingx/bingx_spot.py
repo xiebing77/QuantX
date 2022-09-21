@@ -105,8 +105,8 @@ class BingXSpot(BingX):
         else:
             return tuple(coin_balances)
 
-    def _my_trades(self, exchange_symbol, limit):
-        trades = self.__api.my_trades_v1(symbol=exchange_symbol, limit=limit)
+    def _my_trades(self, exchange_symbol, **kwargs):
+        trades = self.__api.my_trades_v1(symbol=exchange_symbol, **kwargs)
         #trades += self.__api.my_trades_v2(symbol=exchange_symbol, limit=limit)
         return trades
 
