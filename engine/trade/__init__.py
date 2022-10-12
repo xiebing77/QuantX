@@ -110,4 +110,3 @@ def update_pst_commission(pst, commission):
 class TradeEngine(object):
     def __init__(self):
         pass
-

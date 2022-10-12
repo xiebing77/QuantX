@@ -35,8 +35,9 @@ def calc_position(bills):
 
 
 class SimulationTradeEngine(TradeEngine):
-    def __init__(self):
+    def __init__(self, commission_rate):
         super().__init__()
+        self.commission_rate = commission_rate
         self.bills = []
         self.now_time = None
 
