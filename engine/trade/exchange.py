@@ -65,6 +65,12 @@ def get_commission_from_trades(trader, trades):
     return commission
 
 
+def round_commission(commission):
+    for coin in commission:
+        commission[coin] = round(commission[coin], 8)
+    return commission
+
+
 class ExchangeTradeEngine(TradeEngine):
     def __init__(self, instance_id, trader):
         super().__init__()
