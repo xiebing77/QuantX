@@ -290,10 +290,6 @@ def real_analyze(args):
         exit(1)
     exchange.connect()
 
-    config_path = s["config_path"]
-    config = common.get_json_config(config_path)
-    price_prec = config['prec']['price']
-
     trade_engine = ExchangeTradeEngine(instance_id, exchange)
     trader = trade_engine.trader
     b_prec, q_prec = trade_engine.get_symbol_prec(symbol)
@@ -328,8 +324,8 @@ def real_analyze(args):
                 pst_cost = float(pst_quote_qty / pst_qty)
 
         print(cb_fmt % (cb['create_time'], cb['order_id'], cb['side'], cb['status'],
-            cb['qty'], cb['price'], round(deal_price,price_prec), commission,
-            round(pst_qty, b_prec), round(pst_cost, price_prec)))
+            cb['qty'], cb['price'], round(deal_price, q_prec), round_commission(commission),
+            round(pst_qty, b_prec), round(pst_cost, q_prec)))
 
 
 def real():
