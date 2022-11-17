@@ -74,6 +74,16 @@ def chart_mpf2(title, args, symbol, kdf, md, signalsets=[], subplotsets=[], need
             for name, real in reals:
                 apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx))
 
+        sss = handle_volume_indicators2(args, kdf)
+        for ss in sss:
+            #print(ss)
+            panel_idx += 1
+            panel_ratios.append(2)
+            if not ss:
+                continue
+            for name, real, params in ss:
+                apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx, secondary_y=False, **params))
+
         sss = handle_momentum_indicators2(args, kdf)
         #print(sss)
         for ss in sss:
@@ -85,12 +95,27 @@ def chart_mpf2(title, args, symbol, kdf, md, signalsets=[], subplotsets=[], need
             for name, real, params in ss:
                 apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx, secondary_y=False, **params))
 
-        reals = []#handle_other_indicators2(args, apds, kdf)
-        if reals:
+        sss = handle_cycle_indicators2(args, kdf)
+        #print(sss)
+        for ss in sss:
+            #print(ss)
             panel_idx += 1
             panel_ratios.append(2)
-            for name, real in reals:
-                apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx))
+            if not ss:
+                continue
+            for name, real, params in ss:
+                apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx, secondary_y=False, **params))
+
+        sss = handle_other_indicators2(args, kdf)
+        #print(sss)
+        for ss in sss:
+            #print(ss)
+            panel_idx += 1
+            panel_ratios.append(2)
+            if not ss:
+                continue
+            for name, real, params in ss:
+                apds.append(mpf2.make_addplot(real, ylabel=name, panel=panel_idx, secondary_y=False, **params))
 
     for idx, subplotset in enumerate(subplotsets):
         panel_idx += 1

@@ -75,3 +75,23 @@ def handle_cycle_indicators(args, axes, i, klines_df, close_times, display_count
         axes[i].plot(close_times, real[-display_count:], "y:", label=name)
 
 
+def handle_cycle_indicators2(args, kdf):
+    # talib
+    sss = []
+    if args.HT_DCPERIOD:
+        real = talib.HT_DCPERIOD(kdf["close"])
+        sss.append([('HT_DCPERIOD', real, {})])
+    if args.HT_DCPHASE:
+        real = talib.HT_DCPHASE(kdf["close"])
+        sss.append([('HT_DCPHASE', real, {})])
+    if args.HT_PHASOR:
+        real = talib.HT_PHASOR(kdf["close"])
+        sss.append([('HT_PHASOR', real, {})])
+    if args.HT_SINE:
+        real = talib.HT_SINE(kdf["close"])
+        sss.append([('HT_SINE', real, {})])
+    if args.HT_TRENDMODE:
+        real = talib.HT_TRENDMODE(kdf["close"])
+        sss.append([('HT_TRENDMODE', real, {})])
+    return sss
+

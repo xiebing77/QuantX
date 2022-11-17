@@ -1,36 +1,42 @@
 import talib
 
-def calc_volatility_indicators(quoter, config, kdf, calc_all=False):
+def calc_volatility_indicators(quoter, is_tick, config, df, calc_all=False):
     key_xs = []
-    key_open = quoter.kline_key_open
-    key_close = quoter.kline_key_close
-    key_high = quoter.kline_key_high
-    key_low = quoter.kline_key_low
+
+    if is_tick:
+        key_high = None
+        key_close = quoter.tick_key_close
+        key_volume = quoter.tick_key_volume
+    else:
+        key_open = quoter.kline_key_open
+        key_close = quoter.kline_key_close
+        key_high = quoter.kline_key_high
+        key_low = quoter.kline_key_low
 
     name = 'ATR'
-    if calc_all or name in config:
+    if key_high and (calc_all or name in config):
         if name in config and 'period' in config[name]:
             tp = config[name]['period']
         else:
             tp = 14
         key_x = '%s_%s' % (name, tp)
-        kdf[key_x] = talib.ATR(kdf[key_high], kdf[key_low], kdf[key_close], timeperiod=tp)
+        df[key_x] = talib.ATR(df[key_high], df[key_low], df[key_close], timeperiod=tp)
         key_xs.append(key_x)
 
     name = 'NATR'
-    if calc_all or name in config:
+    if key_high and (calc_all or name in config):
         if name in config and 'period' in config[name]:
             tp = config[name]['period']
         else:
             tp = 14
         key_x = '%s_%s' % (name, tp)
-        kdf[key_x] = talib.NATR(kdf[key_high], kdf[key_low], kdf[key_close], timeperiod=tp)
+        df[key_x] = talib.NATR(df[key_high], df[key_low], df[key_close], timeperiod=tp)
         key_xs.append(key_x)
 
     name = 'TRANGE'
-    if calc_all or name in config:
+    if key_high and (calc_all or name in config):
         key_x = '%s' % (name)
-        kdf[key_x] = talib.TRANGE(kdf[key_high], kdf[key_low], kdf[key_close])
+        df[key_x] = talib.TRANGE(df[key_high], df[key_low], df[key_close])
         key_xs.append(key_x)
 
     return key_xs

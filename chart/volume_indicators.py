@@ -56,4 +56,17 @@ def handle_volume_indicators(args, axes, i, klines_df, close_times, display_coun
         axes[i].plot(close_times, real[-display_count:], "y:", label=name)
 
 
+def handle_volume_indicators2(args, kdf):
+    # talib
+    sss = []
+    if args.AD:
+        real = talib.AD(kdf["high"], kdf["low"], kdf["close"], kdf["volume"])
+        sss.append([('AD', real, {})])
+    if args.ADOSC:
+        real = talib.ADOSC(kdf["high"], kdf["low"], kdf["close"], kdf["volume"], fastperiod=3, slowperiod=10)
+        sss.append([('ADOSC', real, {})])
+    if args.OBV:
+        real = talib.OBV(kdf["close"], kdf["volume"])
+        sss.append([('OBV', real, {})])
+    return sss
 

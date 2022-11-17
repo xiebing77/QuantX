@@ -15,6 +15,8 @@ def add_argument_other_indicators(parser):
     group.add_argument('--nmBIAS', type=int, nargs='*', help='Bias Ratio: nBIAS - mBIAS')
     group.add_argument('--BIAS', type=int, nargs='*', help='Bias Ratio: ma_short/ma_long - 1')
 
+    group.add_argument('--CLV', action="store_true", help='(2*close - high - low) / (high - low)')
+
 
 def get_other_indicators_count(args):
     count = 0
@@ -78,4 +80,16 @@ def handle_other_indicators(args, axes, i, klines_df, close_times, display_count
         emas_l = talib.EMA(closes, tps[1])
         real = ic.pd_biases(closes, emas_s) - ic.pd_biases(closes, emas_l)
         axes[i].plot(close_times, real[-display_count:], cs[0], label=tps)
+
+
+import feature
+def handle_other_indicators2(args, kdf):
+    sss = []
+
+    if args.CLV:
+        name = 'CLV'
+        real = feature.CLV(kdf["high"], kdf["low"], kdf["close"])
+        sss.append([('%s'%(name), real, {})])
+
+    return sss
 

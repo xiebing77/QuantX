@@ -12,6 +12,15 @@ class KuaiQi(Exchange):
     name = 'kuaiqi'
     unit = 'ms'
     min_value = 10
+
+    tick_key_close_time = 'datetime_nano'
+    tick_key_close      = 'last_price'
+    tick_key_volume     = 'volume'
+    tick_key_bid        = 'bid_price1'
+    tick_key_bid_size   = 'bid_volume1'
+    tick_key_ask        = 'ask_price1'
+    tick_key_ask_size   = 'ask_volume1'
+
     kl_bt_accuracy = kl.KLINE_INTERVAL_1MINUTE
 
     kline_data_type = kl.KLINE_DATA_TYPE_LIST
@@ -23,11 +32,17 @@ class KuaiQi(Exchange):
     kline_key_high       = kl.KLINE_KEY_HIGH
     kline_key_low        = kl.KLINE_KEY_LOW
     kline_key_volume     = kl.KLINE_KEY_VOLUME
+    kline_key_oi         = 'close_oi' # 'open_interest'
+
+    kline_column_names = [kline_key_open_time,
+                          kline_key_open,
+                          kline_key_close,
+                          kline_key_high,
+                          kline_key_low,
+                          kline_key_volume,
+                          kline_key_oi]
 
     '''
-    kline_column_names = [kline_key_open_time, kline_key_open, kline_key_high, kline_key_low,
-            kline_key_close, kline_key_volume, kline_key_close_time]
-
     kline_idx_open_time   = kl.get_kline_index(kl.KLINE_KEY_OPEN_TIME, kline_column_names)
     kline_idx_close_time  = kl.get_kline_index(kl.KLINE_KEY_CLOSE_TIME, kline_column_names)
     kline_idx_open        = kl.get_kline_index(kl.KLINE_KEY_OPEN, kline_column_names)
