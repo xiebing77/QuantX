@@ -10,15 +10,27 @@ class Account():
         return self.SIDE_SELL
 
     # adpation
-    def new_order(self, side, type, symbol, price, qty, client_order_id=None):
-        log.info('create order: pair(%s), side(%s), type(%s), price(%s), qty(%s)' % (symbol, side, type, price, qty))
+    def new_order(self, side, typ, symbol, price, qty, client_order_id=None, oc=None):
+        log.info('create order: pair(%s), side(%s), type(%s), price(%s), qty(%s)' % (symbol, side, typ, price, qty))
         ex_side = self.trans_side(side)
         if hasattr(self, '_before_create_order'):
             target_coin, base_coin = common.get_symbol_coins(symbol)
             self._before_create_order(ex_side, target_coin, base_coin,
                 price, qty, client_order_id)
-        return self._new_order(ex_side=ex_side, ex_type=self.ex_order_types[type],
-            ex_symbol=self._trans_symbol(symbol), price=price, qty=qty, client_order_id=client_order_id)
+
+        if hasattr(self, 'ex_order_types'):
+            ex_type = self.ex_order_types[typ]
+        else:
+            ex_type = typ
+
+        if oc:
+            extra = {'oc': oc}
+        else:
+            extra = {}
+        return self._new_order(ex_side=ex_side,
+            ex_type=ex_type,
+            ex_symbol=self._trans_symbol(symbol),
+            price=price, qty=qty, client_order_id=client_order_id, **extra)
 
     def cancel_order(self, symbol, order_id):
         self._cancel_order(self._trans_symbol(symbol), order_id=order_id)
@@ -40,6 +52,12 @@ class Account():
             if order_id == order[self.Order_Id_Key]:
                 return order
         return None
+
+    def get_order_exec_qty(self, order):
+        return float(order[self.Order_Key_ExecutedQty])
+
+    def get_order_exec_quote_qty(self, order):
+        return float(order[self.Order_Key_CummulativeQuoteQty])
 
     def check_orders_close_status(self, symbol, order_ids):
         orders = self.get_orders(symbol)

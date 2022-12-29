@@ -92,6 +92,8 @@ def get_balance_free(balance):
 def get_balance_frozen(balance):
     return float(balance["frozen"])
 
+OC_OPEN  = 'OPEN'
+OC_CLOSE = 'CLOSE'
 
 SIDE_KEY = 'side'
 SIDE_BUY = 'buy'

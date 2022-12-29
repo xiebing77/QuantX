@@ -650,22 +650,19 @@ def handle_momentum_indicators2(args, kdf):
         name = 'STOCH'
         slowk, slowd = talib.STOCH(kdf["high"], kdf["low"], kdf["close"],
             fastk_period=5, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
-        sss.append([('slowk', slowk, {'color': 'y'}),
-                    ('slowd', slowd, {'color': 'b'})])
+        sss.append([('STOCH', slowk-slowd, {})])
 
     if args.STOCHF: # 
         name = 'STOCHF'
         fastk, fastd = talib.STOCHF(kdf["high"], kdf["low"], kdf["close"],
             fastk_period=5, fastd_period=3, fastd_matype=0)
-        sss.append([('fastk', fastk, {'color': 'y'}),
-                    ('fastd', fastd, {'color': 'b'})])
+        sss.append([('STOCHF', fastk-fastd, {})])
 
     if args.STOCHRSI: # 
         name = 'STOCHRSI'
         fastk, fastd = talib.STOCHRSI(kdf["close"],
             timeperiod=14, fastk_period=5, fastd_period=3, fastd_matype=0)
-        sss.append([('fastk', fastk, {'color': 'y'}),
-                    ('fastd', fastd, {'color': 'b'})])
+        sss.append([('STOCHRSI', fastk-fastd, {})])
 
     if args.TRIX is not None: #
         name = 'TRIX'

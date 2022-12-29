@@ -14,7 +14,6 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
         key_high = quoter.kline_key_high
         key_low = quoter.kline_key_low
         key_volume = quoter.kline_key_volume
-        key_oi = quoter.kline_key_oi
 
     name = 'CLV'
     if key_high and (calc_all or name in config):
@@ -83,11 +82,25 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
         df[key_x] = CR(df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
+    name = 'CR2'
+    if key_high and (calc_all or name in config):
+        n = 20
+        key_x = '%s_%s' % (name, n)
+        df[key_x] = CR2(df[key_high], df[key_low], df[key_close], n)
+        key_xs.append(key_x)
+
     name = 'MassIndex'
     if key_high and (calc_all or name in config):
         n = 9
         key_x = '%s_%s' % (name, n)
         df[key_x] = MassIndex(df[key_high], df[key_low], df[key_close], n)
+        key_xs.append(key_x)
+
+    name = 'MassIndex2'
+    if key_high and (calc_all or name in config):
+        n = 9
+        key_x = '%s_%s' % (name, n)
+        df[key_x] = MassIndex2(df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
     name = 'ElderRayIndex'
@@ -97,10 +110,23 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
         df[key_x] = ElderRayIndex(df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
+    name = 'ElderRayIndex2'
+    if key_high and (calc_all or name in config):
+        n = 13
+        key_x = '%s_%s' % (name, n)
+        df[key_x] = ElderRayIndex2(df[key_high], df[key_low], df[key_close], n)
+        key_xs.append(key_x)
+
     name = 'UOS'
     if key_high and (calc_all or name in config):
         key_x = '%s' % (name)
         df[key_x] = UOS(df[key_high], df[key_low], df[key_close])
+        key_xs.append(key_x)
+
+    name = 'UOS2'
+    if key_high and (calc_all or name in config):
+        key_x = '%s' % (name)
+        df[key_x] = UOS2(df[key_high], df[key_low], df[key_close])
         key_xs.append(key_x)
 
     name = 'ASIR'
@@ -108,6 +134,13 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
         n = 20
         key_x = '%s_%s' % (name, n)
         df[key_x] = ASIR(df[key_open], df[key_high], df[key_low], df[key_close], n)
+        key_xs.append(key_x)
+
+    name = 'ASIR2'
+    if key_high and (calc_all or name in config):
+        n = 20
+        key_x = '%s_%s' % (name, n)
+        df[key_x] = ASIR2(df[key_open], df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
     name = 'UI'
@@ -136,7 +169,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
             elif t == 'v':
                 s = df[key_volume]
             elif t == 'oi':
-                s = df[key_oi]
+                s = df[quoter.kline_key_oi]
             else:
                 s = df[key_close]
             df[key_x] = BIAS(s, n)
@@ -162,7 +195,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
             elif t == 'v':
                 s = df[key_volume]
             elif t == 'oi':
-                s = df[key_oi]
+                s = df[quoter.kline_key_oi]
             else:
                 s = df[key_close]
             df[key_x] = nmBIAS(s, n, m)

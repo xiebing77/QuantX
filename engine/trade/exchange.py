@@ -8,22 +8,21 @@ from . import *
 POSITION_ORDER_COUNT = 'order_count'
 
 
-def update_position_by_order(symbol, trader, position, order, commission):
-    '''
-    order_status = order[trader.ORDER_STATUS_KEY]
-    if order_status in pst[POSITION_ORDER_COUNT]:
-        pst[POSITION_ORDER_COUNT][order_status] += 1
-    else:
-        pst[POSITION_ORDER_COUNT][order_status] = 1
-    '''
-    base_qty = float(order[trader.Order_Key_ExecutedQty])
+def update_position_by_order(symbol, multiplier, trader, position, order, commission):
+    position[POSITION_ORDER_COUNT] += 1
+    base_qty = trader.get_order_exec_qty(order)
     if base_qty == 0:
         return
-    quote_qty = float(order[trader.Order_Key_CummulativeQuoteQty])
+    quote_qty = multiplier * trader.get_order_exec_quote_qty(order)
 
-    base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
-    base_asset_name = trader._get_coinkey(base_asset_name)
-    quote_asset_name = trader._get_coinkey(quote_asset_name)
+    if hasattr(trader, 'currency'):
+        base_asset_name = None
+        quote_asset_name = trader.currency
+    else:
+        base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
+        base_asset_name = trader._get_coinkey(base_asset_name)
+        quote_asset_name = trader._get_coinkey(quote_asset_name)
+
     if trader.order_is_buy(order):
         side = common.SIDE_BUY
         if base_asset_name in commission:
@@ -32,16 +31,17 @@ def update_position_by_order(symbol, trader, position, order, commission):
             base_qty -= fee_base
             del commission[base_asset_name]
             commission[quote_asset_name] = fee
+            quote_qty -= fee #
         elif quote_asset_name in commission:
             fee = abs(commission[quote_asset_name])
-            quote_qty -= fee
+            #quote_qty += fee
         else:
             pass
     else:
         side = common.SIDE_SELL
         if quote_asset_name in commission:
             fee = abs(commission[quote_asset_name])
-            quote_qty -= fee
+            #quote_qty -= fee
         elif base_asset_name in commission:
             log.critical('{}'.format(commission))
         else:
@@ -52,12 +52,16 @@ def update_position_by_order(symbol, trader, position, order, commission):
 
 
 def get_commission_from_trades(trader, trades):
+    if not hasattr(trader, 'Trade_Key_CommissionQty'):
+        return None
+
     commission = {}
     for trade in trades:
-        if not trade[trader.Trade_Key_CommissionQty]:
-            continue
         trade_commissionQty = abs(float(trade[trader.Trade_Key_CommissionQty]))
-        asset_name = trade[trader.Trade_Key_CommissionAsset]
+        if hasattr(trader, 'Trade_Key_CommissionAsset'):
+            asset_name = trade[trader.Trade_Key_CommissionAsset]
+        else:
+            asset_name = trader.currency
         if asset_name in commission:
             commission[asset_name] += trade_commissionQty
         else:
@@ -89,12 +93,18 @@ class ExchangeTradeEngine(TradeEngine):
             self.symbol_precs[symbol] = (b_prec, q_prec)
         return self.symbol_precs[symbol]
 
-    def new_limit_bill(self, side, symbol, price, qty, rmk=''):
+    def new_limit_bill(self, side, symbol, price, qty, rmk='', oc=None):
         typ = common.ORDER_TYPE_LIMIT
-        order_id = self.trader.new_order(side, typ, symbol, price, qty)
+        ret = self.trader.new_order(side, typ, symbol, price, qty, oc=oc)
+        #print('new_limit_bill ret type: {}  {}'.format(type(ret), ret))
+        if type(ret) in [str, int] :
+            order_id = ret
+        else:
+            order = ret
+            order_id = order[self.trader.Order_Id_Key]
         if not order_id:
             return None
-        _id = self.trade_db.insert_one(self.bills_collection_name, {
+        bill = {
             "create_time": datetime.datetime.now(),#time.time(),
             "instance_id": self.instance_id,
             "symbol": symbol,
@@ -105,8 +115,11 @@ class ExchangeTradeEngine(TradeEngine):
             "qty": qty,
             common.BILL_ORDER_ID_KEY: order_id,
             "rmk": rmk,
-        })
-        return order_id
+        }
+        if oc:
+            bill['oc'] = oc
+        _id = self.trade_db.insert_one(self.bills_collection_name, bill)
+        return ret
 
     def cancel_bills(self, symbol, bills):
         orderIds = [bill[common.BILL_ORDER_ID_KEY] for bill in bills]
@@ -120,6 +133,18 @@ class ExchangeTradeEngine(TradeEngine):
         })
         #pprint(open_bills)
         return open_bills
+
+    def get_bill(self, order_id):
+        bills = self.trade_db.find(self.bills_collection_name, {
+            "instance_id": self.instance_id,
+            "order_id": order_id})
+        #pprint(bills)
+        if len(bills) > 1:
+            log.debug('{}'.format(bills))
+        elif len(bills) == 1:
+            return bills[0]
+        else:
+            return None
 
     def get_order_from_db(self, symbol, order_id):
         orders = self.trade_db.find(self.orders_collection_name, {
@@ -147,7 +172,7 @@ class ExchangeTradeEngine(TradeEngine):
         trades = self.trade_db.find(self.trades_collection_name, query)
         return trades
 
-    def _init_position(self, symbol):
+    def _init_position(self, symbol, multiplier):
         pst = init_position()
         pst[POSITION_ORDER_COUNT] = 0
         close_bills = self.get_bills(symbol, common.BILL_STATUS_CLOSE)
@@ -160,19 +185,42 @@ class ExchangeTradeEngine(TradeEngine):
             order_id = order[self.trader.Order_Id_Key]
             trades = self._get_trades_from_db(symbol, [order_id])
             commission = get_commission_from_trades(self.trader, trades)
-            update_position_by_order(symbol, self.trader, pst, order, commission)
+            update_position_by_order(symbol, multiplier, self.trader, pst, order, commission)
 
         return pst
 
 
-    def get_position(self, symbol):
-        self.handle_open_bills(symbol)
+    def get_position(self, symbol, multiplier):
+        self.handle_open_bills(symbol, multiplier)
         return self.position
 
+    def close_bill_to_db(self, bill, order, trades):
+        commission = {}
+        if len(trades) > 0:
+            commission = get_commission_from_trades(self.trader, trades)
+            self.trade_db.insert_many(self.trades_collection_name, trades)
+        self.trade_db.insert_one(self.orders_collection_name, order)
+        self.trade_db.update_one(self.bills_collection_name, bill['_id'],
+            {common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE})
+        return commission
 
-    def handle_open_bills(self, symbol):
+
+    def sync_bill(self, symbol, multiplier, order, trades):
+        if not self.trader.check_status_is_close(order):
+            return
+        order_id = order[self.trader.Order_Id_Key]
+        bill = self.get_bill(order_id)
+        if not bill:
+            return
+        commission = self.close_bill_to_db(bill, order, trades)
+        update_position_by_order(symbol, multiplier, self.trader,
+                                 self.position, order, commission)
+        print('sync_bill => ', self.position)
+
+
+    def handle_open_bills(self, symbol, multiplier):
         if not self.position:
-            self.position = self._init_position(symbol)
+            self.position = self._init_position(symbol, multiplier)
 
         open_bills = self.get_bills(symbol, common.BILL_STATUS_OPEN)
         if not open_bills:
@@ -196,30 +244,20 @@ class ExchangeTradeEngine(TradeEngine):
                 if not order:
                     log.debug('error bill: %s' % bill)
                 if order and self.trader.check_status_is_close(order):
-                    commission = {}
-                    if float(order[self.trader.Order_Key_ExecutedQty]) > 0:
+                    r_trades = []
+                    if self.trader.get_order_exec_qty(order) > 0:
                         if not trades:
                             trades = self.trader.my_trades(symbol)
                         r_trades = self.trader.search_trades(order_id, trades)
-                        if r_trades:
-                            # to continue. long time part filled
-                            commission = get_commission_from_trades(self.trader, r_trades)
-                            self.trade_db.insert_many(self.trades_collection_name, r_trades)
-                    self.trade_db.insert_one(self.orders_collection_name, order)
-                    self.trade_db.update_one(self.bills_collection_name, open_bill['_id'], {
-                        common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE,
-                    })
-                    update_position_by_order(symbol, self.trader, self.position, order, commission)
+                    commission = self.close_bill_to_db(open_bill, order, r_trades)
+                    update_position_by_order(symbol, multiplier, self.trader,
+                                             self.position, order, commission)
                     continue
 
             if open_bill[common.SIDE_KEY] == common.SIDE_BUY:
                 buy_open_bills.append(open_bill)
             else:
                 sell_open_bills.append(open_bill)
+        print('handle_open_bills => ', self.position)
         return buy_open_bills, sell_open_bills
-
-
-    def cancel_bills(self, symbol, bills):
-        orderIds = [bill[common.BILL_ORDER_ID_KEY] for bill in bills]
-        self.trader.cancel_orders_byId(symbol, orderIds)
 

@@ -7,10 +7,10 @@ def HIGHEST(high, N):
 def LOWEST(low, N):
     return low.rolling(N).min()
 
-def SUM(s, N):
+def RSUM(s, N):
     return s.rolling(N).sum()
 
-def STD(s, N):
+def RSTD(s, N):
     return s.rolling(N).std()
 
 def MA(s, N):
@@ -26,17 +26,17 @@ def nmBIAS(s, N, M):
     return MA(s, N) / MA(s, M) - 1
 
 def PB(close, N):
-    return (close - MA(close, N)) / STD(close, N)
+    return (close - MA(close, N)) / RSTD(close, N)
 
 def BW(close, N):
-    return STD(close, N) / MA(close, N)
+    return RSTD(close, N) / MA(close, N)
 
 def CLV(high, low, close):
     return (2*close - high - low) / (high - low)
 
 def CV(high, low, N=10):
     hlema = EMA(high - low, N)
-    return hlema.diff(N) / hlema.shift(-N)
+    return hlema.diff(N) / hlema.shift(N)
 
 def DBCD(close, N=5, M=16, T=17):
     bias = BIAS(close, N)
@@ -58,31 +58,34 @@ def KDJ(high, low, close, N=9):
 def CMF(high, low, close, volume, N=21):
     clv = CLV(high, low, close)
     va = clv * volume
-    return SUM(va, N) / SUM(volume, N)
+    return RSUM(va, N) / RSUM(volume, N)
 
 def CR(high, low, close, N=20):
-    highest = HIGHEST(high, N)
-    lowest = LOWEST(low, N)
-    typ = (highest + lowest + close) / 3
-    pre_typ = typ.shift(-1)
-    hp = (highest - pre_typ).apply(lambda x: max(x, 0))
-    pl = (pre_typ - lowest).apply(lambda x: max(x, 0))
-    return SUM(hp, N) / SUM(pl, N)
+    typ = (high + low + close) / 3
+    pre_typ = typ.shift()
+    hp = (high - pre_typ).apply(lambda x: max(x, 0))
+    pl = (pre_typ - low).apply(lambda x: max(x, 0))
+    return RSUM(hp, N) / RSUM(pl, N)
+
+def CR2(high, low, close, N=20):
+    return CR(HIGHEST(high, N), LOWEST(low, N), close, N)
 
 def MassIndex(high, low, close, N=9):
-    highest = HIGHEST(high, N)
-    lowest = LOWEST(low, N)
-    emahl = EMA(highest - lowest, N)
+    emahl = EMA(high - low, N)
     emaratio = emahl / EMA(emahl, N)
-    return emaratio#SUM(emaratio, 25)
+    return emaratio#RSUM(emaratio, 25)
+
+def MassIndex2(high, low, close, N=9):
+    return MassIndex(HIGHEST(high, N), LOWEST(low, N), close, N)
 
 def ElderRayIndex(high, low, close, N=13):
-    highest = HIGHEST(high, N)
-    lowest = LOWEST(low, N)
     close_ema = EMA(close, N)
-    BullPower = highest - close_ema
-    BearPower = lowest - close_ema
+    BullPower = high - close_ema
+    BearPower = low - close_ema
     return (BullPower - BearPower) / close
+
+def ElderRayIndex2(high, low, close, N=13):
+    return ElderRayIndex(HIGHEST(high, N), LOWEST(low, N), close, N)
 
 def max_df(a, b):
     df = pd.DataFrame()
@@ -99,17 +102,19 @@ def min_df(a, b):
     return s
 
 def UOS(high, low, close, M=7, N=14, O=28):
-    highest = HIGHEST(high, N)
-    lowest = LOWEST(low, N)
-    th = max_df(highest, close.shift(-1))
-    tl = min_df(lowest, close.shift(-1))
+    prev_close = close.shift()
+    th = max_df(high, prev_close)
+    tl = min_df(low, prev_close)
     tr = th - tl
     xr = close - tl
-    XRM = SUM(xr, M) / SUM(tr, M)
-    XRN = SUM(xr, N) / SUM(tr, N)
-    XRO = SUM(xr, O) / SUM(tr, O)
+    XRM = RSUM(xr, M) / RSUM(tr, M)
+    XRN = RSUM(xr, N) / RSUM(tr, N)
+    XRO = RSUM(xr, O) / RSUM(tr, O)
     UOS = 100 * (XRM*N*O + XRN*M*O + XRO*M*N) / (M*N + M*O+ N*O)
     return UOS
+
+def UOS2(high, low, close, M=7, N=14, O=28):
+    return UOS(HIGHEST(high, N), LOWEST(low, N), close, M, N, O)
 
 def si_r(x):
     m = max(x.a, x.b, x.c)
@@ -121,15 +126,16 @@ def si_r(x):
         return x.c + x.d/4
 
 def SI(open, high, low, close, N):
-    highest = HIGHEST(high, N)
-    lowest = LOWEST(low, N)
-    A = abs(close - close.shift(-1))
-    B = abs(lowest - close.shift(-1))
-    C = abs(highest - lowest.shift(-1))
-    D = abs(close.shift(-1) - open.shift(-1))
+    prev_close = close.shift()
+    prev_open = open.shift()
+    prev_low = low.shift()
     E = close.diff()
+    A = E.abs()
+    B = (low - prev_close).abs()
+    C = (high - prev_low).abs()
+    D = (prev_close - prev_open).abs()
     F = close - open
-    G = close.shift(-1) - open.shift(-1)
+    G = prev_close - prev_open
     X = E + F/2 + G
     #K = max(A, B)
     df = pd.DataFrame()
@@ -160,9 +166,12 @@ def SI(open, high, low, close, N):
 
 def ASIR(open, high, low, close, N=20):
     si = SI(open, high, low, close, N)
-    asi = SUM(si, N)
+    asi = RSUM(si, N)
     asir = asi / EMA(close, N)
     return asir
+
+def ASIR2(open, high, low, close, N=20):
+    return ASIR(open, HIGHEST(high, N), LOWEST(low, N), close)
 
 def UI(close, N):
     closest = close.rolling(N).max()
@@ -171,7 +180,7 @@ def UI(close, N):
 
 def Hurst(close, N):
     n = N
-    x = log(close) - log(close.shift(-1))
+    x = log(close) - log(close.shift())
     mean = x.rolling(n).mean()
     std = x.rolling(n).std()
     z = (close - mean).rolling(n).sum()

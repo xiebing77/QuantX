@@ -174,6 +174,7 @@ def calc_momentum_indicators(quoter, is_tick, config, df, calc_all=False):
             tp = 14
         key_x = '%s_%s' % (name, tp)
         df[key_x] = talib.PLUS_DM(df[key_high], df[key_low], timeperiod=tp)
+        key_xs.append(key_x)
 
     name = 'PPO'
     if calc_all or name in config:

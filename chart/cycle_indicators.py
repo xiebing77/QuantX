@@ -75,23 +75,24 @@ def handle_cycle_indicators(args, axes, i, klines_df, close_times, display_count
         axes[i].plot(close_times, real[-display_count:], "y:", label=name)
 
 
-def handle_cycle_indicators2(args, kdf):
+def handle_cycle_indicators2(args, df):
     # talib
+    key_close = 'close'
     sss = []
     if args.HT_DCPERIOD:
-        real = talib.HT_DCPERIOD(kdf["close"])
+        real = talib.HT_DCPERIOD(df["close"])
         sss.append([('HT_DCPERIOD', real, {})])
     if args.HT_DCPHASE:
-        real = talib.HT_DCPHASE(kdf["close"])
+        real = talib.HT_DCPHASE(df["close"])
         sss.append([('HT_DCPHASE', real, {})])
     if args.HT_PHASOR:
-        real = talib.HT_PHASOR(kdf["close"])
-        sss.append([('HT_PHASOR', real, {})])
+        inphase, quadrature = talib.HT_PHASOR(df[key_close])
+        sss.append([('HT_PHASOR', inphase, {})])
     if args.HT_SINE:
-        real = talib.HT_SINE(kdf["close"])
-        sss.append([('HT_SINE', real, {})])
+        sine, leadsine = talib.HT_SINE(df[key_close])
+        sss.append([('HT_SINE', sine, {})])
     if args.HT_TRENDMODE:
-        real = talib.HT_TRENDMODE(kdf["close"])
+        real = talib.HT_TRENDMODE(df["close"])
         sss.append([('HT_TRENDMODE', real, {})])
     return sss
 

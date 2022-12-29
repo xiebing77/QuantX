@@ -14,7 +14,7 @@ def get_instance(sii):
 
     instances = db.find(INSTANCE_COLLECTION_NAME, {"instance_id": sii})
     #print(instances)
-    if len(instances) is 0:
+    if len(instances) == 0:
         print("instance id (%s) not exist!" % (sii))
         exit(1)
     elif len(instances) > 1:

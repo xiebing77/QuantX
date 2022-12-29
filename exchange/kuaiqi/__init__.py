@@ -7,11 +7,12 @@ from exchange import Exchange
 import common
 
 
-
-class KuaiQi(Exchange):
+class Kuaiqi(Exchange):
     name = 'kuaiqi'
-    unit = 'ms'
+    unit = 'ns'
     min_value = 10
+
+    currency = 'CNY'
 
     tick_key_close_time = 'datetime_nano'
     tick_key_close      = 'last_price'
@@ -56,29 +57,30 @@ class KuaiQi(Exchange):
     BALANCE_FREE_KEY   = 'available'
     BALANCE_LOCKED_KEY = 'lock'
 
-    SIDE_BUY  = 'buy'
-    SIDE_SELL = 'sell'
 
-    Order_Id_Key = 'orderId'
-    Order_Time_Key = 'cTime'
+    '''
+    OC_OPEN       = 'OPEN'
+    OC_CLOSE      = 'CLOSE'
+    OC_CLOSETODAY = 'CLOSETODAY'
 
-    Order_Key_Type = 'type'
-    Order_Key_Side = 'side'
+    SIDE_BUY  = 'BUY'
+    SIDE_SELL = 'SELL'
+    Order_Id_Key = 'order_id'
+    Order_Time_Key = 'insert_date_time'
 
-    Order_Key_Price = 'price'
-    Order_Key_OrigQty = 'quantity'
-    Order_Key_ExecutedQty = 'fillQuantity'
-    Order_Key_CummulativeQuoteQty = 'fillTotalAmount'
+    Order_Key_Type = 'price_type'
+    Order_Key_Side = 'direction'
+
+    Order_Key_Price = 'limit_price'
+    Order_Key_OrigQty = 'volume_orign'
+    #Order_Key_ExecutedQty = 'fillQuantity'
+    #Order_Key_CummulativeQuoteQty = 'fillTotalAmount'
 
     ORDER_STATUS_KEY = 'status'
-    ORDER_STATUS_NEW = 'new'
-    ORDER_STATUS_PARTIALLY_FILLED = 'partial_fill'
-    ORDER_STATUS_FILLED = 'full_fill'
-    ORDER_STATUS_CANCELED = 'cancelled'
-    #ORDER_STATUS_PENDING_CANCEL = 'PENDING_CANCEL'
-    #ORDER_STATUS_REJECTED = 'REJECTED'
-    #ORDER_STATUS_EXPIRED = 'EXPIRED'
+    ORDER_STATUS_NEW = 'ALIVE'
+    ORDER_STATUS_FILLED = 'FINISHED'
 
+    '''
     ex_intervals = {
         kl.KLINE_INTERVAL_1MINUTE: '1m',
         kl.KLINE_INTERVAL_3MINUTE: '3m',
@@ -114,49 +116,49 @@ class KuaiQi(Exchange):
     ORDER_RESP_TYPE_ACK = 'ACK'
     ORDER_RESP_TYPE_RESULT = 'RESULT'
     ORDER_RESP_TYPE_FULL = 'FULL'
-
-    Trade_Key_CommissionQty = 'fees'
-    Trade_Key_CommissionAsset = 'feeCcy'
-    Trade_Key_Qty = 'fillQuantity'
-    Trade_Key_Price = 'fillPrice'
-    Trade_Key_Value = 'fillTotalAmount'
-    Trade_Key_Time = 'fillTime'
-
-
-    TRADE_ORDER_ID_KEY = 'orderId'
     '''
+
+    Trade_Key_CommissionQty = 'commission'
+    #Trade_Key_CommissionAsset = 'feeCcy'
+    Trade_Key_Qty = 'volume'
+    Trade_Key_Price = 'price'
+    Trade_Key_Time = 'trade_date_time'
+
+
+    TRADE_ORDER_ID_KEY = 'order_id'
 
     def __init__(self, debug=False):
         return
 
-    '''
-    def _get_coinkey(self, coin):
-        return coin.upper()
-
     def _trans_symbol(self, symbol):
-        target_coin, base_coin = common.split_symbol_coins(symbol)
-        return '%s%s' % (self._get_coinkey(target_coin), self._get_coinkey(base_coin))
-    '''
+        return symbol
 
-    def get_time_from_data_ts(self, ts):
-        return datetime.fromtimestamp(int(ts) / 1000)
+    _unit = 1e9
+    @staticmethod
+    def get_time_from_data_ts(ts):
+        return datetime.fromtimestamp(int(ts) / Kuaiqi._unit)
 
     def get_data_ts_from_time(self, t):
-        return int(t.timestamp()) * 1000
+        return int(t.timestamp()) * Kuaiqi._unit
 
     def get_timestamp(self):
-        return int(time.time() * 1000)
+        return int(time.time() * Kuaiqi._unit)
 
-    '''
     def get_time_from_trade_data(self, trade):
         ts = trade[self.Trade_Key_Time]
-        return datetime.fromtimestamp(int(ts) / 1000)
+        return datetime.fromtimestamp(int(ts) / Kuaiqi._unit)
+
+    def get_order_exec_qty(self, order):
+        return order[self.Order_Key_OrigQty] - order['volume_left']
+
+    def get_order_exec_quote_qty(self, order):
+        return self.get_order_exec_qty(order) * order['trade_price']
 
     def check_status_is_close(self, order):
-        #print(order)
         order_status = order[self.ORDER_STATUS_KEY]
-        close_statuses = [self.ORDER_STATUS_FILLED, self.ORDER_STATUS_CANCELED]
+        close_statuses = [self.ORDER_STATUS_FILLED]
         return order_status in close_statuses
+    '''
 
     def _order_status_is_close(self, exchange_symbol, order_id):
         order = self._get_order(exchange_symbol, order_id)
