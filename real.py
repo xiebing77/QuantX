@@ -168,13 +168,18 @@ def real_list(args):
             print(ept)
             continue
 
+        if 'multiplier' in config:
+            multiplier = config['multiplier']
+        else:
+            multiplier = 1
+
         trade_engine = ExchangeTradeEngine(instance_id, exchange)
-        pst = trade_engine.get_position(symbol)
+        pst = trade_engine.get_position(symbol, multiplier)
         pst_base_qty = trade.get_pst_qty(pst)
         pst_quote_qty = pst[trade.POSITION_QUOTE_QTY_KEY]
         deal_quote_qty = pst[trade.POSITION_DEAL_QUOTE_QTY_KEY]
 
-        float_profit, total_profit = trade.get_gross_profit(pst, ticker_price, config['multiplier'])
+        float_profit, total_profit = trade.get_gross_profit(pst, ticker_price, multiplier)
 
         commission = trade.get_pst_commission(pst)
         base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)

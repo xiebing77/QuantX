@@ -114,7 +114,7 @@ class KuaiqiFutures(Kuaiqi):
 
     def _my_trades(self, exchange_symbol, **kwargs):
         trades = self.__api.get_trade()
-        log.info('_my_trades', trades)
+        log.info('_my_trades: {}'.format(trades))
         return [trade for trade in trades.values()]
 
 
@@ -151,7 +151,7 @@ class KuaiqiFutures(Kuaiqi):
             'limit_price': limit_price,
             'volume': qty
         }
-        log.info('-----> insert order:  ', params)
+        log.info('-----> insert order:  {}'.format(params))
         order = self.__api.insert_order(**params)
         '''
         log.info('before: ', order)
@@ -170,19 +170,19 @@ class KuaiqiFutures(Kuaiqi):
         log.info('_get_order before id: {}, order: {}'.format(order_id, order))
         while not order.order_id:
             self.__api.wait_update()
-        log.info('_get_order  after: ', order)
-        log.info('trade_records', order.trade_records)
+        log.info('_get_order  after: {}'.format(order))
+        log.info('trade_records: {}'.format(order.trade_records))
         return order
 
     def _get_orders(self, exchange_symbol, limit=None):
         return []
         orders = self.__api.get_order()
         self.__api.wait_update()
-        log.info('_get_orders: ', orders)
+        log.info('_get_orders: {}'.format(orders))
         return orders
 
     def _cancel_order(self, exchange_symbol, order_id):
-        log.info('-----> cancel order id:  ', order_id)
+        log.info('-----> cancel order id:  {}'.format(order_id))
         self.__api.cancel_order(order_id)
 
     def _cancel_open_orders(self, exchange_symbol):

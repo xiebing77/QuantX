@@ -108,7 +108,7 @@ def tq_run():
         now_time = datetime.now()
 
         if api.is_changing(close_order, check_key):
-            log.info(now_time, '  close_order  ', close_order)
+            log.info('{}  close_order  {}'.format(now_time, close_order))
             handle_order(trader, strategy, close_order)
             close_order = None
             if open_signal:
@@ -119,12 +119,12 @@ def tq_run():
                 continue
 
         if api.is_changing(open_order, check_key):
-            log.info(now_time, '   open_order  ', open_order)
+            log.info('{}   open_order  {}'.format(now_time, open_order))
             handle_order(trader, strategy, open_order)
             open_order = None
 
         if api.is_changing(sl_order, check_key):
-            log.info(now_time, '     sl_order  ', sl_order)
+            log.info('{}     sl_order  {}'.format(now_time, sl_order))
             handle_order(trader, strategy, sl_order)
             sl_order = None
 
