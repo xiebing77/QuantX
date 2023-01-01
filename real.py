@@ -146,11 +146,15 @@ def real_list(args):
         #if status != args.status and status != "":
         #    continue
 
+        multiplier = 1
         config_path = s["config_path"]
         if config_path:
             config = common.get_json_config(config_path)
             symbol = config['symbol']
+            if 'multiplier' in config:
+                multiplier = config['multiplier']
         else:
+            config = None
             symbol = s['symbol']
 
         #all_value += value
@@ -167,11 +171,6 @@ def real_list(args):
             log.critical(ept)
             print(ept)
             continue
-
-        if 'multiplier' in config:
-            multiplier = config['multiplier']
-        else:
-            multiplier = 1
 
         trade_engine = ExchangeTradeEngine(instance_id, exchange)
         pst = trade_engine.get_position(symbol, multiplier)
@@ -203,7 +202,7 @@ def real_list(args):
             else:
                 asset_stat['commission'][coin] = 0
 
-        if 'prec' in config:
+        if config and 'prec' in config:
             prec_price = config['prec']['price']
             prec_qty   = config['prec']['qty']
         else:
