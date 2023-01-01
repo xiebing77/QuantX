@@ -41,7 +41,10 @@ if __name__ == "__main__":
         else:
             #print(coin)
             symbol = creat_symbol(coin, qoutecoin)
-            price = exchange.ticker_price(symbol)
+            try:
+                price = exchange.ticker_price(symbol)
+            except Exception as ept:
+                print(symbol, ept)
             value = price * amount
 
         total_value += value

@@ -289,14 +289,18 @@ def real_analyze(args):
         print('%s not exist' % (instance_id))
         exit(1)
     s = ss[0]
+
     config_path = s["config_path"]
-    config = common.get_json_config(config_path)
-    if s['symbol']:
-        symbol = s['symbol']
-    else:
+    if config_path:
+        config = common.get_json_config(config_path)
+        if s['symbol'] and config['symbol'] != s['symbol']:
+            print('symbol diff:%s %s' % (config['symbol'], s['symbol']))
+            exit(1)
         symbol = config['symbol']
         if 'contract_month' in config:
             symbol += config['contract_month']
+    else:
+        symbol = s['symbol']
     exchange_name = s['exchange']
     exchange = create_exchange(exchange_name)
     if not exchange:
