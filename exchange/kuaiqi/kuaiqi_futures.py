@@ -2,6 +2,7 @@
 """bybit spot"""
 import os
 import math
+import time
 from datetime import datetime
 import uuid
 from . import Kuaiqi
@@ -153,12 +154,9 @@ class KuaiqiFutures(Kuaiqi):
         }
         log.info('-----> insert order:  {}'.format(params))
         order = self.__api.insert_order(**params)
-        '''
-        log.info('before: ', order)
-        while not order.order_id:
-            self.__api.wait_update()
-        log.info(' after: ', order)
-        '''
+        self.__api.wait_update(deadline=time.time()+5)
+        if not order.exchange_order_id:
+            order = None
         return order
 
 
@@ -167,7 +165,8 @@ class KuaiqiFutures(Kuaiqi):
 
     def _get_order(self, exchange_symbol, order_id):
         order = self.__api.get_order(order_id)
-        log.info('_get_order before id: {}, order: {}'.format(order_id, order))
+        log.info('_get_order id: {}'.format(order_id))
+        log.info('_get_order before: {}'.format(order))
         while not order.order_id:
             self.__api.wait_update()
         log.info('_get_order  after: {}'.format(order))
