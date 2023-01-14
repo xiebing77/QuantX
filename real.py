@@ -4,7 +4,7 @@ from datetime import timedelta
 import os
 import common
 import common.log as log
-from common import SIDE_BUY, SIDE_SELL
+from common import SIDE_BUY, SIDE_SELL, OC_OPEN, OC_CLOSE
 from common import ORDER_TYPE_LIMIT
 from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INSTANCE_STATUS_STOP, instance_statuses, add_instance, delete_instance, update_instance
 from exchange.exchange_factory import get_exchange_names, create_exchange
@@ -85,7 +85,15 @@ def real_hand(args):
         print('%s not exist' % (instance_id))
         exit(1)
     s = ss[0]
-    symbol = s['symbol']
+
+    config_path = s["config_path"]
+    if config_path:
+        config = common.get_json_config(config_path)
+        symbol = config['symbol']
+        if 'contract_month' in config:
+            symbol += config['contract_month']
+    else:
+        symbol = s['symbol']
     exchange_name = s['exchange']
     if args.print:
         log.print_switch = True
@@ -104,11 +112,17 @@ def real_hand(args):
     exchange.connect()
     exchange.ping()
     trade_engine = ExchangeTradeEngine(instance_id, exchange)
-    order_id = trade_engine.new_limit_bill(
-        side=args.side,
-        symbol=symbol,
-        price=args.price,
-        qty=args.qty)
+
+    params = {
+        'side': args.side,
+        'symbol': symbol,
+        'price': args.price,
+        'qty': args.qty
+    }
+    if args.oc:
+        params['oc'] = args.oc
+    print('real hand params: ', params)
+    order_id = trade_engine.new_limit_bill(**params)
 
 
 def round_commission(commission):
@@ -364,6 +378,7 @@ def real():
 
     parser_hand = subparsers.add_parser('hand', help='handmade instance')
     parser_hand.add_argument('-iid', required=True, help='instance id')
+    parser_hand.add_argument('-oc', choices=[OC_OPEN, OC_CLOSE], help='')
     parser_hand.add_argument('-side', required=True, choices=[SIDE_BUY, SIDE_SELL], help='')
     parser_hand.add_argument('-price', required=True, type=float, help='price')
     parser_hand.add_argument('-qty', required=True, type=float, help='quantity')

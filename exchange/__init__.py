@@ -4,6 +4,8 @@ import common.log as log
 
 class Account():
 
+    need_oc = False
+
     def trans_side(self, side):
         if side == common.SIDE_BUY:
             return self.SIDE_BUY
@@ -11,7 +13,7 @@ class Account():
 
     # adpation
     def new_order(self, side, typ, symbol, price, qty, client_order_id=None, oc=None):
-        log.info('create order: pair(%s), side(%s), type(%s), price(%s), qty(%s)' % (symbol, side, typ, price, qty))
+        log.info('create order: pair(%s), side(%s), type(%s), price(%s), qty(%s), oc(%s)' % (symbol, side, typ, price, qty, oc))
         ex_side = self.trans_side(side)
         if hasattr(self, '_before_create_order'):
             target_coin, base_coin = common.get_symbol_coins(symbol)
@@ -23,7 +25,7 @@ class Account():
         else:
             ex_type = typ
 
-        if oc:
+        if self.need_oc:
             extra = {'oc': oc}
         else:
             extra = {}

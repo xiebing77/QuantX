@@ -97,6 +97,9 @@ class ExchangeTradeEngine(TradeEngine):
         typ = common.ORDER_TYPE_LIMIT
         ret = self.trader.new_order(side, typ, symbol, price, qty, oc=oc)
         #print('new_limit_bill ret type: {}  {}'.format(type(ret), ret))
+        if not ret:
+            return None
+
         if type(ret) in [str, int] :
             order_id = ret
         else:
