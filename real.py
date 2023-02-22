@@ -145,11 +145,11 @@ def real_list(args):
     title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
-    title_tail_fmt = "  %10s  %13s  %-16s  %-6s  %-s"
+    title_tail_fmt = "  %10s  %10s  %13s  %20s  %-16s  %-6s  %-s"
 
     print(title_head_fmt % ("instance_id", "symbol") +
         title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission") +
-        title_tail_fmt % ('value', 'slippage_rate', "exchange", "status", "config_path"))
+        title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "config_path"))
     for s in ss:
         instance_id = s["instance_id"]
         exchange_name = s["exchange"]
@@ -165,6 +165,8 @@ def real_list(args):
         if config_path:
             config = common.get_json_config(config_path)
             symbol = config['symbol']
+            if 'contract_month' in config:
+                symbol += config['contract_month']
             if 'multiplier' in config:
                 multiplier = config['multiplier']
         else:
@@ -195,7 +197,12 @@ def real_list(args):
         float_profit, total_profit = trade.get_gross_profit(pst, ticker_price, multiplier)
 
         commission = trade.get_pst_commission(pst)
-        base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
+        trader = trade_engine.trader
+        if hasattr(trader, 'currency'):
+            base_asset_name = None
+            quote_asset_name = trader.currency
+        else:
+            base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
         if quote_asset_name not in all_asset_stat:
             all_asset_stat[quote_asset_name] = {
                 trade.POSITION_QUOTE_QTY_KEY: 0,
@@ -228,6 +235,7 @@ def real_list(args):
             round(total_profit, prec_price),
             round_commission(commission))
 
+        exchange.close()
         #except Exception as ept:
         #    profit_info = "error:  %s" % (ept)
 
@@ -236,14 +244,24 @@ def real_list(args):
         else:
             value_info = ''
 
+        if 'amount' in s:
+            amount_info = '%s'%s['amount']
+        else:
+            amount_info = ''
+
         if 'slippage_rate' in s:
             sr_info = '%s'%s['slippage_rate']
         else:
             sr_info = ''
 
+        if 'threshold' in s:
+            threshold_info = '%s'%s['threshold']
+        else:
+            threshold_info = ''
+
         print(head_fmt % (instance_id, symbol) +
             profit_info +
-            title_tail_fmt % (value_info, sr_info, exchange_name, status, config_path))
+            title_tail_fmt % (value_info, amount_info, sr_info, threshold_info, exchange_name, status, config_path))
 
     if args.stat:
         print('assert stat:')
@@ -289,8 +307,12 @@ def real_update(args):
         record["status"] = args.status
     if args.value:
         record["value"] = args.value
+    if args.amount:
+        record["amount"] = args.amount
     if args.slippage_rate:
         record["slippage_rate"] = args.slippage_rate
+    if args.threshold:
+        record["threshold"] = args.threshold
 
     if record:
         update_instance({"instance_id": args.iid}, record)
@@ -326,8 +348,9 @@ def real_analyze(args):
     close_bills = trade_engine.get_bills(symbol, common.BILL_STATUS_CLOSE)
     pst_qty = 0
     pst_quote_qty = 0
-    cb_fmt = '%26s  %12s  %5s  %7s  %10s  %12s  %12s  %12s  %12s  %12s'
-    print(cb_fmt % ('create_time', 'order_id', 'side', 'status', 'qty', 'limit_price', 'deal_price', 'commission', 'pst_qty', 'pst_cost'))
+    cb_fmt = '%26s  %5s  %5s  %10s  %12s  %12s  %12s  %15s  %30s  %12s  %12s  %7s  %12s'
+    cb_title = ('create_time', 'oc', 'side', 'qty', 'limit_price', 'deal_price', 'profit', 'commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
+    print(cb_fmt % (cb_title))
     for cb in close_bills:
         #print(cb)
         order_id = cb['order_id']
@@ -353,15 +376,30 @@ def real_analyze(args):
             else:
                 pst_cost = float(pst_quote_qty / pst_qty)
 
+        oc = cb['oc']
+        side = cb['side']
+        if deal_price > 0:
+            if oc == OC_OPEN:
+                pre_deal_price = deal_price
+                profit = 0
+            else:
+                diff_price = deal_price - pre_deal_price
+                if side == SIDE_BUY:
+                    diff_price = -diff_price
+                profit = diff_price / pre_deal_price
+        else:
+            profit = 0
+
         if 'prec' in config:
             prec_price = config['prec']['price']
             prec_qty   = config['prec']['qty']
         else:
             exchange.connect()
             prec_qty, prec_price = trade_engine.get_symbol_prec(symbol)
-        print(cb_fmt % (cb['create_time'], cb['order_id'], cb['side'], cb['status'],
-            cb['qty'], cb['price'], round(deal_price, prec_price), round_commission(commission),
-            round(pst_qty, prec_qty), round(pst_cost, prec_price)))
+        print(cb_fmt % (cb['create_time'], oc, side,
+            cb['qty'], cb['price'], round(deal_price, prec_price), round(profit, 4), round_commission(commission),
+            cb['rmk'],
+            round(pst_qty, prec_qty), round(pst_cost, prec_price), cb['status'], cb['order_id']))
 
 
 def real():
@@ -415,7 +453,9 @@ def real():
     parser_update.add_argument('--exchange', help='instance exchange')
     parser_update.add_argument('--status', choices=instance_statuses, help='instance status')
     parser_update.add_argument('--value', type=int, help='value')
+    parser_update.add_argument('--amount', type=int, help='amount')
     parser_update.add_argument('--slippage_rate', type=float, help='value')
+    parser_update.add_argument('--threshold', type=float, nargs=2, help='y threshold for open and close, eg: 0.001 -0.001')
     parser_update.set_defaults(func=real_update)
 
     parser_analyze = subparsers.add_parser('analyze', help='analyze instance')

@@ -13,6 +13,9 @@ import common.log as log
 yx_name     = os.environ.get('YIXIN_NAME')
 yx_password = os.environ.get('YIXIN_PWD')
 
+broker_name     = os.environ.get('BROKER_NAME')
+broker_account  = os.environ.get('BROKER_ACCOUNT')
+broker_password = os.environ.get('BROKER_PWD')
 
 class KuaiqiFutures(Kuaiqi):
     name = Kuaiqi.name + '_futures'
@@ -21,12 +24,20 @@ class KuaiqiFutures(Kuaiqi):
 
     depth_limits = [20, 100]
 
+    need_oc = True
+
     def __init__(self, debug=False):
         return
 
+    #def __exit__(self, *exc_details):
+    def close(self):
+        log.info('KuaiqiFutures __exit__')
+        if self.__api:
+            self.__api.close()
+
     def connect(self):
         from tqsdk import TqAccount, TqKq
-        account = TqKq() # TqAccount()
+        account = TqAccount(broker_name, broker_account, broker_password)
         from tqsdk import TqApi, TqAuth
         api = TqApi(account, auth=TqAuth(yx_name, yx_password))
         self.__api = api
@@ -70,11 +81,12 @@ class KuaiqiFutures(Kuaiqi):
         return trades
 
     def _ticker_price(self, exchange_symbol):
-        ticker_info = self.__api.ticker(exchange_symbol)['data']
-        return float(ticker_info['close'])
+        ticker_info = self.__api.get_quote(exchange_symbol)
+        return float(ticker_info.last_price)
 
     def _klines(self, exchange_symbol, interval, size, since):
-        return []
+        klines = self.__api.get_kline_serial(exchange_symbol, interval, data_length=size)
+        return klines
 
     def account(self):
         account = self.__api.get_account()
@@ -134,7 +146,7 @@ class KuaiqiFutures(Kuaiqi):
         if hasattr(self, 'OC_CLOSETODAY') and oc == common.OC_CLOSE:
             ex_pst = self.__api.get_position(ex_symbol)
             self.__api.wait_update()
-            log.info(ex_pst)
+            log.info('ex_pst: {}'.format(ex_pst))
             if ex_side == self.SIDE_SELL:
                 pos_his = ex_pst.pos_long_his
             else:
@@ -154,9 +166,18 @@ class KuaiqiFutures(Kuaiqi):
         }
         log.info('-----> insert order:  {}'.format(params))
         order = self.__api.insert_order(**params)
-        self.__api.wait_update(deadline=time.time()+5)
-        if not order.exchange_order_id:
-            order = None
+        from datetime import datetime
+        insert_dt = datetime.now()
+        log.info('{} insert wait_update before: {}'.format(insert_dt, order))
+        while not order.exchange_order_id:
+            if (datetime.now()-insert_dt).total_seconds() > 5:
+                break
+            self.__api.wait_update()
+        log.info('{} insert wait_update  after: {}'.format(datetime.now(), order))
+
+        #ex_pst = self.__api.get_position(ex_symbol)
+        #self.__api.wait_update()
+        #log.info('ex_pst: {}'.format(ex_pst))
         return order
 
 
