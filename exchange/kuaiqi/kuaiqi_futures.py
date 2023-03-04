@@ -188,7 +188,11 @@ class KuaiqiFutures(Kuaiqi):
         order = self.__api.get_order(order_id)
         log.info('_get_order id: {}'.format(order_id))
         log.info('_get_order before: {}'.format(order))
+        get_dt = datetime.now()
         while not order.order_id:
+            now = datetime.now()
+            if (now-get_dt).total_seconds() > 10:
+                return None
             self.__api.wait_update()
         log.info('_get_order  after: {}'.format(order))
         log.info('trade_records: {}'.format(order.trade_records))

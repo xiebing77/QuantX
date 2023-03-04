@@ -245,7 +245,10 @@ class ExchangeTradeEngine(TradeEngine):
                 if not order:
                     order = self.trader.get_order(symbol, order_id)
                 if not order:
-                    log.debug('error bill: %s' % bill)
+                    log.debug('not order: %s' % open_bill)
+                    self.trade_db.update_one(self.bills_collection_name, open_bill['_id'], {
+                        common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE,
+                    })
                 if order and self.trader.check_status_is_close(order):
                     r_trades = []
                     if self.trader.get_order_exec_qty(order) > 0:
