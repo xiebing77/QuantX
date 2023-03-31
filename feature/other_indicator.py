@@ -14,6 +14,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
         key_high = quoter.kline_key_high
         key_low = quoter.kline_key_low
         key_volume = quoter.kline_key_volume
+        key_oi = quoter.kline_key_oi
 
     name = 'CLV'
     if key_high and (calc_all or name in config):
@@ -200,4 +201,92 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
                 s = df[key_close]
             df[key_x] = nmBIAS(s, n, m)
             key_xs.append(key_x)
+
+    name = 'OIV'
+    if key_oi and (calc_all or name in config):
+        key_x = '%s' % (name)
+        df[key_x] = OIV(df[key_volume], df[key_oi])
+        key_xs.append(key_x)
+
+    name = 'VOI'
+    if key_oi and (calc_all or name in config):
+        key_x = '%s' % (name)
+        df[key_x] = VOI(df[key_volume], df[key_oi])
+        key_xs.append(key_x)
+
+    name = 'MA-EMA'
+    if calc_all or name in config:
+        if name in config and 'period' in config[name]:
+            tp = config[name]['period']
+        else:
+            tp = 16
+        key_x = '%s_%s' % (name, tp)
+        a = talib.MA(df[key_close], timeperiod=tp)
+        b = talib.EMA(df[key_close], timeperiod=tp)
+        df[key_x] = a / b - 1
+        key_xs.append(key_x)
+
+    name = 'EMA-DEMA'
+    if calc_all or name in config:
+        if name in config and 'period' in config[name]:
+            tp = config[name]['period']
+        else:
+            tp = 16
+        key_x = '%s_%s' % (name, tp)
+        a = talib.EMA(df[key_close], timeperiod=tp)
+        b = talib.DEMA(df[key_close], timeperiod=tp)
+        df[key_x] = a / b - 1
+        key_xs.append(key_x)
+
+    name = 'KAMA-EMA'
+    if calc_all or name in config:
+        if name in config and 'period' in config[name]:
+            tp = config[name]['period']
+        else:
+            tp = 16
+        key_x = '%s_%s' % (name, tp)
+        a = talib.KAMA(df[key_close], timeperiod=tp)
+        b = talib.EMA(df[key_close], timeperiod=tp)
+        df[key_x] = a / b - 1
+        key_xs.append(key_x)
+    '''
+    name = 'MAMA-EMA'
+    if calc_all or name in config:
+        if name in config and 'period' in config[name]:
+            tp = config[name]['period']
+        else:
+            fl = 0
+            sl = 0
+        key_x = '%s_%s_%s' % (name, fl, sl)
+        a = talib.MAMA(df[key_close], fastlimit=fl, slowlimit=sl)
+        b = talib.EMA(df[key_close], timeperiod=tp)
+        df[key_x] = a / b - 1
+        key_xs.append(key_x)
+    '''
+    name = 'WMA-EMA'
+    if calc_all or name in config:
+        if name in config and 'period' in config[name]:
+            tp = config[name]['period']
+        else:
+            tp = 16
+        key_x = '%s_%s' % (name, tp)
+        a = talib.WMA(df[key_close], timeperiod=tp)
+        b = talib.EMA(df[key_close], timeperiod=tp)
+        df[key_x] = a / b - 1
+        key_xs.append(key_x)
+
+    name = 'SAR-MIDPRICE'
+    if calc_all or name in config:
+        if name in config and 'period' in config[name]:
+            tp = config[name]['period']
+        else:
+            tp = 16
+        key_x = '%s_%s' % (name, tp)
+        a = talib.SAR(df[key_high], df[key_low], acceleration=0, maximum=0)
+        b = talib.MIDPRICE(df[key_high], df[key_low], timeperiod=tp)
+        df[key_x] = a / b - 1
+        key_xs.append(key_x)
+
+
     return key_xs
+

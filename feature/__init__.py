@@ -26,7 +26,10 @@ def nmBIAS(s, N, M):
     return MA(s, N) / MA(s, M) - 1
 
 def PB(close, N):
-    return (close - MA(close, N)) / RSTD(close, N)
+    k = 2
+    diff = k * RSTD(close, N)
+    down = MA(close, N) - diff
+    return (close - down) / (2 * diff)
 
 def BW(close, N):
     return RSTD(close, N) / MA(close, N)
@@ -186,3 +189,21 @@ def Hurst(close, N):
     z = (close - mean).rolling(n).sum()
     r = z.rolling(N).max() - z.rolling(N).min()
     y = log(r/std)
+
+def EMV(high, low, volume):
+    mid = (high + low) / 2
+    prev_mid = mid.shift()
+    return (mid - prev_mid) / (high - low)
+
+def WVAD(open, high, low, close, volume):
+    return volume * ((close - open)/(high - low))
+
+def OIV(volume, oi):
+    diff_oi = oi - oi.shift()
+    return diff_oi / volume
+
+def VOI(volume, oi):
+    return volume / oi.shift()
+
+def WPR(bid, bid_size, ask, ask_size):
+    return (bid*ask_size + ask*bid_size) / (bid_size+ask_size)

@@ -14,19 +14,20 @@ class Kuaiqi(Exchange):
 
     currency = 'CNY'
 
-    tick_key_close_time = 'datetime_nano'
+    tick_key_close_time = 'datetime'
     tick_key_close      = 'last_price'
     tick_key_volume     = 'volume'
-    tick_key_bid        = 'bid_price1'
-    tick_key_bid_size   = 'bid_volume1'
-    tick_key_ask        = 'ask_price1'
-    tick_key_ask_size   = 'ask_volume1'
+
+    book_key_bid        = 'bid_price1'
+    book_key_bid_size   = 'bid_volume1'
+    book_key_ask        = 'ask_price1'
+    book_key_ask_size   = 'ask_volume1'
 
     kl_bt_accuracy = kl.KLINE_INTERVAL_1MINUTE
 
     kline_data_type = kl.KLINE_DATA_TYPE_LIST
 
-    kline_key_open_time  = kl.KLINE_KEY_OPEN_TIME
+    kline_key_open_time  = 'datetime'
     kline_key_close_time = kl.KLINE_KEY_CLOSE_TIME
     kline_key_open       = kl.KLINE_KEY_OPEN
     kline_key_close      = kl.KLINE_KEY_CLOSE
@@ -139,7 +140,7 @@ class Kuaiqi(Exchange):
         return datetime.fromtimestamp(int(ts) / Kuaiqi._unit)
 
     def get_data_ts_from_time(self, t):
-        return int(t.timestamp()) * Kuaiqi._unit
+        return int(t.timestamp() * Kuaiqi._unit)
 
     def get_timestamp(self):
         return int(time.time() * Kuaiqi._unit)
