@@ -107,6 +107,8 @@ TIME_IN_FORCE_GTC = 'GTC'  # Good till cancelled
 TIME_IN_FORCE_IOC = 'IOC'  # Immediate or cancel
 TIME_IN_FORCE_FOK = 'FOK'  # Fill or kill
 
+BILL_SYMBOL_KEY     = 'symbol'
+BILL_MULTIPLIER_KEY = 'multiplier'
 
 BILL_STATUS_KEY = 'status'
 BILL_STATUS_OPEN = 'open'

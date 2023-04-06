@@ -86,14 +86,6 @@ def real_hand(args):
         exit(1)
     s = ss[0]
 
-    config_path = s["config_path"]
-    if config_path:
-        config = common.get_json_config(config_path)
-        symbol = config['symbol']
-        if 'contract_month' in config:
-            symbol += config['contract_month']
-    else:
-        symbol = s['symbol']
     exchange_name = s['exchange']
     if args.print:
         log.print_switch = True
@@ -113,6 +105,17 @@ def real_hand(args):
     exchange.ping()
     trade_engine = ExchangeTradeEngine(instance_id, exchange)
 
+    config_path = s["config_path"]
+    if config_path:
+        config = common.get_json_config(config_path)
+        if 'contract_code' in config:
+            code = config['contract_code']
+            symbol = trade_engine.get_symbol_by_code(code)
+        else:
+            symbol = config['symbol']
+    else:
+        symbol = s['symbol']
+
     params = {
         'side': args.side,
         'symbol': symbol,
@@ -124,11 +127,44 @@ def real_hand(args):
     print('real hand params: ', params)
     order_id = trade_engine.new_limit_bill(**params)
 
+    for i in range(5):
+        time.sleep(1)
+        buy_open_bills, sell_open_bills = trade_engine.handle_open_bills()
+        if len(buy_open_bills)+len(sell_open_bills) == 0:
+            break
+
 
 def round_commission(commission):
     for coin in commission:
         commission[coin] = round(commission[coin], 8)
     return commission
+
+
+exchanges = {}
+def init_exchanges(exchange_names):
+    for exchange_name in set(exchange_names):
+        try:
+            exchange = create_exchange(exchange_name)
+            if not exchange:
+                print("exchange name error!")
+                exit(1)
+            exchange.connect()
+            exchange.ping()
+            exchanges[exchange_name] = exchange
+        except Exception as ept:
+            log.critical(ept)
+            print(ept)
+
+
+def get_exchange(exchange_name):
+    if exchange_name in exchanges:
+        return exchanges[exchange_name]
+    return None
+
+
+def close_all_exchange():
+    for exchange in exchanges.values():
+        exchange.close()
 
 
 def real_list(args):
@@ -138,6 +174,9 @@ def real_list(args):
     ss = td_db.find(INSTANCE_COLLECTION_NAME, query)
     #print(ss)
     all_asset_stat = {}
+
+    exchange_names = [s["exchange"] for s in ss]
+    init_exchanges(exchange_names)
 
     title_head_fmt = "%-25s  %12s"
     head_fmt       = "%-25s  %12s"
@@ -160,41 +199,35 @@ def real_list(args):
         #if status != args.status and status != "":
         #    continue
 
-        multiplier = 1
         config_path = s["config_path"]
         if config_path:
             config = common.get_json_config(config_path)
-            symbol = config['symbol']
-            if 'contract_month' in config:
-                symbol += config['contract_month']
-            if 'multiplier' in config:
-                multiplier = config['multiplier']
         else:
             config = None
-            symbol = s['symbol']
 
         #all_value += value
         profit_info = ""
-        try:
-            exchange = create_exchange(exchange_name)
-            if not exchange:
-                print("exchange name error!")
-                exit(1)
-            exchange.connect()
-            exchange.ping()
-            ticker_price = exchange.ticker_price(symbol)
-        except Exception as ept:
-            log.critical(ept)
-            print(ept)
+        exchange = get_exchange(exchange_name)
+        if not exchange:
             continue
 
         trade_engine = ExchangeTradeEngine(instance_id, exchange)
-        pst = trade_engine.get_position(symbol, multiplier)
+        pst = trade_engine.get_position()
         pst_base_qty = trade.get_pst_qty(pst)
         pst_quote_qty = pst[trade.POSITION_QUOTE_QTY_KEY]
         deal_quote_qty = pst[trade.POSITION_DEAL_QUOTE_QTY_KEY]
 
-        float_profit, total_profit = trade.get_gross_profit(pst, ticker_price, multiplier)
+        symbol = trade.get_pst_symbol(pst)
+        if symbol:
+            ticker_price = exchange.ticker_price(symbol)
+            float_profit, total_profit = trade.get_gross_profit(pst, ticker_price)
+        else:
+            float_profit, total_profit = 0, 0
+            if config and 'contract_code' in config:
+                code = config['contract_code']
+                symbol = code # trade_engine.get_symbol_by_code(code)
+            else:
+                symbol = config['symbol']
 
         commission = trade.get_pst_commission(pst)
         trader = trade_engine.trader
@@ -235,7 +268,6 @@ def real_list(args):
             round(total_profit, prec_price),
             round_commission(commission))
 
-        exchange.close()
         #except Exception as ept:
         #    profit_info = "error:  %s" % (ept)
 
@@ -262,6 +294,7 @@ def real_list(args):
         print(head_fmt % (instance_id, symbol) +
             profit_info +
             title_tail_fmt % (value_info, amount_info, sr_info, threshold_info, exchange_name, status, config_path))
+    close_all_exchange()
 
     if args.stat:
         print('assert stat:')
@@ -329,14 +362,7 @@ def real_analyze(args):
     config_path = s["config_path"]
     if config_path:
         config = common.get_json_config(config_path)
-        if s['symbol'] and config['symbol'] != s['symbol']:
-            print('symbol diff:%s %s' % (config['symbol'], s['symbol']))
-            exit(1)
-        symbol = config['symbol']
-        if 'contract_month' in config:
-            symbol += config['contract_month']
-    else:
-        symbol = s['symbol']
+
     exchange_name = s['exchange']
     exchange = create_exchange(exchange_name)
     if not exchange:
@@ -345,36 +371,35 @@ def real_analyze(args):
 
     trade_engine = ExchangeTradeEngine(instance_id, exchange)
     trader = trade_engine.trader
-    close_bills = trade_engine.get_bills(symbol, common.BILL_STATUS_CLOSE)
+    close_bills = trade_engine.get_bills(common.BILL_STATUS_CLOSE)
     pst_qty = 0
     pst_quote_qty = 0
-    cb_fmt = '%26s  %5s  %5s  %10s  %12s  %12s  %12s  %15s  %30s  %12s  %12s  %7s  %12s'
-    cb_title = ('create_time', 'oc', 'side', 'qty', 'limit_price', 'deal_price', 'profit', 'commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
+    cb_fmt = '%26s  %14s  %5s  %5s  %10s  %12s  %12s  %12s  %15s  %30s  %12s  %12s  %7s  %12s'
+    cb_title = ('create_time', 'symbol', 'oc', 'side', 'qty', 'limit_price', 'deal_price', 'profit', 'commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
     print(cb_fmt % (cb_title))
     for cb in close_bills:
         #print(cb)
         order_id = cb['order_id']
-        order = trade_engine.get_order_from_db(symbol, cb['order_id'])
+        order = trade_engine.get_order_from_db(cb['order_id'])
         #print(order)
-        trades = trade_engine._get_trades_from_db(symbol, [order_id])
+        trades = trade_engine._get_trades_from_db([order_id])
         commission = get_commission_from_trades(trader, trades)
 
-        executedQty = trader.get_order_exec_qty(order)
-        if executedQty == 0:
-            deal_price = 0
-        else:
-            cummulativeQuoteQty = trader.get_order_exec_quote_qty(order)
-            if exchange.order_is_buy(order):
-                pst_qty += executedQty
-                pst_quote_qty += cummulativeQuoteQty
-            else:
-                pst_qty -= executedQty
-                pst_quote_qty -= cummulativeQuoteQty
-            deal_price = cummulativeQuoteQty / executedQty
-            if pst_qty == 0:
-                pst_cost = 0
-            else:
-                pst_cost = float(pst_quote_qty / pst_qty)
+        deal_price = 0
+        pst_cost = 0
+        if order:
+            executedQty = trader.get_order_exec_qty(order)
+            if executedQty > 0:
+                cummulativeQuoteQty = trader.get_order_exec_quote_qty(order)
+                if exchange.order_is_buy(order):
+                    pst_qty += executedQty
+                    pst_quote_qty += cummulativeQuoteQty
+                else:
+                    pst_qty -= executedQty
+                    pst_quote_qty -= cummulativeQuoteQty
+                deal_price = cummulativeQuoteQty / executedQty
+                if pst_qty != 0:
+                    pst_cost = float(pst_quote_qty / pst_qty)
 
         oc = cb['oc']
         side = cb['side']
@@ -390,13 +415,14 @@ def real_analyze(args):
         else:
             profit = 0
 
+        symbol = cb[common.BILL_SYMBOL_KEY]
         if 'prec' in config:
             prec_price = config['prec']['price']
             prec_qty   = config['prec']['qty']
         else:
             exchange.connect()
             prec_qty, prec_price = trade_engine.get_symbol_prec(symbol)
-        print(cb_fmt % (cb['create_time'], oc, side,
+        print(cb_fmt % (cb['create_time'], symbol, oc, side,
             cb['qty'], cb['price'], round(deal_price, prec_price), round(profit, 4), round_commission(commission),
             cb['rmk'],
             round(pst_qty, prec_qty), round(pst_cost, prec_price), cb['status'], cb['order_id']))

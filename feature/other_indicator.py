@@ -162,6 +162,8 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
                 scs = [{"n": 13}]
 
         for sc in scs:
+            if 't' not in sc:
+                continue
             t = sc['t']
             n = sc['n']
             key_x = '%s_%s_%s' % (name, t, n)
@@ -187,6 +189,8 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
                 scs = [{"n": 13, "m": 39}]
 
         for sc in scs:
+            if 't' not in sc:
+                continue
             t = sc['t']
             n = sc['n']
             m = sc['m']

@@ -39,16 +39,21 @@ def sycn_order_to_bill(trader, strategy, order):
 def check_run_time(now_time):
     #if now_time.weekday() in [5, 6]:
     #    return
-    if 15 == now_time.hour and 30 < now_time.minute:
+
+    if 15 <= now_time.hour < 20:
         return False
-    if 16 <= now_time.hour <= 19:
+    if 20 == now_time.hour and now_time.minute < 30:
         return False
-    if 20 == now_time.hour and now_time.minute < 20:
+
+    if 3 <= now_time.hour < 8:
         return False
+    if 8 == now_time.hour and now_time.minute < 30:
+        return False
+
     return True
 
 
-def tq_loop(strategy, exchange, symbol, interval_sec):
+def tq_loop(strategy, exchange):
     now_time = datetime.now()
     if not check_run_time(now_time):
         #print('{} not run time!'.format(now_time))
@@ -56,6 +61,12 @@ def tq_loop(strategy, exchange, symbol, interval_sec):
 
     log.info('{}  tq connect start!'.format(now_time))
     api = exchange.connect()
+
+    strategy.open_day()
+    symbol = strategy.symbol
+    interval_sec = int(strategy.interval_timedelta.total_seconds())
+    log.info('{}  {}'.format(symbol, interval_sec))
+
     klines = api.get_kline_serial(symbol, interval_sec, data_length=300)
     log.info(klines)
 
@@ -217,19 +228,15 @@ def tq_run():
         strategy.load_train()
         strategy.load_model()
 
-    symbol = strategy.symbol
-    interval_sec = int(strategy.interval_timedelta.total_seconds())
-    log.info('{}  {}'.format(symbol, interval_sec))
-
     pd.reset_option('display.float_format')
 
     while True:
 
         if args.debug:
-            tq_loop(strategy, exchange, symbol, interval_sec)
+            tq_loop(strategy, exchange)
         else:
             try:
-                tq_loop(strategy, exchange, symbol, interval_sec)
+                tq_loop(strategy, exchange)
             except Exception as ept:
                 log.critical(ept)
         time.sleep(60)

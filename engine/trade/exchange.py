@@ -47,7 +47,7 @@ def update_position_by_order(symbol, multiplier, trader, position, order, commis
         else:
             pass
 
-    update_position(position, side, base_qty, quote_qty, commission)
+    update_position(position, symbol, multiplier, side, base_qty, quote_qty, commission)
     return
 
 
@@ -110,7 +110,8 @@ class ExchangeTradeEngine(TradeEngine):
         bill = {
             "create_time": datetime.datetime.now(),#time.time(),
             "instance_id": self.instance_id,
-            "symbol": symbol,
+            common.BILL_SYMBOL_KEY: symbol,
+            common.BILL_MULTIPLIER_KEY: self.get_multiplier_by_symbol(symbol),
             common.BILL_STATUS_KEY: common.BILL_STATUS_OPEN,
             common.SIDE_KEY: side,
             common.ORDER_TYPE_KEY: typ,
@@ -124,14 +125,15 @@ class ExchangeTradeEngine(TradeEngine):
         _id = self.trade_db.insert_one(self.bills_collection_name, bill)
         return ret
 
-    def cancel_bills(self, symbol, bills):
-        orderIds = [bill[common.BILL_ORDER_ID_KEY] for bill in bills]
-        self.trader.cancel_orders_byId(symbol, orderIds)
+    def cancel_bills(self, bills):
+        for bill in bills:
+            symbol  = bill[common.BILL_SYMBOL_KEY]
+            orderId = bill[common.BILL_ORDER_ID_KEY]
+            self.trader.cancel_orders(symbol, orderId)
 
-    def get_bills(self, symbol, bill_status):
+    def get_bills(self, bill_status):
         open_bills = self.trade_db.find(self.bills_collection_name, {
             "instance_id": self.instance_id,
-            "symbol": symbol,
             common.BILL_STATUS_KEY: bill_status,
         })
         #pprint(open_bills)
@@ -149,52 +151,56 @@ class ExchangeTradeEngine(TradeEngine):
         else:
             return None
 
-    def get_order_from_db(self, symbol, order_id):
+    def get_order_from_db(self, order_id):
         orders = self.trade_db.find(self.orders_collection_name, {
             self.trader.Order_Id_Key: order_id,
         })
 
         if len(orders) > 1:
-            log.debug('%s: %s' % (symbol, orders))
+            log.debug('%s: %s' % (orders))
         elif len(orders) == 1:
             return orders[0]
         else:
             return None
 
-    def _get_orders_from_db(self, symbol, order_ids):
+    def _get_orders_from_db(self, order_ids):
         query = {
             self.trader.Order_Id_Key: {"$in": order_ids},
         }
         orders = self.trade_db.find(self.orders_collection_name, query)
         return orders
 
-    def _get_trades_from_db(self, symbol, order_ids):
+    def _get_trades_from_db(self, order_ids):
         query = {
             self.trader.Order_Id_Key: {"$in": order_ids},
         }
         trades = self.trade_db.find(self.trades_collection_name, query)
         return trades
 
-    def _init_position(self, symbol, multiplier):
+    def _init_position(self):
         pst = init_position()
         pst[POSITION_ORDER_COUNT] = 0
-        close_bills = self.get_bills(symbol, common.BILL_STATUS_CLOSE)
+        close_bills = self.get_bills(common.BILL_STATUS_CLOSE)
         order_ids = [b[common.BILL_ORDER_ID_KEY] for b in close_bills]
-        orders = self._get_orders_from_db(symbol, order_ids)
-        log.info('_init_position:  {} {}'.format(len(order_ids), len(orders)))
-        if order_ids and not orders:
-            log.critical("_init_position: not find orders")
-        for order in orders:
-            order_id = order[self.trader.Order_Id_Key]
-            trades = self._get_trades_from_db(symbol, [order_id])
+        log.info('_init_position:  {} {}'.format(len(order_ids), len(close_bills)))
+        for bill in close_bills:
+            symbol = bill[common.BILL_SYMBOL_KEY]
+            multiplier = self.get_multiplier_by_bill(bill)
+            order_id = bill[common.BILL_ORDER_ID_KEY]
+            order = self.get_order_from_db(order_id)
+            if not order:
+                log.critical("_init_position: not find order! id: {}".format(order_id))
+                continue
+            #order_id = order[self.trader.Order_Id_Key]
+            trades = self._get_trades_from_db([order_id])
             commission = get_commission_from_trades(self.trader, trades)
             update_position_by_order(symbol, multiplier, self.trader, pst, order, commission)
 
         return pst
 
 
-    def get_position(self, symbol, multiplier):
-        self.handle_open_bills(symbol, multiplier)
+    def get_position(self):
+        self.handle_open_bills()
         return self.position
 
     def close_bill_to_db(self, bill, order, trades):
@@ -208,34 +214,38 @@ class ExchangeTradeEngine(TradeEngine):
         return commission
 
 
-    def sync_bill(self, symbol, multiplier, order, trades):
+    def sync_bill(self, order, trades):
         if not self.trader.check_status_is_close(order):
             return
         order_id = order[self.trader.Order_Id_Key]
         bill = self.get_bill(order_id)
         if not bill:
             return
+        symbol = bill[common.BILL_SYMBOL_KEY]
+        multiplier = self.get_multiplier_by_bill(bill)
         commission = self.close_bill_to_db(bill, order, trades)
         update_position_by_order(symbol, multiplier, self.trader,
                                  self.position, order, commission)
         print('sync_bill => ', self.position)
 
 
-    def handle_open_bills(self, symbol, multiplier):
+    def handle_open_bills(self):
         if not self.position:
-            self.position = self._init_position(symbol, multiplier)
+            self.position = self._init_position()
 
-        open_bills = self.get_bills(symbol, common.BILL_STATUS_OPEN)
+        open_bills = self.get_bills(common.BILL_STATUS_OPEN)
         if not open_bills:
             return [], []
 
-        open_orders = self.trader.get_open_orders(symbol)
-        open_order_ids = [o[self.trader.Order_Id_Key] for o in open_orders]
         orders = None
         trades = None
         buy_open_bills = []
         sell_open_bills = []
         for open_bill in open_bills:
+            symbol = open_bill[common.BILL_SYMBOL_KEY]
+            open_orders = self.trader.get_open_orders(symbol)
+            open_order_ids = [o[self.trader.Order_Id_Key] for o in open_orders]
+
             order_id = open_bill[common.BILL_ORDER_ID_KEY]
             #log.info('%s %s %s'%(order_id, open_order_ids, order_id in open_order_ids))
             if order_id not in open_order_ids:
@@ -255,6 +265,7 @@ class ExchangeTradeEngine(TradeEngine):
                         if not trades:
                             trades = self.trader.my_trades(symbol)
                         r_trades = self.trader.search_trades(order_id, trades)
+                    multiplier = self.get_multiplier_by_bill(open_bill)
                     commission = self.close_bill_to_db(open_bill, order, r_trades)
                     update_position_by_order(symbol, multiplier, self.trader,
                                              self.position, order, commission)

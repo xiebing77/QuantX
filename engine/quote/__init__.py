@@ -1,5 +1,6 @@
 
 from db.mongodb import get_mongodb
+import setup
 
 
 def stat_trades(quoter, trades):
