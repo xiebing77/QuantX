@@ -119,7 +119,7 @@ class Kuaiqi(Exchange):
     ORDER_RESP_TYPE_FULL = 'FULL'
     '''
 
-    Trade_Key_CommissionQty = 'commission'
+    #Trade_Key_CommissionQty = 'commission'
     #Trade_Key_CommissionAsset = 'feeCcy'
     Trade_Key_Qty = 'volume'
     Trade_Key_Price = 'price'

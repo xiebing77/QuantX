@@ -119,6 +119,7 @@ def real_hand(args):
     params = {
         'side': args.side,
         'symbol': symbol,
+        'multiplier': trade_engine.get_multiplier_by_symbol(symbol),
         'price': args.price,
         'qty': args.qty
     }
@@ -181,13 +182,13 @@ def real_list(args):
     title_head_fmt = "%-25s  %12s"
     head_fmt       = "%-25s  %12s"
 
-    title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s"
+    title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s  %32s  %11s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
     title_tail_fmt = "  %10s  %10s  %13s  %20s  %-16s  %-6s  %-s"
 
     print(title_head_fmt % ("instance_id", "symbol") +
-        title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission") +
+        title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
         title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "config_path"))
     for s in ss:
         instance_id = s["instance_id"]
@@ -212,6 +213,8 @@ def real_list(args):
             continue
 
         trade_engine = ExchangeTradeEngine(instance_id, exchange)
+        cfg_commission = s['commission']
+        trade_engine.set_commission(cfg_commission['rate'], int(cfg_commission['prec']))
         pst = trade_engine.get_position()
         pst_base_qty = trade.get_pst_qty(pst)
         pst_quote_qty = pst[trade.POSITION_QUOTE_QTY_KEY]
@@ -254,7 +257,7 @@ def real_list(args):
             if coin in asset_stat['commission']:
                 asset_stat['commission'][coin] += commission[coin]
             else:
-                asset_stat['commission'][coin] = 0
+                asset_stat['commission'][coin] = commission[coin]
 
         if config and 'prec' in config:
             prec_price = config['prec']['price']
@@ -266,7 +269,9 @@ def real_list(args):
             round(deal_quote_qty, prec_price),
             round(float_profit, prec_price),
             round(total_profit, prec_price),
-            round_commission(commission))
+            round_commission(commission),
+            cfg_commission,
+            pst['order_count'])
 
         #except Exception as ept:
         #    profit_info = "error:  %s" % (ept)
@@ -306,7 +311,9 @@ def real_list(args):
                 round(asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY], prec_price),
                 round(asset_stat['float_profit'], prec_price),
                 round(asset_stat['total_profit'], prec_price),
-                round_commission(asset_stat['commission'])))
+                round_commission(asset_stat['commission']),
+                '',
+                ''))
 
 
 def real_add(args):
@@ -374,8 +381,8 @@ def real_analyze(args):
     close_bills = trade_engine.get_bills(common.BILL_STATUS_CLOSE)
     pst_qty = 0
     pst_quote_qty = 0
-    cb_fmt = '%26s  %14s  %5s  %5s  %10s  %12s  %12s  %12s  %15s  %30s  %12s  %12s  %7s  %12s'
-    cb_title = ('create_time', 'symbol', 'oc', 'side', 'qty', 'limit_price', 'deal_price', 'profit', 'commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
+    cb_fmt = '%26s  %14s  %10s  %5s  %5s  %10s  %12s  %12s  %12s  %15s  %30s  %12s  %12s  %7s  %12s'
+    cb_title = ('create_time', 'symbol', 'multiplier', 'oc', 'side', 'qty', 'limit_price', 'deal_price', 'profit', 'commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
     print(cb_fmt % (cb_title))
     for cb in close_bills:
         #print(cb)
@@ -416,13 +423,14 @@ def real_analyze(args):
             profit = 0
 
         symbol = cb[common.BILL_SYMBOL_KEY]
+        multiplier = cb[common.BILL_MULTIPLIER_KEY]
         if 'prec' in config:
             prec_price = config['prec']['price']
             prec_qty   = config['prec']['qty']
         else:
             exchange.connect()
             prec_qty, prec_price = trade_engine.get_symbol_prec(symbol)
-        print(cb_fmt % (cb['create_time'], symbol, oc, side,
+        print(cb_fmt % (cb['create_time'], symbol, multiplier, oc, side,
             cb['qty'], cb['price'], round(deal_price, prec_price), round(profit, 4), round_commission(commission),
             cb['rmk'],
             round(pst_qty, prec_qty), round(pst_cost, prec_price), cb['status'], cb['order_id']))

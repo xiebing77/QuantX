@@ -9,11 +9,12 @@ class SimulationTradeEngine(TradeEngine):
         self.bills = []
         self.now_time = None
 
-    def new_limit_bill(self, side, symbol, price, qty, rmk='', oc=None):
+    def new_limit_bill(self, side, symbol, multiplier, price, qty, rmk='', oc=None):
         bill = {
             common.ORDER_TYPE_KEY: common.ORDER_TYPE_LIMIT,
             "create_time": self.now_time,
             "symbol": symbol,
+            "multiplier": multiplier,
             common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE,
             common.SIDE_KEY: side,
             "price": price,

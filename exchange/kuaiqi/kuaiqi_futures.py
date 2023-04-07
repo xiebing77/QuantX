@@ -172,7 +172,7 @@ class KuaiqiFutures(Kuaiqi):
         while not order.exchange_order_id:
             if (datetime.now()-insert_dt).total_seconds() > 5:
                 break
-            self.__api.wait_update()
+            self.__api.wait_update(deadline=time.time() + 1)
         log.info('{} insert wait_update  after: {}'.format(datetime.now(), order))
 
         #ex_pst = self.__api.get_position(ex_symbol)
@@ -193,7 +193,7 @@ class KuaiqiFutures(Kuaiqi):
             now = datetime.now()
             if (now-get_dt).total_seconds() > 10:
                 return None
-            self.__api.wait_update()
+            self.__api.wait_update(deadline=time.time() + 1)
         log.info('_get_order  after: {}'.format(order))
         log.info('trade_records: {}'.format(order.trade_records))
         return order

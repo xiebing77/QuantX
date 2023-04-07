@@ -77,7 +77,7 @@ def tq_loop(strategy, exchange):
     account = api.get_account()
     log.info(account)
 
-    key_open_time = 'datetime'
+    key_open_time = exchange.kline_key_open_time
     trade_engine = strategy.trade_engine
     trader = trade_engine.trader
     close_key = strategy.key_close
@@ -155,11 +155,7 @@ def tq_loop(strategy, exchange):
             kdf = strategy.handle_feature(kdf)
             kdf = strategy.handle_df(kdf)
             log.info(kdf)
-            '''
-            for bill in strategy.creat_bills(kdf.iloc[-1]):
-                if bill:
-                    trade_engine.new_limit_bill(**bill)
-            '''
+
             close_signal, open_signal, sl_signal = strategy.creat_signals(kdf.iloc[-1])
             print('close_signal: ', close_signal)
             print(' open_signal: ', open_signal)
