@@ -216,6 +216,8 @@ def tq_run():
         exit(1)
     quote_engine = QuoteEngine(exchange)
     trade_engine = ExchangeTradeEngine(instance_id, exchange)
+    cfg_commission = s['commission']
+    trade_engine.set_commission(cfg_commission['rate'], int(cfg_commission['prec']))
     strategy = common.createInstance(module_name, class_name, instance_id, config, quote_engine, trade_engine)
     strategy.set_amount(limit_amount)
     strategy.set_slippage_rate(slippage_rate)
