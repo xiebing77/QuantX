@@ -51,7 +51,7 @@ def update_position_by_order(symbol, multiplier, trader, position, order, commis
     return
 
 
-def get_commission_from_trades(trader, trades):
+def collect_commission_from_trades(trader, trades):
     commission = {}
     for trade in trades:
         trade_commissionQty = abs(float(trade[trader.Trade_Key_CommissionQty]))
@@ -202,11 +202,19 @@ class ExchangeTradeEngine(TradeEngine):
             return commission
 
         if hasattr(self.trader, 'Trade_Key_CommissionQty'):
-            commission = get_commission_from_trades(self.trader, trades)
+            commission = collect_commission_from_trades(self.trader, trades)
         elif self.commission_rate:
             commission = calc_commission_by_trades(bill, self.trader, trades,
                 self.commission_rate, self.commission_prec)
         return commission
+
+
+    def get_bill_commission(self, bill):
+        order_id = bill[common.BILL_ORDER_ID_KEY]
+        trades = self._get_trades_from_db([order_id])
+        commission = self._get_commission_from_trades(bill, trades)
+        return commission
+
 
     def _init_position(self):
         pst = init_position()
@@ -223,8 +231,7 @@ class ExchangeTradeEngine(TradeEngine):
                 log.critical("_init_position: not find order! id: {}".format(order_id))
                 continue
             #order_id = order[self.trader.Order_Id_Key]
-            trades = self._get_trades_from_db([order_id])
-            commission = self._get_commission_from_trades(bill, trades)
+            commission = self.get_bill_commission(bill)
             update_position_by_order(symbol, multiplier, self.trader, pst, order, commission)
         return pst
 

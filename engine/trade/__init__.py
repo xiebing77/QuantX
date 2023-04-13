@@ -121,13 +121,12 @@ def update_position(pst, symbol, multiplier, side, base_qty, quote_qty, commissi
     return pst
 
 
-def update_pst_commission(pst, commission):
-    pst_commission = pst[POSITION_KEY_COMMISSION]
+def stat_commission(total_commission, commission):
     for coin_name, n in commission.items():
-        if coin_name in pst_commission:
-            pst_commission[coin_name] += n
+        if coin_name in total_commission:
+            total_commission[coin_name] += n
         else:
-            pst_commission[coin_name] = n
+            total_commission[coin_name] = n
 
 
 from common.contract import get_contractes, get_contract, CONTRACT_CODE, CONTRACT_MAIN, CONTRACT_MULTIPLIER

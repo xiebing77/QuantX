@@ -10,7 +10,7 @@ from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INS
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from engine.quote import QuoteEngine
 import engine.trade as trade
-from engine.trade.exchange import ExchangeTradeEngine, get_commission_from_trades
+from engine.trade.exchange import ExchangeTradeEngine
 from db.mongodb import get_mongodb
 import setup
 
@@ -188,7 +188,7 @@ def real_list(args):
     title_tail_fmt = "  %10s  %10s  %13s  %20s  %-16s  %-6s  %-s"
 
     print(title_head_fmt % ("instance_id", "symbol") +
-        title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
+        title_pst_fmt % ('pst_base_qty', 'deal_base_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
         title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "config_path"))
     for s in ss:
         instance_id = s["instance_id"]
@@ -217,7 +217,7 @@ def real_list(args):
         trade_engine.set_commission(cfg_commission['rate'], int(cfg_commission['prec']))
         pst = trade_engine.get_position()
         pst_base_qty = trade.get_pst_qty(pst)
-        pst_quote_qty = pst[trade.POSITION_QUOTE_QTY_KEY]
+        deal_base_qty = pst[trade.POSITION_DEAL_BASE_QTY_KEY]
         deal_quote_qty = pst[trade.POSITION_DEAL_QUOTE_QTY_KEY]
 
         symbol = trade.get_pst_symbol(pst)
@@ -241,7 +241,7 @@ def real_list(args):
             base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
         if quote_asset_name not in all_asset_stat:
             all_asset_stat[quote_asset_name] = {
-                trade.POSITION_QUOTE_QTY_KEY: 0,
+                trade.POSITION_DEAL_BASE_QTY_KEY: 0,
                 trade.POSITION_DEAL_QUOTE_QTY_KEY: 0,
                 "float_profit": 0,
                 "total_profit": 0,
@@ -249,7 +249,7 @@ def real_list(args):
             }
 
         asset_stat = all_asset_stat[quote_asset_name]
-        asset_stat[trade.POSITION_QUOTE_QTY_KEY] += pst_quote_qty
+        asset_stat[trade.POSITION_DEAL_BASE_QTY_KEY] += deal_base_qty
         asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY] += deal_quote_qty
         asset_stat['float_profit'] += float_profit
         asset_stat['total_profit'] += total_profit
@@ -265,7 +265,7 @@ def real_list(args):
         else:
             prec_qty, prec_price = trade_engine.get_symbol_prec(symbol)
         profit_info = pst_fmt % (round(pst_base_qty, prec_qty),
-            round(pst_quote_qty, prec_price),
+            round(deal_base_qty, prec_price),
             round(deal_quote_qty, prec_price),
             round(float_profit, prec_price),
             round(total_profit, prec_price),
@@ -307,7 +307,7 @@ def real_list(args):
             asset_stat = all_asset_stat[coin_name]
             print(title_head_fmt % (coin_name, "") +
                 title_pst_fmt % ('',
-                round(asset_stat[trade.POSITION_QUOTE_QTY_KEY], prec_price),
+                round(asset_stat[trade.POSITION_DEAL_BASE_QTY_KEY], prec_price),
                 round(asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY], prec_price),
                 round(asset_stat['float_profit'], prec_price),
                 round(asset_stat['total_profit'], prec_price),
@@ -377,20 +377,24 @@ def real_analyze(args):
         exit(1)
 
     trade_engine = ExchangeTradeEngine(instance_id, exchange)
+    cfg_commission = s['commission']
+    trade_engine.set_commission(cfg_commission['rate'], int(cfg_commission['prec']))
     trader = trade_engine.trader
     close_bills = trade_engine.get_bills(common.BILL_STATUS_CLOSE)
+    total_gross_profit = 0
+    total_commission = {}
     pst_qty = 0
     pst_quote_qty = 0
-    cb_fmt = '%26s  %14s  %10s  %5s  %5s  %10s  %12s  %12s  %12s  %15s  %30s  %12s  %12s  %7s  %12s'
-    cb_title = ('create_time', 'symbol', 'multiplier', 'oc', 'side', 'qty', 'limit_price', 'deal_price', 'profit', 'commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
+    cb_fmt = '%26s  %14s  %10s  %5s  %5s  %10s  %12s  %12s  %12s  %15s  %15s  %18s  %30s  %12s  %12s  %7s  %12s'
+    cb_title = ('create_time', 'symbol', 'multiplier', 'oc', 'side', 'qty', 'limit_price', 'deal_price', 'profit', 'total_profit', 'commission', 'total_commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
     print(cb_fmt % (cb_title))
     for cb in close_bills:
         #print(cb)
         order_id = cb['order_id']
         order = trade_engine.get_order_from_db(cb['order_id'])
         #print(order)
-        trades = trade_engine._get_trades_from_db([order_id])
-        commission = get_commission_from_trades(trader, trades)
+        commission = trade_engine.get_bill_commission(cb)
+        trade.stat_commission(total_commission, commission)
 
         deal_price = 0
         pst_cost = 0
@@ -410,17 +414,15 @@ def real_analyze(args):
 
         oc = cb['oc']
         side = cb['side']
+        gross_profit = 0
         if deal_price > 0:
             if oc == OC_OPEN:
                 pre_deal_price = deal_price
-                profit = 0
             else:
-                diff_price = deal_price - pre_deal_price
+                gross_profit = (deal_price - pre_deal_price) * cb[common.BILL_MULTIPLIER_KEY]
                 if side == SIDE_BUY:
-                    diff_price = -diff_price
-                profit = diff_price / pre_deal_price
-        else:
-            profit = 0
+                    gross_profit = -gross_profit
+                total_gross_profit += gross_profit
 
         symbol = cb[common.BILL_SYMBOL_KEY]
         multiplier = cb[common.BILL_MULTIPLIER_KEY]
@@ -431,7 +433,9 @@ def real_analyze(args):
             exchange.connect()
             prec_qty, prec_price = trade_engine.get_symbol_prec(symbol)
         print(cb_fmt % (cb['create_time'], symbol, multiplier, oc, side,
-            cb['qty'], cb['price'], round(deal_price, prec_price), round(profit, 4), round_commission(commission),
+            cb['qty'], cb['price'], round(deal_price, prec_price),
+            round(gross_profit, 2), round(total_gross_profit, 2),
+            round_commission(commission), round_commission(total_commission),
             cb['rmk'],
             round(pst_qty, prec_qty), round(pst_cost, prec_price), cb['status'], cb['order_id']))
 

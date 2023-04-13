@@ -157,17 +157,17 @@ def tq_loop(strategy, exchange):
             log.info(kdf)
 
             close_signal, open_signal, sl_signal = strategy.creat_signals(kdf.iloc[-1])
-            print('close_signal: ', close_signal)
-            print(' open_signal: ', open_signal)
-            print('   sl_signal: ', sl_signal)
+            log.info('close_signal: {}'.format(close_signal))
+            log.info(' open_signal: {}'.format(open_signal))
+            log.info('   sl_signal: {}'.format(sl_signal))
             if close_signal:
                 close_order = strategy.new_signal(close_signal)
-                print('close_order: ', close_order)
+                log.info('close_order: {}'.format(close_order))
                 if close_order and not sycn_order_to_bill(trader, strategy, close_order):
                     continue
             if open_signal:
                 open_order = strategy.new_signal(open_signal)
-                print('open_order: ', open_order)
+                log.info('open_order: {}'.format(open_order))
                 sycn_order_to_bill(trader, strategy, open_order)
             elif sl_signal:
                 sl_order = strategy.new_signal(sl_signal)
