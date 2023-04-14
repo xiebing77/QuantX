@@ -11,6 +11,11 @@ class Account():
             return self.SIDE_BUY
         return self.SIDE_SELL
 
+    def trans_oc(self, oc):
+        if oc == common.OC_OPEN:
+            return self.OC_OPEN
+        return self.OC_CLOSE
+
     # adpation
     def new_order(self, side, typ, symbol, price, qty, client_order_id=None, oc=None):
         log.info('create order: pair(%s), side(%s), type(%s), price(%s), qty(%s), oc(%s)' % (symbol, side, typ, price, qty, oc))
@@ -26,7 +31,8 @@ class Account():
             ex_type = typ
 
         if self.need_oc:
-            extra = {'oc': oc}
+            ex_oc = self.trans_oc(oc)
+            extra = {'oc': ex_oc}
         else:
             extra = {}
         return self._new_order(ex_side=ex_side,

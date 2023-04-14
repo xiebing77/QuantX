@@ -28,6 +28,9 @@ def sycn_order_to_bill(trader, strategy, order):
 
     if trader.get_order_exec_qty(order) > 0:
         trades = [trade for trade in order.trade_records.values()]
+        if len(trades) == 0:
+            log.info('not trades! close order: {}'.format(order))
+            return False
     else:
         trades = []
 
@@ -81,7 +84,7 @@ def tq_loop(strategy, exchange):
     trade_engine = strategy.trade_engine
     trader = trade_engine.trader
     close_key = strategy.key_close
-    check_key = trader.ORDER_STATUS_KEY
+    check_key = [trader.ORDER_STATUS_KEY, trader.Order_Key_trade_Price]
     close_order = None
     open_order = None
     sl_order = None

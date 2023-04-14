@@ -131,7 +131,7 @@ class KuaiqiFutures(Kuaiqi):
         return [trade for trade in trades.values()]
 
 
-    def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, oc, client_order_id=None):
+    def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, ex_oc, client_order_id=None):
         #if not client_order_id:
         #    client_order_id = str(uuid.uuid1())
 
@@ -143,7 +143,7 @@ class KuaiqiFutures(Kuaiqi):
             return None
 
         # 上期所和上期能源分平今/平昨
-        if hasattr(self, 'OC_CLOSETODAY') and oc == common.OC_CLOSE:
+        if hasattr(self, 'OC_CLOSETODAY') and ex_oc == self.OC_CLOSE:
             ex_pst = self.__api.get_position(ex_symbol)
             self.__api.wait_update()
             log.info('ex_pst: {}'.format(ex_pst))
@@ -153,17 +153,28 @@ class KuaiqiFutures(Kuaiqi):
                 pos_his = ex_pst.pos_short_his
 
             if pos_his >= qty:
-                oc = self.OC_CLOSE
+                ex_oc = self.OC_CLOSE
             else:
-                oc = self.OC_CLOSETODAY
+                ex_oc = self.OC_CLOSETODAY
 
         params = {
             'symbol': ex_symbol,
-            'offset': oc,
+            'offset': ex_oc,
             'direction': ex_side,
             'limit_price': limit_price,
             'volume': qty
         }
+        order = self._send_order(params)
+
+        if self.check_status_is_close(order) and order['is_error']:
+            if ex_oc == self.OC_CLOSE and order['last_msg'] == 'CTP:平昨仓位不足':
+                params['offset'] = self.OC_CLOSETODAY
+                order = self._send_order(params)
+
+        return order
+
+
+    def _send_order(self, params):
         log.info('-----> insert order:  {}'.format(params))
         order = self.__api.insert_order(**params)
         from datetime import datetime
