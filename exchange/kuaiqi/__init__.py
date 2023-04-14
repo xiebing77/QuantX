@@ -74,6 +74,7 @@ class Kuaiqi(Exchange):
 
     Order_Key_Price = 'limit_price'
     Order_Key_OrigQty = 'volume_orign'
+    Order_Key_trade_Price = 'trade_price'
     #Order_Key_ExecutedQty = 'fillQuantity'
     #Order_Key_CummulativeQuoteQty = 'fillTotalAmount'
 
@@ -153,12 +154,17 @@ class Kuaiqi(Exchange):
         return order[self.Order_Key_OrigQty] - order['volume_left']
 
     def get_order_exec_quote_qty(self, order):
-        return self.get_order_exec_qty(order) * order['trade_price']
+        return self.get_order_exec_qty(order) * order[self.Order_Key_trade_Price]
 
     def check_status_is_close(self, order):
         order_status = order[self.ORDER_STATUS_KEY]
         close_statuses = [self.ORDER_STATUS_FILLED]
-        return order_status in close_statuses
+        if order_status not in close_statuses:
+            return False
+        if self.get_order_exec_qty(order) > 0:
+            if not order[self.Order_Key_trade_Price]:
+                return False
+        return True
     '''
 
     def _order_status_is_close(self, exchange_symbol, order_id):
