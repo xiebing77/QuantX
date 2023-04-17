@@ -32,7 +32,7 @@ class Account():
 
         if self.need_oc:
             ex_oc = self.trans_oc(oc)
-            extra = {'oc': ex_oc}
+            extra = {'ex_oc': ex_oc}
         else:
             extra = {}
         return self._new_order(ex_side=ex_side,
