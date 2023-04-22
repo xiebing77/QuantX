@@ -10,7 +10,7 @@ instance_statuses = [INSTANCE_STATUS_START, INSTANCE_STATUS_STOP]
 
 def get_instance(sii):
     db = get_mongodb(setup.trade_db_name)
-    db.ensure_index(INSTANCE_COLLECTION_NAME, [("instance_id",1)])
+    db.create_index(INSTANCE_COLLECTION_NAME, [("instance_id",1)])
 
     instances = db.find(INSTANCE_COLLECTION_NAME, {"instance_id": sii})
     #print(instances)

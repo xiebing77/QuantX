@@ -49,5 +49,5 @@ if __name__ == "__main__":
     
     db = get_mongodb(args.source)
     collection = kl.get_kline_collection(symbol, interval)
-    db.ensure_index(collection, [(open_time_key,1)], unique=True)
+    db.create_index(collection, [(open_time_key,1)])
     db.insert_many(collection, db_datalines)
