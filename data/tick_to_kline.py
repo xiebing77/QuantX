@@ -119,7 +119,7 @@ def to_kline(exchange, interval, tick_df, need_book=False):
 
             k[exchange.kline_key_volume] = tick_volume - pre_volume
             k[exchange.kline_key_close] = last_price
-            #k[k_key_close_time] = tick_time
+            #k["close_time"] = tick_time
             k[exchange.kline_key_oi] = open_interest
 
             if need_book:

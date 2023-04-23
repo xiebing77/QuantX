@@ -21,6 +21,17 @@ KLINE_INTERVAL_15SECOND = '15s'
 KLINE_INTERVAL_20SECOND = '20s'
 KLINE_INTERVAL_30SECOND = '30s'
 
+KLINE_INTERVAL__25SECOND =  '25s'
+KLINE_INTERVAL__36SECOND =  '36s'
+KLINE_INTERVAL__45SECOND =  '45s'
+KLINE_INTERVAL__50SECOND =  '50s'
+KLINE_INTERVAL__75SECOND =  '75s'
+KLINE_INTERVAL__90SECOND =  '90s'
+KLINE_INTERVAL_100SECOND = '100s'
+KLINE_INTERVAL_150SECOND = '150s'
+KLINE_INTERVAL_225SECOND = '225s'
+KLINE_INTERVAL_450SECOND = '450s'
+
 KLINE_INTERVAL_1MINUTE = '1m'
 KLINE_INTERVAL_3MINUTE = '3m'
 KLINE_INTERVAL_5MINUTE = '5m'
@@ -48,6 +59,19 @@ SECONDS_DAY = 24 * SECONDS_HOUR
 def get_kline_collection(symbol, interval):
     return "kline_%s_%s" % (symbol, interval)
 
+def calc_open_time_by_seconds(interval, dt):
+    hour_seconds = 60 * 60
+    interval_seconds = int(get_interval_timedelta(interval).total_seconds())
+    #interval_seconds = get_interval_seconds(interval)
+    if interval_seconds > hour_seconds:
+        return None
+    seconds = dt.minute * 60 + dt.second
+    open_seconds = (seconds // interval_seconds) * interval_seconds
+    #open_seconds = seconds - seconds % interval_seconds
+    open_minute = open_seconds // 60
+    open_second = open_seconds  % 60
+    return datetime.combine(dt.date(), time(dt.hour, open_minute, open_second))
+
 def get_open_time(interval, dt):
     if interval == KLINE_INTERVAL_1SECOND:
         return datetime.combine(dt.date(), time(dt.hour, dt.minute, dt.second))
@@ -66,6 +90,20 @@ def get_open_time(interval, dt):
     elif interval == KLINE_INTERVAL_30SECOND:
         open_second = (dt.second // 30) * 30
         return datetime.combine(dt.date(), time(dt.hour, dt.minute, open_second))
+
+    elif interval in [
+        KLINE_INTERVAL__25SECOND,
+        KLINE_INTERVAL__36SECOND,
+        KLINE_INTERVAL__45SECOND,
+        KLINE_INTERVAL__50SECOND,
+        KLINE_INTERVAL__75SECOND,
+        KLINE_INTERVAL__90SECOND,
+        KLINE_INTERVAL_100SECOND,
+        KLINE_INTERVAL_150SECOND,
+        KLINE_INTERVAL_225SECOND,
+        KLINE_INTERVAL_450SECOND
+    ]:
+        return calc_open_time_by_seconds(interval, dt)
 
     elif interval == KLINE_INTERVAL_1MINUTE:
         return datetime.combine(dt.date(), time(dt.hour, dt.minute, 0))
@@ -141,6 +179,27 @@ def get_interval_timedelta(interval):
     elif interval == KLINE_INTERVAL_30SECOND:
         return timedelta(seconds=30)
 
+    elif interval == KLINE_INTERVAL__25SECOND:
+        return timedelta(seconds=25)
+    elif interval == KLINE_INTERVAL__36SECOND:
+        return timedelta(seconds=36)
+    elif interval == KLINE_INTERVAL__45SECOND:
+        return timedelta(seconds=45)
+    elif interval == KLINE_INTERVAL__50SECOND:
+        return timedelta(seconds=50)
+    elif interval == KLINE_INTERVAL__75SECOND:
+        return timedelta(minutes=1, seconds=15)
+    elif interval == KLINE_INTERVAL__90SECOND:
+        return timedelta(minutes=1, seconds=30)
+    elif interval == KLINE_INTERVAL_100SECOND:
+        return timedelta(minutes=1, seconds=40)
+    elif interval == KLINE_INTERVAL_150SECOND:
+        return timedelta(minutes=2, seconds=30)
+    elif interval == KLINE_INTERVAL_225SECOND:
+        return timedelta(minutes=3, seconds=45)
+    elif interval == KLINE_INTERVAL_450SECOND:
+        return timedelta(minutes=7, seconds=30)
+
     elif interval == KLINE_INTERVAL_1MINUTE:
         return timedelta(minutes=1)
     elif interval == KLINE_INTERVAL_3MINUTE:
@@ -184,6 +243,27 @@ def get_interval_seconds(interval):
         return 20
     if interval == KLINE_INTERVAL_30SECOND:
         return 30
+
+    if interval == KLINE_INTERVAL__25SECOND:
+        return 25
+    if interval == KLINE_INTERVAL__36SECOND:
+        return 36
+    if interval == KLINE_INTERVAL__45SECOND:
+        return 45
+    if interval == KLINE_INTERVAL__50SECOND:
+        return 50
+    if interval == KLINE_INTERVAL__75SECOND:
+        return 75
+    if interval == KLINE_INTERVAL__90SECOND:
+        return 90
+    if interval == KLINE_INTERVAL_100SECOND:
+        return 100
+    if interval == KLINE_INTERVAL_150SECOND:
+        return 150
+    if interval == KLINE_INTERVAL_225SECOND:
+        return 225
+    if interval == KLINE_INTERVAL_450SECOND:
+        return 450
 
     elif interval == KLINE_INTERVAL_1MINUTE:
         return 1 * SECONDS_MINUTE
