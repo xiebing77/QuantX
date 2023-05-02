@@ -9,12 +9,12 @@ CONTRACT_MAIN       = 'main'
 
 def get_contractes():
     db = get_mongodb(setup.quote_db_name)
-    db.create_index(CONTRACT_COLLECTION_NAME, [(CONTRACT_CODE,1)])
+    #db.create_index(CONTRACT_COLLECTION_NAME, [(CONTRACT_CODE,1)])
     return db.find(CONTRACT_COLLECTION_NAME, {})
 
 def get_contract(code):
     db = get_mongodb(setup.quote_db_name)
-    db.create_index(CONTRACT_COLLECTION_NAME, [(CONTRACT_CODE,1)])
+    #db.create_index(CONTRACT_COLLECTION_NAME, [(CONTRACT_CODE,1)])
 
     s = db.find(CONTRACT_COLLECTION_NAME, {CONTRACT_CODE: code})
     #print(s)
