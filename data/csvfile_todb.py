@@ -31,16 +31,18 @@ if __name__ == "__main__":
         cost_start = datetime.now()
         df = pd.read_csv(f)
         print('  cost: %s'%(datetime.now()-cost_start))
-        print(df)
 
         open_times = df[open_time_key]
         open_time_0 = exchange.get_time_from_data_ts(open_times[0])
         open_time_1 = exchange.get_time_from_data_ts(open_times[1])
         interval_td = kl.get_interval_timedelta(args.interval)
+        if not interval_td:
+            print('interval {} not support'.format(args.interval))
         if open_time_1 - open_time_0 != interval_td:
             print('open time error! {} {}'.format(open_time_0, open_time_1))
             exit(1)
 
+        print(df)
         db_datalines = df.to_dict('records')
 
         db = get_mongodb(args.source)
