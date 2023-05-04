@@ -225,9 +225,8 @@ def tq_run():
     strategy.set_amount(limit_amount)
     strategy.set_slippage_rate(slippage_rate)
     strategy.set_y_threshold(threshold[0], threshold[1])
-    if hasattr(strategy, 'load_model'):
-        strategy.load_train()
-        strategy.load_model()
+    if hasattr(strategy, 'trainning'):
+        strategy.trainning()
 
     pd.reset_option('display.float_format')
 

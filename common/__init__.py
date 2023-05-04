@@ -9,6 +9,13 @@ def createInstance(module_name, class_name, *args, **kwargs):
     obj = class_meta(*args, **kwargs)
     return obj
 
+
+def usage():
+    import os, psutil
+    process = psutil.Process(os.getpid())
+    return process.memory_info()[0] / float(2 ** 20)
+
+
 import json
 def get_json_config(config_path):
     fo = open(config_path, "r")

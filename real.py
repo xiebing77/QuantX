@@ -58,9 +58,8 @@ def real_run(args):
         strategy.set_value(s['value'])
     if hasattr(strategy, 'set_slippage_rate'):
         strategy.set_slippage_rate(s['slippage_rate'])
-    if hasattr(strategy, 'load_model'):
-        strategy.load_train()
-        strategy.load_model()
+    if hasattr(strategy, 'trainning'):
+        strategy.trainning()
 
     if not args.loop:
         strategy.polling()
