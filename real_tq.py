@@ -176,7 +176,7 @@ def tq_loop(strategy, exchange):
                 sl_order = strategy.new_signal(sl_signal)
                 sycn_order_to_bill(trader, strategy, sl_order)
             log.info('kline handle finish!')
-    api.close()
+    exchange.close()
 
 
 def tq_run():

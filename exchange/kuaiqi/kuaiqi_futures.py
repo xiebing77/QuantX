@@ -8,6 +8,8 @@ import uuid
 from . import Kuaiqi
 import common
 import common.log as log
+from tqsdk import TqAccount, TqKq
+from tqsdk import TqApi, TqAuth
 
 
 yx_name     = os.environ.get('YIXIN_NAME')
@@ -34,11 +36,10 @@ class KuaiqiFutures(Kuaiqi):
         log.info('KuaiqiFutures __exit__')
         if self.__api:
             self.__api.close()
+            self.__api = None
 
     def connect(self):
-        from tqsdk import TqAccount, TqKq
         account = TqAccount(broker_name, broker_account, broker_password)
-        from tqsdk import TqApi, TqAuth
         api = TqApi(account, auth=TqAuth(yx_name, yx_password))
         self.__api = api
         return api
