@@ -156,6 +156,9 @@ class Kuaiqi(Exchange):
     def get_order_exec_quote_qty(self, order):
         return self.get_order_exec_qty(order) * order[self.Order_Key_trade_Price]
 
+    def get_order_deal_price(self, order):
+        return order[self.Order_Key_trade_Price]
+
     def check_status_is_close(self, order):
         order_status = order[self.ORDER_STATUS_KEY]
         close_statuses = [self.ORDER_STATUS_FILLED]

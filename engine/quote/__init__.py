@@ -31,7 +31,11 @@ def stat_trades(quoter, trades):
 class QuoteEngine(object):
     def __init__(self, quoter):
         self.quoter = quoter
-        self._db = get_mongodb(quoter.name)
+        if hasattr(quoter, 'data_src'):
+            data_src = quoter.data_src
+        else:
+            data_src = quoter.name
+        self._db = get_mongodb(data_src)
         return
 
     def get_original_klines(self, collection, s_time, e_time):

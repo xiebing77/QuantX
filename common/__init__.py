@@ -125,6 +125,20 @@ BILL_ORDER_ID_KEY = 'order_id'
 #BILL_ORDER_TYPE_KEY = 'order_type'
 BILL_PRICE_KEY = 'price'
 BILL_QTY_KEY = 'qty'
+BILL_OPEN_ORDER_IDS_KEY = 'open_order_ids'
+
+def get_orderids_by_bill(bill):
+    order_ids = bill[BILL_ORDER_ID_KEY]
+    if type(order_ids) is list:
+        return order_ids
+    else:
+        return [order_ids]
+
+def get_orderids_by_bills(bills):
+    order_ids = []
+    for bill in bills:
+        order_ids += get_orderids_by_bill(bill)
+    return order_ids
 
 
 MATH_FLOOR = 0  # 向下，舍去多余

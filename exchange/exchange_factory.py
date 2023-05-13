@@ -7,10 +7,10 @@ from exchange.bybit.bybit_spot import BybitSpot
 from exchange.kucoin.kucoin_spot import KucoinSpot
 from exchange.bingx.bingx_spot import BingXSpot
 from exchange.bitget.bitget_spot import BitgetSpot
-from exchange.kuaiqi.kuaiqi_futures import KuaiqiFutures
+from exchange.kuaiqi.kuaiqi_futures import KuaiqiFutures, KuaiqiFuturesSim
 
 
-exchangeClasses = [BinanceSpot, BitrueSpot, BybitSpot, KucoinSpot, BingXSpot, BitgetSpot, KuaiqiFutures]
+exchangeClasses = [BinanceSpot, BitrueSpot, BybitSpot, KucoinSpot, BingXSpot, BitgetSpot, KuaiqiFutures, KuaiqiFuturesSim]
 
 
 def get_exchange_names():
