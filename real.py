@@ -6,7 +6,8 @@ import common
 import common.log as log
 from common import SIDE_BUY, SIDE_SELL, OC_OPEN, OC_CLOSE
 from common import ORDER_TYPE_LIMIT
-from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INSTANCE_STATUS_STOP, instance_statuses, add_instance, delete_instance, update_instance, get_cell_info
+from common.cell import cell_statuses, add_cell, delete_cell, update_cell
+from common.cell import get_cells, get_cell, get_cell_info
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from engine.quote import QuoteEngine
 import engine.trade as trade
@@ -15,19 +16,16 @@ from db.mongodb import get_mongodb
 import setup
 
 
-td_db = get_mongodb(setup.trade_db_name)
-
-
 def real_run(args):
     cell_id = args.iid
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, {common.BILL_KEY_CELL_ID: cell_id})
-    if not ss:
+    cell = get_cell(cell_id)
+    if not cell:
         print('%s not exist' % (cell_id))
         exit(1)
-    s = ss[0]
-    symbol = s['symbol']
-    exchange_name = s['exchange']
-    config_path = s["config_path"]
+
+    symbol = cell['symbol']
+    exchange_name = cell['exchange']
+    config_path = cell["config_path"]
     config = common.get_json_config(config_path)
     module_name = config["module_name"].replace("/", ".")
     class_name = config["class_name"]
@@ -51,8 +49,8 @@ def real_run(args):
     exchange.ping()
     quote_engine = QuoteEngine(exchange)
     trade_engine = ExchangeTradeEngine()
-    cfg_commission = s['commission']
-    trade_engine.set_cell(cell_id, exchange, *get_cell_info(s))
+    cfg_commission = cell['commission']
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
 
     strategy = common.createInstance(module_name, class_name, config, quote_engine, trade_engine)
 
@@ -77,13 +75,12 @@ def real_run(args):
 
 def real_hand(args):
     cell_id = args.iid
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, {common.BILL_KEY_CELL_ID: cell_id})
-    if not ss:
+    cell = get_cell(cell_id)
+    if not cell:
         print('%s not exist' % (cell_id))
         exit(1)
-    s = ss[0]
 
-    exchange_name = s['exchange']
+    exchange_name = cell['exchange']
     if args.print:
         log.print_switch = True
     if args.log:
@@ -99,10 +96,10 @@ def real_hand(args):
         print("exchange name error!")
         exit(1)
     trade_engine = ExchangeTradeEngine()
-    cfg_commission = s['commission']
-    trade_engine.set_cell(cell_id, exchange, *get_cell_info(s))
+    cfg_commission = cell['commission']
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
 
-    config_path = s["config_path"]
+    config_path = cell["config_path"]
     if config_path:
         config = common.get_json_config(config_path)
         if 'contract_code' in config:
@@ -111,7 +108,7 @@ def real_hand(args):
         else:
             symbol = config['symbol']
     else:
-        symbol = s['symbol']
+        symbol = cell['symbol']
 
     side = args.side
     oc = args.oc
@@ -185,11 +182,10 @@ def real_list(args):
     query = {"user": args.user}
     if args.status:
         query["status"] = args.status
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, query)
-    #print(ss)
+    cells = get_cells(query)
     all_asset_stat = {}
 
-    exchange_names = [s["exchange"] for s in ss]
+    exchange_names = [cell["exchange"] for cell in cells]
     init_exchanges(exchange_names)
 
     title_head_fmt = "%-25s  %12s"
@@ -203,17 +199,17 @@ def real_list(args):
     print(title_head_fmt % (common.BILL_KEY_CELL_ID, "symbol") +
         title_pst_fmt % ('pst_base_qty', 'deal_base_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
         title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "config_path"))
-    for s in ss:
-        cell_id = s[common.BILL_KEY_CELL_ID]
-        exchange_name = s["exchange"]
-        if "status" in s:
-            status = s["status"]
+    for cell in cells:
+        cell_id = cell[common.BILL_KEY_CELL_ID]
+        exchange_name = cell["exchange"]
+        if "status" in cell:
+            status = cell["status"]
         else:
             status = ""
         #if status != args.status and status != "":
         #    continue
 
-        config_path = s["config_path"]
+        config_path = cell["config_path"]
         if config_path:
             config = common.get_json_config(config_path)
         else:
@@ -226,8 +222,8 @@ def real_list(args):
             continue
 
         trade_engine = ExchangeTradeEngine()
-        cfg_commission = s['commission']
-        trade_engine.set_cell(cell_id, exchange, *get_cell_info(s))
+        cfg_commission = cell['commission']
+        trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
         pst = trade_engine.get_position(cell_id)
         pst_base_qty = trade.get_pst_qty(pst)
         deal_base_qty = pst[trade.POSITION_DEAL_BASE_QTY_KEY]
@@ -246,7 +242,7 @@ def real_list(args):
                 else:
                     symbol = config['symbol']
             else:
-                symbol = s['symbol']
+                symbol = cell['symbol']
 
         commission = trade.get_pst_commission(pst)
         trader = trade_engine.get_cell_trader(cell_id)
@@ -292,25 +288,11 @@ def real_list(args):
         #except Exception as ept:
         #    profit_info = "error:  %s" % (ept)
 
-        if 'value' in s:
-            value_info = '%s'%s['value']
-        else:
-            value_info = ''
-
-        if 'amount' in s:
-            amount_info = '%s'%s['amount']
-        else:
-            amount_info = ''
-
-        if 'slippage_rate' in s:
-            sr_info = '%s'%s['slippage_rate']
-        else:
-            sr_info = ''
-
-        if 'threshold' in s:
-            threshold_info = '%s'%s['threshold']
-        else:
-            threshold_info = ''
+        value, amount, slippage_rate, commission_rate, commission_prec = get_cell_info(cell)
+        value_info  = '%s' % value if value else ''
+        amount_info = '%s' % amount if amount else ''
+        sr_info     = '%s' % slippage_rate if slippage_rate else ''
+        threshold_info = '%s' % cell['threshold'] if 'threshold' in cell else ''
 
         print(head_fmt % (cell_id, symbol) +
             profit_info +
@@ -333,7 +315,7 @@ def real_list(args):
 
 
 def real_add(args):
-    add_instance({
+    add_cell({
         "user": args.user,
         common.BILL_KEY_CELL_ID: args.iid,
         "symbol": args.symbol,
@@ -344,7 +326,7 @@ def real_add(args):
 
 
 def real_delete(args):
-    delete_instance({common.BILL_KEY_CELL_ID: args.iid})
+    delete_cell(args.iid)
 
 
 def real_update(args):
@@ -371,7 +353,7 @@ def real_update(args):
         record["threshold"] = args.threshold
 
     if record:
-        update_instance({common.BILL_KEY_CELL_ID: args.iid}, record)
+        update_cell(args.iid, record)
 
 
 def real_analyze(args):
@@ -379,26 +361,25 @@ def real_analyze(args):
         log.print_switch = True
 
     cell_id = args.iid
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, {common.BILL_KEY_CELL_ID: cell_id})
-    if not ss:
+    cell = get_cell(cell_id)
+    if not cell:
         print('%s not exist' % (cell_id))
         exit(1)
-    s = ss[0]
 
-    config_path = s["config_path"]
+    config_path = cell["config_path"]
     if config_path:
         config = common.get_json_config(config_path)
     else:
         config = None
 
-    exchange_name = s['exchange']
+    exchange_name = cell['exchange']
     exchange = create_exchange(exchange_name)
     if not exchange:
         print("exchange name error!")
         exit(1)
 
     trade_engine = ExchangeTradeEngine()
-    trade_engine.set_cell(cell_id, exchange, *get_cell_info(s))
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
     trader = trade_engine.get_cell_trader(cell_id)
     trade_engine.handle_open_bills(cell_id)
     bills = trade_engine.get_all_bills(cell_id)
@@ -466,16 +447,16 @@ def real():
     parser = argparse.ArgumentParser(description='real run one')
     subparsers = parser.add_subparsers(help='sub-command help')
 
-    parser_run = subparsers.add_parser('run', help='run instance')
-    parser_run.add_argument('-iid', required=True, help='instance id')
+    parser_run = subparsers.add_parser('run', help='run cell')
+    parser_run.add_argument('-iid', required=True, help='cell id')
     parser_run.add_argument('-loop', action="store_true", help='run loop')
     parser_run.add_argument('-debug', action="store_true", help='run debug')
     parser_run.add_argument('--log', action="store_true", help='log info')
     parser_run.add_argument('--print', action="store_true", help='print info')
     parser_run.set_defaults(func=real_run)
 
-    parser_hand = subparsers.add_parser('hand', help='handmade instance')
-    parser_hand.add_argument('-iid', required=True, help='instance id')
+    parser_hand = subparsers.add_parser('hand', help='handmade cell')
+    parser_hand.add_argument('-iid', required=True, help='cell id')
     parser_hand.add_argument('-oc', choices=[OC_OPEN, OC_CLOSE], help='')
     parser_hand.add_argument('-side', required=True, choices=[SIDE_BUY, SIDE_SELL], help='')
     parser_hand.add_argument('-price', required=True, type=float, help='price')
@@ -485,41 +466,41 @@ def real():
     parser_hand.set_defaults(func=real_hand)
 
 
-    parser_list = subparsers.add_parser('list', help='list of instance')
+    parser_list = subparsers.add_parser('list', help='list of cell')
     parser_list.add_argument('-user', help='user name')
-    parser_list.add_argument('--status', choices=instance_statuses, help='instance status')
+    parser_list.add_argument('--status', choices=cell_statuses, help='cell status')
     parser_list.add_argument('--stat', help='stat all', action="store_true")
     parser_list.set_defaults(func=real_list)
 
-    parser_add = subparsers.add_parser('add', help='add new instance')
+    parser_add = subparsers.add_parser('add', help='add new cell')
     parser_add.add_argument('-user', required=True, help='user name')
     parser_add.add_argument('-exchange', required=True, choices=get_exchange_names(), help='exchange name')
-    parser_add.add_argument('-iid', required=True, help='instance id')
+    parser_add.add_argument('-iid', required=True, help='cell id')
     parser_add.add_argument('-symbol', help='symbol')
     parser_add.add_argument('-config_path', help='config path')
-    parser_add.add_argument('-status', choices=instance_statuses, default=INSTANCE_STATUS_START, help='instance status')
+    parser_add.add_argument('-status', choices=cell_statuses, default=cell_statuses[0], help='cell status')
     parser_add.set_defaults(func=real_add)
 
-    parser_delete = subparsers.add_parser('delete', help='delete instance')
-    parser_delete.add_argument('-iid', required=True, help='instance id')
+    parser_delete = subparsers.add_parser('delete', help='delete cell')
+    parser_delete.add_argument('-iid', required=True, help='cell id')
     parser_delete.set_defaults(func=real_delete)
 
-    parser_update = subparsers.add_parser('update', help='update instance')
-    parser_update.add_argument('-iid', required=True, help='instance id')
+    parser_update = subparsers.add_parser('update', help='update cell')
+    parser_update.add_argument('-iid', required=True, help='cell id')
     parser_update.add_argument('--user', help='user name')
-    parser_update.add_argument('--new_iid', help='new instance id')
+    parser_update.add_argument('--new_iid', help='new cell id')
     parser_update.add_argument('--symbol', help='symbol')
     parser_update.add_argument('--config_path', help='config path')
-    parser_update.add_argument('--exchange', help='instance exchange')
-    parser_update.add_argument('--status', choices=instance_statuses, help='instance status')
+    parser_update.add_argument('--exchange', help='cell exchange')
+    parser_update.add_argument('--status', choices=cell_statuses, help='cell status')
     parser_update.add_argument('--value', type=int, help='value')
     parser_update.add_argument('--amount', type=int, help='amount')
     parser_update.add_argument('--slippage_rate', type=float, help='value')
     parser_update.add_argument('--threshold', type=float, nargs=2, help='y threshold for open and close, eg: 0.001 -0.001')
     parser_update.set_defaults(func=real_update)
 
-    parser_analyze = subparsers.add_parser('analyze', help='analyze instance')
-    parser_analyze.add_argument('-iid', required=True, help='instance id')
+    parser_analyze = subparsers.add_parser('analyze', help='analyze cell')
+    parser_analyze.add_argument('-iid', required=True, help='cell id')
     parser_analyze.add_argument('--print', action="store_true", help='print info')
     parser_analyze.set_defaults(func=real_analyze)
 

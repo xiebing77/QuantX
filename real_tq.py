@@ -9,15 +9,13 @@ import argparse
 
 import common
 import common.log as log
-from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INSTANCE_STATUS_STOP, instance_statuses, add_instance, delete_instance, update_instance, get_cell_info
+from common.cell import get_cell, get_cell_info
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from engine.quote import QuoteEngine
 from engine.trade.exchange import ExchangeTradeEngine
 from db.mongodb import get_mongodb
 import setup
 
-
-td_db = get_mongodb(setup.trade_db_name)
 
 
 def sycn_order_to_bill(cell_id, trader, trade_engine, order):
@@ -192,20 +190,17 @@ def tq_loop(strategy, exchange, cell_id):
 
 def tq_run():
     parser = argparse.ArgumentParser(description='real tq')
-    parser.add_argument('-iid', required=True, help='instance id')
+    parser.add_argument('-iid', required=True, help='cell id')
     parser.add_argument('-debug', action="store_true", help='run debug')
     parser.add_argument('--log', action="store_true", help='log info')
     parser.add_argument('--print', action="store_true", help='print info')
     args = parser.parse_args()
 
     cell_id = args.iid
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, {common.BILL_KEY_CELL_ID: cell_id})
-    if not ss:
-        print('%s not exist' % (cell_id))
-        exit(1)
-    s = ss[0]
-    exchange_name = s['exchange']
-    config_path = s["config_path"]
+    cell = get_cell(cell_id)
+    exchange_name = cell['exchange']
+    config_path   = cell["config_path"]
+
     config = common.get_json_config(config_path)
     module_name = config["module_name"].replace("/", ".")
     class_name = config["class_name"]
@@ -217,10 +212,12 @@ def tq_run():
         logfilename = cell_id + ".log"
         log.init('real', logfilename)
 
-    threshold = s['threshold']
+    threshold = cell['threshold']
+    '''
     if threshold not in config['y']['threshold']:
         log.warning('threshold not in config')
         exit(1)
+    '''
 
     exchange = create_exchange(exchange_name)
     if not exchange:
@@ -228,7 +225,7 @@ def tq_run():
         exit(1)
     quote_engine = QuoteEngine(exchange)
     trade_engine = ExchangeTradeEngine()
-    trade_engine.set_cell(cell_id, exchange, *get_cell_info(s))
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
     strategy = common.createInstance(module_name, class_name, config, quote_engine, trade_engine)
     strategy.set_y_threshold(cell_id, threshold[0], threshold[1])
 
