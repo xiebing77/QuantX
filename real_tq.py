@@ -9,7 +9,7 @@ import argparse
 
 import common
 import common.log as log
-from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INSTANCE_STATUS_STOP, instance_statuses, add_instance, delete_instance, update_instance
+from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INSTANCE_STATUS_STOP, instance_statuses, add_instance, delete_instance, update_instance, get_cell_info
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from engine.quote import QuoteEngine
 from engine.trade.exchange import ExchangeTradeEngine
@@ -20,23 +20,41 @@ import setup
 td_db = get_mongodb(setup.trade_db_name)
 
 
-def sycn_order_to_bill(trader, strategy, order):
+def sycn_order_to_bill(cell_id, trader, trade_engine, order):
     if not order:
-        return False
+        return None
     if not trader.check_status_is_close(order):
-        return False
+        return order
 
     if trader.get_order_exec_qty(order) > 0:
         trades = [trade for trade in order.trade_records.values()]
         if len(trades) == 0:
             log.info('not trades! close order: {}'.format(order))
-            return False
+            return order
     else:
         trades = []
 
-    strategy.sync_bill(order, trades)
-    strategy.get_position()
-    return True
+    trade_engine.sync_bill(trader, order, trades)
+    trade_engine.get_position(cell_id)
+    return None
+
+
+def check_alive_orders(cell_id, trader, trade_engine, orders):
+    if not orders:
+        return []
+
+    alive_orders = []
+    for order in orders:
+        if sycn_order_to_bill(cell_id, trader, trade_engine, order):
+            alive_orders.append(order)
+    return alive_orders
+
+
+def create_orders(strategy, signal, cell_id, trader, rmk):
+    orders = strategy.new_signal(signal)
+    log.info('-----> {} orders: {}'.format(rmk, orders))
+    orders = check_alive_orders(cell_id, trader, strategy.trade_engine, orders)
+    return orders
 
 
 def check_run_time(now_time):
@@ -56,7 +74,7 @@ def check_run_time(now_time):
     return True
 
 
-def tq_loop(strategy, exchange):
+def tq_loop(strategy, exchange, cell_id):
     now_time = datetime.now()
     if not check_run_time(now_time):
         #print('{} not run time!'.format(now_time))
@@ -76,20 +94,19 @@ def tq_loop(strategy, exchange):
     #pd.set_option('display.max_rows', None)
     #pd.set_option('display.max_columns', None)
 
-    log.info(strategy.get_position())
+    trade_engine = strategy.trade_engine
+    log.info('cell_id: {},  pst: {}'.format(cell_id, trade_engine.get_position(cell_id)))
+
     account = api.get_account()
     log.info(account)
 
     key_open_time = exchange.kline_key_open_time
-    trade_engine = strategy.trade_engine
-    trader = trade_engine.trader
-    close_key = strategy.key_close
-    check_key = [trader.ORDER_STATUS_KEY, trader.Order_Key_trade_Price]
-    close_order = None
-    open_order = None
-    sl_order = None
+    trader = exchange
+    close_orders = []
+    open_orders  = []
+    sl_orders    = []
     open_signal = None
-    cancel_bill_num = 0
+    sl_signal   = None
     cancel_time = None
     cur_k_open_time = exchange.get_time_from_data_ts(klines[key_open_time].iloc[-1])
     while True:
@@ -107,38 +124,27 @@ def tq_loop(strategy, exchange):
             # print('{}  not update'.format(now_time))
             continue
 
-        if api.is_changing(close_order, check_key):
-            log.info('{}  close_order  {}'.format(now_time, close_order))
-            sycn_order_to_bill(trader, strategy, close_order)
-            close_order = None
+        close_orders = check_alive_orders(cell_id, trader, trade_engine, close_orders)
+        if not close_orders:
             if open_signal:
-                open_order = strategy.new_signal(open_signal)
-                sycn_order_to_bill(trader, strategy, open_order)
+                open_orders = create_orders(strategy, open_signal, cell_id, trader, 'delay open')
+                open_signal = None
                 continue
             elif sl_signal:
-                sl_order = strategy.new_signal(sl_signal)
-                sycn_order_to_bill(trader, strategy, sl_order)
+                sl_orders = create_orders(strategy, sl_signal, cell_id, trader, 'delay stoploss')
+                sl_signal = None
                 continue
 
-        if api.is_changing(open_order, check_key):
-            log.info('{}   open_order  {}'.format(now_time, open_order))
-            sycn_order_to_bill(trader, strategy, open_order)
-            open_order = None
-
-        if api.is_changing(sl_order, check_key):
-            log.info('{}     sl_order  {}'.format(now_time, sl_order))
-            sycn_order_to_bill(trader, strategy, sl_order)
-            sl_order = None
+        open_orders = check_alive_orders(cell_id, trader, trade_engine, open_orders)
+        sl_orders   = check_alive_orders(cell_id, trader, trade_engine, sl_orders)
 
         cur_sec = (now_time - cur_k_open_time).total_seconds()
         if cur_sec > interval_sec * 0.8 and (not cancel_time or (now_time - cancel_time).total_seconds() > 10):
             cancel_time = now_time
-            #if cancel_bill_num > 0:
-            #    strategy.get_position()
-            cancel_bill_num = strategy.cancel_open_bills()
+            cancel_bill_num = strategy.cancel_open_bills(cell_id)
             if cancel_bill_num > 0:
-                log.info('{}  cancel_bill_num: {}'.format(now_time, cancel_bill_num))
-                continue
+                log.info('{} cell_id: {},  cancel_bill_num: {}'.format(
+                    now_time, cell_id, cancel_bill_num))
 
         if api.is_changing(klines.iloc[-1], key_open_time):
             klines['open_time'] = klines[key_open_time].apply(exchange.get_time_from_data_ts)
@@ -151,7 +157,7 @@ def tq_loop(strategy, exchange):
             if (cur_k_open_time - pre_k.open_time).total_seconds() > interval_sec:
                 continue
 
-            log.info('kline ==> {}'.format(strategy.get_position()))
+            log.info('kline ==> {}'.format(trade_engine.get_position(cell_id)))
             log.info(account)
 
             kdf = klines[:-1].copy()
@@ -159,23 +165,28 @@ def tq_loop(strategy, exchange):
             kdf = strategy.handle_df(kdf)
             log.info(kdf)
 
-            close_signal, open_signal, sl_signal = strategy.creat_signals(kdf.iloc[-1])
-            log.info('close_signal: {}'.format(close_signal))
-            log.info(' open_signal: {}'.format(open_signal))
-            log.info('   sl_signal: {}'.format(sl_signal))
+            close_signal, open_signal, sl_signal = strategy.creat_cell_signals(kdf.iloc[-1], cell_id)
+            log.info('-----> close_signal: {}'.format(close_signal))
+            log.info('----->  open_signal: {}'.format(open_signal))
+            log.info('----->    sl_signal: {}'.format(sl_signal))
+
+            if close_orders or open_orders or sl_orders:
+                log.info('-----> alive close_orders: {}'.format(close_orders))
+                log.info('-----> alive  open_orders: {}'.format(open_orders))
+                log.info('-----> alive    sl_orders: {}'.format(sl_orders))
+                continue
+
             if close_signal:
-                close_order = strategy.new_signal(close_signal)
-                log.info('close_order: {}'.format(close_order))
-                if close_order and not sycn_order_to_bill(trader, strategy, close_order):
-                    continue
-            if open_signal:
-                open_order = strategy.new_signal(open_signal)
-                log.info('open_order: {}'.format(open_order))
-                sycn_order_to_bill(trader, strategy, open_order)
-            elif sl_signal:
-                sl_order = strategy.new_signal(sl_signal)
-                sycn_order_to_bill(trader, strategy, sl_order)
-            log.info('kline handle finish!')
+                close_orders = create_orders(strategy, close_signal, cell_id, trader, 'new close')
+
+            if not close_orders:
+                if open_signal:
+                    open_orders = create_orders(strategy, open_signal, cell_id, trader, 'new open')
+                    open_signal = None
+                elif sl_signal:
+                    sl_orders = create_orders(strategy, sl_signal, cell_id, trader, 'new stoploss')
+                    sl_signal = None
+            log.info('-----> kline handle finish!')
     exchange.close()
 
 
@@ -187,14 +198,13 @@ def tq_run():
     parser.add_argument('--print', action="store_true", help='print info')
     args = parser.parse_args()
 
-    instance_id = args.iid
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, {"instance_id": instance_id})
+    cell_id = args.iid
+    ss = td_db.find(INSTANCE_COLLECTION_NAME, {common.BILL_KEY_CELL_ID: cell_id})
     if not ss:
-        print('%s not exist' % (instance_id))
+        print('%s not exist' % (cell_id))
         exit(1)
     s = ss[0]
     exchange_name = s['exchange']
-    limit_amount = s['amount']
     config_path = s["config_path"]
     config = common.get_json_config(config_path)
     module_name = config["module_name"].replace("/", ".")
@@ -204,10 +214,9 @@ def tq_run():
         log.print_switch = True
     if args.log:
         log.log_switch = True
-        logfilename = instance_id + ".log"
+        logfilename = cell_id + ".log"
         log.init('real', logfilename)
 
-    slippage_rate = s['slippage_rate']
     threshold = s['threshold']
     if threshold not in config['y']['threshold']:
         log.warning('threshold not in config')
@@ -218,13 +227,11 @@ def tq_run():
         log.info("exchange name: {} error!".format(exchange_name))
         exit(1)
     quote_engine = QuoteEngine(exchange)
-    trade_engine = ExchangeTradeEngine(instance_id, exchange)
-    cfg_commission = s['commission']
-    trade_engine.set_commission(cfg_commission['rate'], int(cfg_commission['prec']))
-    strategy = common.createInstance(module_name, class_name, instance_id, config, quote_engine, trade_engine)
-    strategy.set_amount(limit_amount)
-    strategy.set_slippage_rate(slippage_rate)
-    strategy.set_y_threshold(threshold[0], threshold[1])
+    trade_engine = ExchangeTradeEngine()
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(s))
+    strategy = common.createInstance(module_name, class_name, config, quote_engine, trade_engine)
+    strategy.set_y_threshold(cell_id, threshold[0], threshold[1])
+
     if hasattr(strategy, 'trainning'):
         strategy.trainning()
 
@@ -233,10 +240,10 @@ def tq_run():
     while True:
 
         if args.debug:
-            tq_loop(strategy, exchange)
+            tq_loop(strategy, exchange, cell_id)
         else:
             try:
-                tq_loop(strategy, exchange)
+                tq_loop(strategy, exchange, cell_id)
             except Exception as ept:
                 log.critical(ept)
         time.sleep(60)

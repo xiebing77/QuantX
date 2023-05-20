@@ -6,7 +6,7 @@ import common
 import common.log as log
 from common import SIDE_BUY, SIDE_SELL, OC_OPEN, OC_CLOSE
 from common import ORDER_TYPE_LIMIT
-from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INSTANCE_STATUS_STOP, instance_statuses, add_instance, delete_instance, update_instance
+from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INSTANCE_STATUS_STOP, instance_statuses, add_instance, delete_instance, update_instance, get_cell_info
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from engine.quote import QuoteEngine
 import engine.trade as trade
@@ -19,10 +19,10 @@ td_db = get_mongodb(setup.trade_db_name)
 
 
 def real_run(args):
-    instance_id = args.iid
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, {"instance_id": instance_id})
+    cell_id = args.iid
+    ss = td_db.find(INSTANCE_COLLECTION_NAME, {common.BILL_KEY_CELL_ID: cell_id})
     if not ss:
-        print('%s not exist' % (instance_id))
+        print('%s not exist' % (cell_id))
         exit(1)
     s = ss[0]
     symbol = s['symbol']
@@ -36,12 +36,12 @@ def real_run(args):
         log.print_switch = True
     if args.log:
         log.log_switch = True
-        logfilename = instance_id + ".log"
+        logfilename = cell_id + ".log"
         print(logfilename)
         log.init('real', logfilename)
 
     #log.info("strategy name: %s;  config: %s" % (class_name, config))
-    log.info('instance_id: %s,  exchange_name: %s' % (instance_id, exchange_name))
+    log.info('cell_id: %s,  exchange_name: %s' % (cell_id, exchange_name))
 
     exchange = create_exchange(exchange_name)
     if not exchange:
@@ -50,14 +50,12 @@ def real_run(args):
     exchange.connect()
     exchange.ping()
     quote_engine = QuoteEngine(exchange)
-    trade_engine = ExchangeTradeEngine(instance_id, exchange)
+    trade_engine = ExchangeTradeEngine()
+    cfg_commission = s['commission']
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(s))
 
-    strategy = common.createInstance(module_name, class_name, instance_id, config, quote_engine, trade_engine)
+    strategy = common.createInstance(module_name, class_name, config, quote_engine, trade_engine)
 
-    if hasattr(strategy, 'set_value'):
-        strategy.set_value(s['value'])
-    if hasattr(strategy, 'set_slippage_rate'):
-        strategy.set_slippage_rate(s['slippage_rate'])
     if hasattr(strategy, 'trainning'):
         strategy.trainning()
 
@@ -78,10 +76,10 @@ def real_run(args):
 
 
 def real_hand(args):
-    instance_id = args.iid
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, {"instance_id": instance_id})
+    cell_id = args.iid
+    ss = td_db.find(INSTANCE_COLLECTION_NAME, {common.BILL_KEY_CELL_ID: cell_id})
     if not ss:
-        print('%s not exist' % (instance_id))
+        print('%s not exist' % (cell_id))
         exit(1)
     s = ss[0]
 
@@ -90,17 +88,19 @@ def real_hand(args):
         log.print_switch = True
     if args.log:
         log.log_switch = True
-        logfilename = instance_id + ".log"
+        logfilename = cell_id + ".log"
         print(logfilename)
         log.init('real', logfilename)
-        info = 'instance_id: %s,  exchange_name: %s' % (instance_id, exchange_name)
+        info = 'cell_id: %s,  exchange_name: %s' % (cell_id, exchange_name)
         log.info("%s" % (info))
 
     exchange = create_exchange(exchange_name)
     if not exchange:
         print("exchange name error!")
         exit(1)
-    trade_engine = ExchangeTradeEngine(instance_id, exchange)
+    trade_engine = ExchangeTradeEngine()
+    cfg_commission = s['commission']
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(s))
 
     config_path = s["config_path"]
     if config_path:
@@ -115,7 +115,7 @@ def real_hand(args):
 
     side = args.side
     oc = args.oc
-    pst = trade_engine.get_position()
+    pst = trade_engine.get_position(cell_id)
     print("pst: {}".format(pst))
     from strategy import check_pst
     if not check_pst(pst, oc, side):
@@ -132,6 +132,7 @@ def real_hand(args):
         exit(1)
 
     params = {
+        "cell_id": cell_id,
         'side': side,
         'symbol': symbol,
         'multiplier': trade_engine.get_multiplier_by_symbol(symbol),
@@ -199,11 +200,11 @@ def real_list(args):
 
     title_tail_fmt = "  %10s  %10s  %13s  %20s  %-16s  %-6s  %-s"
 
-    print(title_head_fmt % ("instance_id", "symbol") +
+    print(title_head_fmt % (common.BILL_KEY_CELL_ID, "symbol") +
         title_pst_fmt % ('pst_base_qty', 'deal_base_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
         title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "config_path"))
     for s in ss:
-        instance_id = s["instance_id"]
+        cell_id = s[common.BILL_KEY_CELL_ID]
         exchange_name = s["exchange"]
         if "status" in s:
             status = s["status"]
@@ -224,10 +225,10 @@ def real_list(args):
         if not exchange:
             continue
 
-        trade_engine = ExchangeTradeEngine(instance_id, exchange)
+        trade_engine = ExchangeTradeEngine()
         cfg_commission = s['commission']
-        trade_engine.set_commission(cfg_commission['rate'], int(cfg_commission['prec']))
-        pst = trade_engine.get_position()
+        trade_engine.set_cell(cell_id, exchange, *get_cell_info(s))
+        pst = trade_engine.get_position(cell_id)
         pst_base_qty = trade.get_pst_qty(pst)
         deal_base_qty = pst[trade.POSITION_DEAL_BASE_QTY_KEY]
         deal_quote_qty = pst[trade.POSITION_DEAL_QUOTE_QTY_KEY]
@@ -248,7 +249,7 @@ def real_list(args):
                 symbol = s['symbol']
 
         commission = trade.get_pst_commission(pst)
-        trader = trade_engine.trader
+        trader = trade_engine.get_cell_trader(cell_id)
         if hasattr(trader, 'currency'):
             base_asset_name = None
             quote_asset_name = trader.currency
@@ -278,7 +279,7 @@ def real_list(args):
             prec_price = config['prec']['price']
             prec_qty   = config['prec']['qty']
         else:
-            prec_qty, prec_price = trade_engine.get_symbol_prec(symbol)
+            prec_qty, prec_price = trade_engine.get_symbol_prec(exchange, symbol)
         profit_info = pst_fmt % (round(pst_base_qty, prec_qty),
             round(deal_base_qty, prec_price),
             round(deal_quote_qty, prec_price),
@@ -311,7 +312,7 @@ def real_list(args):
         else:
             threshold_info = ''
 
-        print(head_fmt % (instance_id, symbol) +
+        print(head_fmt % (cell_id, symbol) +
             profit_info +
             title_tail_fmt % (value_info, amount_info, sr_info, threshold_info, exchange_name, status, config_path))
     close_all_exchange()
@@ -334,7 +335,7 @@ def real_list(args):
 def real_add(args):
     add_instance({
         "user": args.user,
-        "instance_id": args.iid,
+        common.BILL_KEY_CELL_ID: args.iid,
         "symbol": args.symbol,
         "config_path": args.config_path,
         "exchange": args.exchange,
@@ -343,7 +344,7 @@ def real_add(args):
 
 
 def real_delete(args):
-    delete_instance({"instance_id": args.iid})
+    delete_instance({common.BILL_KEY_CELL_ID: args.iid})
 
 
 def real_update(args):
@@ -351,7 +352,7 @@ def real_update(args):
     if args.user:
         record["user"] = args.user
     if args.new_iid:
-        record["instance_id"] = args.new_iid
+        record[common.BILL_KEY_CELL_ID] = args.new_iid
     if args.symbol:
         record["symbol"] = args.symbol
     if args.config_path:
@@ -370,17 +371,17 @@ def real_update(args):
         record["threshold"] = args.threshold
 
     if record:
-        update_instance({"instance_id": args.iid}, record)
+        update_instance({common.BILL_KEY_CELL_ID: args.iid}, record)
 
 
 def real_analyze(args):
     if args.print:
         log.print_switch = True
 
-    instance_id = args.iid
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, {"instance_id": instance_id})
+    cell_id = args.iid
+    ss = td_db.find(INSTANCE_COLLECTION_NAME, {common.BILL_KEY_CELL_ID: cell_id})
     if not ss:
-        print('%s not exist' % (instance_id))
+        print('%s not exist' % (cell_id))
         exit(1)
     s = ss[0]
 
@@ -396,12 +397,12 @@ def real_analyze(args):
         print("exchange name error!")
         exit(1)
 
-    trade_engine = ExchangeTradeEngine(instance_id, exchange)
-    cfg_commission = s['commission']
-    trade_engine.set_commission(cfg_commission['rate'], int(cfg_commission['prec']))
-    trader = trade_engine.trader
-    trade_engine.handle_open_bills()
-    bills = trade_engine.get_all_bills()
+    trade_engine = ExchangeTradeEngine()
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(s))
+    trader = trade_engine.get_cell_trader(cell_id)
+    trade_engine.handle_open_bills(cell_id)
+    bills = trade_engine.get_all_bills(cell_id)
+    his_gross_profit = 0
     total_gross_profit = 0
     total_commission = {}
     pst_qty = 0
@@ -436,8 +437,13 @@ def real_analyze(args):
             gross_profit = pst_quote_qty
             pst_quote_qty = 0
         else:
-            gross_profit = 0
-        total_gross_profit += gross_profit
+            if deal_price:
+                gross_profit = pst_quote_qty + pst_qty * deal_price * m
+            else:
+                gross_profit = 0
+        total_gross_profit = gross_profit + his_gross_profit
+        if pst_qty == 0:
+            his_gross_profit += gross_profit
 
         symbol = cb[common.BILL_SYMBOL_KEY]
         multiplier = cb[common.BILL_MULTIPLIER_KEY]
@@ -445,7 +451,7 @@ def real_analyze(args):
             prec_price = config['prec']['price']
             prec_qty   = config['prec']['qty']
         else:
-            prec_qty, prec_price = trade_engine.get_symbol_prec(symbol)
+            prec_qty, prec_price = trade_engine.get_symbol_prec(trader, symbol)
         print(cb_fmt % (cb['create_time'], symbol, multiplier, oc, side,
             cb['qty'], cb['price'], deal_qty, round(deal_price, prec_price),
             round(gross_profit, 2), round(total_gross_profit, 2),

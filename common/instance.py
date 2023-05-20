@@ -10,9 +10,9 @@ instance_statuses = [INSTANCE_STATUS_START, INSTANCE_STATUS_STOP]
 
 def get_instance(sii):
     db = get_mongodb(setup.trade_db_name)
-    db.create_index(INSTANCE_COLLECTION_NAME, [("instance_id",1)])
+    db.create_index(INSTANCE_COLLECTION_NAME, [(BILL_KEY_CELL_ID,1)])
 
-    instances = db.find(INSTANCE_COLLECTION_NAME, {"instance_id": sii})
+    instances = db.find(INSTANCE_COLLECTION_NAME, {BILL_KEY_CELL_ID: sii})
     #print(instances)
     if len(instances) == 0:
         print("instance id (%s) not exist!" % (sii))
@@ -32,3 +32,23 @@ def update_instance(query, record):
 def delete_instance(query):
     db = get_mongodb(setup.trade_db_name)
     db.delete_one(INSTANCE_COLLECTION_NAME, query)
+
+def get_cell_info(s):
+    if 'value' in s:
+        value = s['value']
+    else:
+        value = None
+
+    if 'amount' in s:
+        amount = s['amount']
+    else:
+        amount = None
+
+    if 'slippage_rate' in s:
+        slippage_rate = s['slippage_rate']
+    else:
+        slippage_rate = 0
+
+    commission = s['commission']
+
+    return value, amount, slippage_rate, commission['rate'], int(commission['prec'])

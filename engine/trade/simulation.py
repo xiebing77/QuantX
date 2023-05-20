@@ -3,14 +3,30 @@ from . import *
 
 
 class SimulationTradeEngine(TradeEngine):
-    def __init__(self, commission_rate):
+    def __init__(self, cell_id, value, amount, commission_rate):
         super().__init__()
+        self.cell_id = cell_id
+        self.value = value
+        self.amount = amount
         self.commission_rate = commission_rate
         self.bills = []
         self.now_time = None
 
-    def new_limit_bill(self, side, symbol, multiplier, price, qty, rmk='', oc=None):
+    def get_cell_value(self, cell_id):
+        return self.value
+
+    def get_cell_amount(self, cell_id):
+        return self.amount
+
+    def get_cell_slippage_rate(self, cell_id):
+        return 0
+
+    def get_all_cell_ids(self):
+        return [self.cell_id]
+
+    def new_limit_bill(self, cell_id, side, symbol, multiplier, price, qty, rmk='', oc=None):
         bill = {
+            common.BILL_KEY_CELL_ID: cell_id,
             common.ORDER_TYPE_KEY: common.ORDER_TYPE_LIMIT,
             "create_time": self.now_time,
             "symbol": symbol,
@@ -58,7 +74,7 @@ class SimulationTradeEngine(TradeEngine):
             pst = bill[POSITION_KEY]
         return pst
 
-    def get_position(self):
+    def get_position(self, cell_id=None):
         return self.calc_position(self.bills)
 
     def get_position_by_bills(self, bills):
