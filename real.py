@@ -7,7 +7,7 @@ import common.log as log
 from common import SIDE_BUY, SIDE_SELL, OC_OPEN, OC_CLOSE
 from common import ORDER_TYPE_LIMIT
 from common.cell import cell_statuses, add_cell, delete_cell, update_cell
-from common.cell import get_cells, get_cell, get_cell_info
+from common.cell import get_cells, get_cell, get_cell_info, get_cell_broker
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from engine.quote import QuoteEngine
 import engine.trade as trade
@@ -41,7 +41,8 @@ def real_run(args):
     #log.info("strategy name: %s;  config: %s" % (class_name, config))
     log.info('cell_id: %s,  exchange_name: %s' % (cell_id, exchange_name))
 
-    exchange = create_exchange(exchange_name)
+    broker_path, broker = get_cell_broker(cell)
+    exchange = create_exchange(exchange_name, broker)
     if not exchange:
         print("exchange name error!")
         exit(1)
@@ -91,7 +92,8 @@ def real_hand(args):
         info = 'cell_id: %s,  exchange_name: %s' % (cell_id, exchange_name)
         log.info("%s" % (info))
 
-    exchange = create_exchange(exchange_name)
+    broker_path, broker = get_cell_broker(cell)
+    exchange = create_exchange(exchange_name, broker)
     if not exchange:
         print("exchange name error!")
         exit(1)
@@ -152,26 +154,29 @@ def round_commission(commission):
 
 
 exchanges = {}
-def init_exchanges(exchange_names):
-    for exchange_name in set(exchange_names):
+def get_exchange_key(exchange_name, broker_path):
+    return '{}_{}'.format(exchange_name, broker_path)
+
+def init_exchanges(cells):
+    for cell in cells:
+        exchange_name = cell["exchange"]
+        broker_path, broker = get_cell_broker(cell)
         try:
-            exchange = create_exchange(exchange_name)
+            exchange = create_exchange(exchange_name, broker)
             if not exchange:
                 print("exchange name error!")
                 exit(1)
             exchange.connect()
             exchange.ping()
-            exchanges[exchange_name] = exchange
+            exchange_key = get_exchange_key(exchange_name, broker_path)
+            exchanges[exchange_key] = exchange
         except Exception as ept:
             log.critical(ept)
             print(ept)
 
-
-def get_exchange(exchange_name):
-    if exchange_name in exchanges:
-        return exchanges[exchange_name]
-    return None
-
+def get_exchange(exchange_name, broker_path):
+    exchange_key = get_exchange_key(exchange_name, broker_path)
+    return exchanges[exchange_key] if exchange_key in exchanges else None
 
 def close_all_exchange():
     for exchange in exchanges.values():
@@ -185,8 +190,7 @@ def real_list(args):
     cells = get_cells(query)
     all_asset_stat = {}
 
-    exchange_names = [cell["exchange"] for cell in cells]
-    init_exchanges(exchange_names)
+    init_exchanges(cells)
 
     title_head_fmt = "%-25s  %12s"
     head_fmt       = "%-25s  %12s"
@@ -194,11 +198,11 @@ def real_list(args):
     title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s  %32s  %11s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
-    title_tail_fmt = "  %10s  %10s  %13s  %20s  %-16s  %-6s  %-s"
+    title_tail_fmt = "  %10s  %10s  %13s  %20s  %-20s  %-6s  %-30s  %-s"
 
     print(title_head_fmt % (common.BILL_KEY_CELL_ID, "symbol") +
         title_pst_fmt % ('pst_base_qty', 'deal_base_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
-        title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "config_path"))
+        title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "broker_path", "config_path"))
     for cell in cells:
         cell_id = cell[common.BILL_KEY_CELL_ID]
         exchange_name = cell["exchange"]
@@ -215,9 +219,11 @@ def real_list(args):
         else:
             config = None
 
+        broker_path, broker = get_cell_broker(cell)
+
         #all_value += value
         profit_info = ""
-        exchange = get_exchange(exchange_name)
+        exchange = get_exchange(exchange_name, broker_path)
         if not exchange:
             continue
 
@@ -296,7 +302,7 @@ def real_list(args):
 
         print(head_fmt % (cell_id, symbol) +
             profit_info +
-            title_tail_fmt % (value_info, amount_info, sr_info, threshold_info, exchange_name, status, config_path))
+            title_tail_fmt % (value_info, amount_info, sr_info, threshold_info, exchange_name, status, broker_path, config_path))
     close_all_exchange()
 
     if args.stat:
@@ -351,6 +357,8 @@ def real_update(args):
         record["slippage_rate"] = args.slippage_rate
     if args.threshold:
         record["threshold"] = args.threshold
+    if args.broker:
+        record["broker"] = args.broker
 
     if record:
         update_cell(args.iid, record)
@@ -373,7 +381,8 @@ def real_analyze(args):
         config = None
 
     exchange_name = cell['exchange']
-    exchange = create_exchange(exchange_name)
+    broker_path, broker = get_cell_broker(cell)
+    exchange = create_exchange(exchange_name, broker)
     if not exchange:
         print("exchange name error!")
         exit(1)
@@ -497,6 +506,7 @@ def real():
     parser_update.add_argument('--amount', type=int, help='amount')
     parser_update.add_argument('--slippage_rate', type=float, help='value')
     parser_update.add_argument('--threshold', type=float, nargs=2, help='y threshold for open and close, eg: 0.001 -0.001')
+    parser_update.add_argument('--broker', help='broker path')
     parser_update.set_defaults(func=real_update)
 
     parser_analyze = subparsers.add_parser('analyze', help='analyze cell')

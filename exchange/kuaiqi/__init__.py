@@ -129,7 +129,7 @@ class Kuaiqi(Exchange):
 
     TRADE_ORDER_ID_KEY = 'order_id'
 
-    def __init__(self, debug=False):
+    def __init__(self, broker, debug=False):
         return
 
     def _trans_symbol(self, symbol):

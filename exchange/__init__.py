@@ -2,7 +2,7 @@ from pprint import pprint
 import common
 import common.log as log
 
-class Account():
+class Trade():
 
     need_oc = False
 
@@ -167,7 +167,7 @@ class Account():
 
 import common.kline as kl
 kline_default_size = 200
-class MarketData():
+class Quote():
 
     def exchange_info(self, symbol: str = None, symbols: list = None):
         if symbol and symbols:
@@ -220,7 +220,7 @@ class MarketData():
         return self.klines(symbol, kl.KLINE_INTERVAL_1HOUR, size, since)
 
 
-class Exchange(MarketData, Account):
-    def __init__(self):
+class Exchange(Quote, Trade):
+    def __init__(self, broker):
         return
 

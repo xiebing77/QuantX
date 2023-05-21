@@ -17,9 +17,9 @@ def get_exchange_names():
     return [ ec.name for ec in exchangeClasses]
 
 
-def create_exchange(exchange_name):
+def create_exchange(exchange_name, broker=None):
     for ec in exchangeClasses:
         if ec.name == exchange_name:
-            return ec(debug=True)
+            return ec(broker, debug=True)
     return None
 

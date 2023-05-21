@@ -10,13 +10,6 @@ import common
 import common.log as log
 
 
-yx_name     = os.environ.get('YIXIN_NAME')
-yx_password = os.environ.get('YIXIN_PWD')
-
-broker_name     = os.environ.get('BROKER_NAME')
-broker_account  = os.environ.get('BROKER_ACCOUNT')
-broker_password = os.environ.get('BROKER_PWD')
-
 class KuaiqiFutures(Kuaiqi):
     name = Kuaiqi.name + '_futures'
 
@@ -26,7 +19,21 @@ class KuaiqiFutures(Kuaiqi):
 
     need_oc = True
 
-    def __init__(self, debug=False):
+    def __init__(self, broker, debug=False):
+        if broker:
+            self.yx_name     = broker['YIXIN_NAME']
+            self.yx_password = broker['YIXIN_PWD']
+
+            self.broker_name     = broker['BROKER_NAME']
+            self.broker_account  = broker['BROKER_ACCOUNT']
+            self.broker_password = broker['BROKER_PWD']
+        else:
+            self.yx_name     = os.environ.get('YIXIN_NAME')
+            self.yx_password = os.environ.get('YIXIN_PWD')
+
+            self.broker_name     = os.environ.get('BROKER_NAME')
+            self.broker_account  = os.environ.get('BROKER_ACCOUNT')
+            self.broker_password = os.environ.get('BROKER_PWD')
         self._api = None
         return
 
@@ -41,8 +48,8 @@ class KuaiqiFutures(Kuaiqi):
         if not self._api:
             from tqsdk import TqAccount
             from tqsdk import TqApi, TqAuth
-            account = TqAccount(broker_name, broker_account, broker_password)
-            self._api = TqApi(account, auth=TqAuth(yx_name, yx_password))
+            account = TqAccount(self.broker_name, self.broker_account, self.broker_password)
+            self._api = TqApi(account, auth=TqAuth(self.yx_name, self.yx_password))
         return self._api
 
     def _get_api(self):
@@ -200,6 +207,6 @@ class KuaiqiFuturesSim(KuaiqiFutures):
         if not self._api:
             from tqsdk import TqKq
             from tqsdk import TqApi, TqAuth
-            self._api = TqApi(TqKq(), auth=TqAuth(yx_name, yx_password))
+            self._api = TqApi(TqKq(), auth=TqAuth(self.yx_name, self.yx_password))
         return self._api
 

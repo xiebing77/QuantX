@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from db.mongodb import get_mongodb
 import setup
-from . import BILL_KEY_CELL_ID
+from . import BILL_KEY_CELL_ID, get_json_config
 
 CELL_COLLECTION_NAME = 'instances'
 
@@ -31,29 +31,23 @@ def add_cell(record):
     trade_db.insert_one(CELL_COLLECTION_NAME, record)
 
 def update_cell(cell_id, record):
-    query = {common.BILL_KEY_CELL_ID: cell_id}
+    query = {BILL_KEY_CELL_ID: cell_id}
     trade_db.update(CELL_COLLECTION_NAME, query, record)
 
 def delete_cell(cell_id):
-    query = {common.BILL_KEY_CELL_ID: cell_id}
+    query = {BILL_KEY_CELL_ID: cell_id}
     trade_db.delete_one(CELL_COLLECTION_NAME, query)
 
-def get_cell_info(s):
-    if 'value' in s:
-        value = s['value']
-    else:
-        value = None
-
-    if 'amount' in s:
-        amount = s['amount']
-    else:
-        amount = None
-
-    if 'slippage_rate' in s:
-        slippage_rate = s['slippage_rate']
-    else:
-        slippage_rate = 0
-
-    commission = s['commission']
-
+def get_cell_info(cell):
+    value = cell['value'] if 'value' in cell else None
+    amount = cell['amount'] if 'amount' in cell else None
+    slippage_rate = cell['slippage_rate'] if 'slippage_rate' in cell else 0
+    commission = cell['commission']
     return value, amount, slippage_rate, commission['rate'], int(commission['prec'])
+
+
+def get_cell_broker(cell):
+    broker_path = cell['broker'] if 'broker' in cell else ''
+    broker = get_json_config(broker_path) if broker_path else None
+    return broker_path, broker
+

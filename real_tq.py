@@ -9,7 +9,7 @@ import argparse
 
 import common
 import common.log as log
-from common.cell import get_cell, get_cell_info
+from common.cell import get_cell, get_cell_info, get_cell_broker
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from engine.quote import QuoteEngine
 from engine.trade.exchange import ExchangeTradeEngine
@@ -219,7 +219,8 @@ def tq_run():
         exit(1)
     '''
 
-    exchange = create_exchange(exchange_name)
+    broker_path, broker = get_cell_broker(cell)
+    exchange = create_exchange(exchange_name, broker)
     if not exchange:
         log.info("exchange name: {} error!".format(exchange_name))
         exit(1)
