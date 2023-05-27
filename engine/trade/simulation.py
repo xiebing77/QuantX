@@ -3,13 +3,12 @@ from . import *
 
 
 class SimulationTradeEngine(TradeEngine):
-    def __init__(self, cell_id, value, amount, commission_rate):
+    def __init__(self, value, amount, commission_rate):
         super().__init__()
-        self.cell_id = cell_id
         self.value = value
         self.amount = amount
         self.commission_rate = commission_rate
-        self.bills = []
+        self.bills = {}
         self.now_time = None
 
     def get_cell_value(self, cell_id):
@@ -22,7 +21,7 @@ class SimulationTradeEngine(TradeEngine):
         return 0
 
     def get_all_cell_ids(self):
-        return [self.cell_id]
+        return self.bills.keys()
 
     def new_limit_bill(self, cell_id, side, symbol, multiplier, price, qty, rmk='', oc=None):
         bill = {
@@ -39,7 +38,11 @@ class SimulationTradeEngine(TradeEngine):
         }
         if oc:
             bill['oc'] = oc
-        self.bills.append(bill)
+
+        if cell_id in self.bills:
+            self.bills[cell_id].append(bill)
+        else:
+            self.bills[cell_id] = [bill]
 
     def update_bill_position(self, pst, bill):
         symbol = bill[common.BILL_SYMBOL_KEY]
@@ -74,14 +77,21 @@ class SimulationTradeEngine(TradeEngine):
             pst = bill[POSITION_KEY]
         return pst
 
-    def get_position(self, cell_id=None):
-        return self.calc_position(self.bills)
+    def get_position(self, cell_id):
+        if cell_id in self.bills:
+            bills = self.bills[cell_id]
+        else:
+            bills = []
+        return self.calc_position(bills)
 
     def get_position_by_bills(self, bills):
         return self.calc_position(bills)
 
-    def get_bills(self):
-        return self.bills
+    def get_bills(self, cell_id):
+        return self.bills[cell_id]
 
-    def reset_bills(self):
-        self.bills = []
+    def reset_bills(self, cell_id):
+        self.bills[cell_id] = []
+
+    def reset_all_bills(self):
+        self.bills = {}

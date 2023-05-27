@@ -202,10 +202,6 @@ def tq_loop(strategy, cell_id):
                 '-'*30, now_time, '-'*30, cur_k.id, cur_sub_open_time, pre_k.close, cur_k.close))
             if (cur_sub_open_time - pre_k.open_time_dt).total_seconds() > interval_secs[0]:
                 continue
-
-            log.info('kline ==> {}'.format(trade_engine.get_position(cell_id)))
-            log.info(account)
-
             log.info(sub_df)
 
             new_sub_df = sub_df[:-1].copy()
@@ -222,6 +218,9 @@ def tq_loop(strategy, cell_id):
             kdf = strategy.handle_feature(new_dfs)
             kdf = strategy.handle_df(kdf)
             log.info(kdf)
+
+            log.info('  {}  cell id: {}  {}'.format('*'*20, cell_id, '*'*20))
+            log.info(account)
 
             close_signal, open_signal, sl_signal = strategy.creat_cell_signals(kdf.iloc[-1], cell_id)
             log.info('-----> close_signal: {}'.format(close_signal))
