@@ -161,6 +161,9 @@ def init_exchanges(cells):
     for cell in cells:
         exchange_name = cell["exchange"]
         broker_path, broker = get_cell_broker(cell)
+        exchange_key = get_exchange_key(exchange_name, broker_path)
+        if exchange_key in exchanges:
+            continue
         try:
             exchange = create_exchange(exchange_name, broker)
             if not exchange:
@@ -168,11 +171,11 @@ def init_exchanges(cells):
                 exit(1)
             exchange.connect()
             exchange.ping()
-            exchange_key = get_exchange_key(exchange_name, broker_path)
             exchanges[exchange_key] = exchange
         except Exception as ept:
             log.critical(ept)
             print(ept)
+
 
 def get_exchange(exchange_name, broker_path):
     exchange_key = get_exchange_key(exchange_name, broker_path)
@@ -448,7 +451,7 @@ def real_analyze(args):
             round_commission(commission), round_commission(total_commission),
             cb['rmk'],
             round(pst_qty, prec_qty), round(pst_cost, prec_price), cb['status'], cb['order_id']))
-    print(symbol, exchange._get_ex_pst(symbol))
+    #print(symbol, exchange._get_ex_pst(symbol))
     exchange.close()
 
 

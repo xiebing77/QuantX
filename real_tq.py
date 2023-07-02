@@ -272,11 +272,9 @@ def tq_run():
         log.init('real', logfilename)
 
     threshold = cell['threshold']
-    '''
     if threshold not in config['y']['threshold']:
         log.warning('threshold not in config')
         exit(1)
-    '''
 
     broker_path, broker = get_cell_broker(cell)
     exchange = create_exchange(exchange_name, broker)
