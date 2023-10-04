@@ -308,6 +308,10 @@ class ExchangeTradeEngine(TradeEngine):
 
             total_deal_qty += deal_qty
             total_quote_qty += deal_qty * deal_price
+
+        if total_deal_qty == 0:
+            return 0, 0
+
         return total_deal_qty, (total_quote_qty / total_deal_qty)
 
 

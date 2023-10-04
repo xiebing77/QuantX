@@ -4,7 +4,7 @@ from datetime import timedelta
 import os
 import common
 import common.log as log
-from common import SIDE_BUY, SIDE_SELL, OC_OPEN, OC_CLOSE
+from common import SIDE_KEY, SIDE_BUY, SIDE_SELL, OC_KEY, OC_OPEN, OC_CLOSE
 from common import ORDER_TYPE_LIMIT
 from common.cell import cell_statuses, add_cell, delete_cell, update_cell
 from common.cell import get_cells, get_cell, get_cell_info, get_cell_broker
@@ -195,16 +195,16 @@ def real_list(args):
 
     init_exchanges(cells)
 
-    title_head_fmt = "%-25s  %12s"
-    head_fmt       = "%-25s  %12s"
+    title_head_fmt = "%-25s  %12s  %18s  %42s"
+    head_fmt       = "%-25s  %12s  %7.2f%% (%3d/%3d)  %8.1f (%6.2f%%, %6.2f%%, %6.2f%%, %6.2f%%)"
 
     title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s  %32s  %11s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
     title_tail_fmt = "  %10s  %10s  %13s  %20s  %-20s  %-6s  %-30s  %-s"
 
-    print(title_head_fmt % (common.BILL_KEY_CELL_ID, "symbol") +
-        title_pst_fmt % ('pst_base_qty', 'deal_base_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
+    print(title_head_fmt % (common.BILL_KEY_CELL_ID, "symbol", "win_rate", 'retrace') +
+        title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
         title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "broker_path", "config_path"))
     for cell in cells:
         cell_id = cell[common.BILL_KEY_CELL_ID]
@@ -235,7 +235,7 @@ def real_list(args):
         trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
         pst = trade_engine.get_position(cell_id)
         pst_base_qty = trade.get_pst_qty(pst)
-        deal_base_qty = pst[trade.POSITION_DEAL_BASE_QTY_KEY]
+        pst_quote_qty = trade.get_pst_quote_qty(pst)
         deal_quote_qty = pst[trade.POSITION_DEAL_QUOTE_QTY_KEY]
 
         symbol = trade.get_pst_symbol(pst)
@@ -253,6 +253,84 @@ def real_list(args):
             else:
                 symbol = cell['symbol']
 
+        bills = trade_engine.get_bills(cell_id)
+        oc_count = 0
+        win_count = 0
+        pst_qty = 0
+        pst_quote_qty = 0
+        his_gross_profit = 0
+        max_total_profit = 0
+        max_profit_rate = 0
+        min_total_profit_b = 0
+        min_profit_rate_b  = 0
+        min_total_profit_a = 0
+        min_profit_rate_a  = 0
+        sum_deal_num   = 0
+        sum_deal_value = 0
+        for bill in bills:
+            deal_qty, deal_price = trade_engine.get_bill_deal_info(bill)
+            oc = bill[OC_KEY]
+            side = bill[SIDE_KEY]
+            if oc == OC_OPEN:
+                open_price = deal_price
+            else:
+                oc_count += 1
+                close_price = deal_price
+                if ((side == SIDE_SELL and close_price > open_price) or
+                    (side == SIDE_BUY  and close_price < open_price)):
+                    win_count += 1
+
+            m = bill[common.BILL_MULTIPLIER_KEY]
+            deal_value = deal_qty * deal_price * m
+            if side == SIDE_BUY:
+                pst_qty += deal_qty
+                pst_quote_qty -= deal_value
+            else:
+                pst_qty -= deal_qty
+                pst_quote_qty += deal_value
+
+            if pst_qty == 0:
+                gross_profit = pst_quote_qty
+                pst_quote_qty = 0
+            else:
+                if deal_price:
+                    gross_profit = pst_quote_qty + pst_qty * deal_price * m
+                else:
+                    gross_profit = 0
+            total_gross_profit = gross_profit + his_gross_profit
+            if pst_qty == 0:
+                his_gross_profit += gross_profit
+
+            if deal_value:
+                sum_deal_num   += 1
+                sum_deal_value += deal_value
+
+            if total_gross_profit > max_total_profit:
+                max_total_profit = total_gross_profit
+                max_profit_rate = max_total_profit / (sum_deal_value / sum_deal_num)
+                if min_total_profit_b > min_total_profit_a:
+                    min_total_profit_b = min_total_profit_a
+                    min_profit_rate_b  = min_profit_rate_a
+                min_total_profit_a = max_total_profit
+                min_profit_rate_a  = max_profit_rate
+            elif total_gross_profit < min_total_profit_a:
+                #print(total_gross_profit, sum_deal_num, sum_deal_value, sum_deal_value / sum_deal_num)
+                min_total_profit_a = total_gross_profit
+                min_profit_rate_a = min_total_profit_a / (sum_deal_value / sum_deal_num)
+
+
+        if oc_count:
+            win_count_rate = win_count / oc_count
+        else:
+            win_count_rate = 0
+
+        retrace_profit = total_profit - max_total_profit
+        #retrace_rate   = 0
+        if sum_deal_num:
+            cur_profit_rate = total_profit / (sum_deal_value / sum_deal_num)
+        else:
+            cur_profit_rate = 0
+
         commission = trade.get_pst_commission(pst)
         trader = trade_engine.get_cell_trader(cell_id)
         if hasattr(trader, 'currency'):
@@ -262,7 +340,7 @@ def real_list(args):
             base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
         if quote_asset_name not in all_asset_stat:
             all_asset_stat[quote_asset_name] = {
-                trade.POSITION_DEAL_BASE_QTY_KEY: 0,
+                trade.POSITION_QUOTE_QTY_KEY: 0,
                 trade.POSITION_DEAL_QUOTE_QTY_KEY: 0,
                 "float_profit": 0,
                 "total_profit": 0,
@@ -270,7 +348,7 @@ def real_list(args):
             }
 
         asset_stat = all_asset_stat[quote_asset_name]
-        asset_stat[trade.POSITION_DEAL_BASE_QTY_KEY] += deal_base_qty
+        asset_stat[trade.POSITION_QUOTE_QTY_KEY] += abs(pst_quote_qty)
         asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY] += deal_quote_qty
         asset_stat['float_profit'] += float_profit
         asset_stat['total_profit'] += total_profit
@@ -286,7 +364,7 @@ def real_list(args):
         else:
             prec_qty, prec_price = trade_engine.get_symbol_prec(exchange, symbol)
         profit_info = pst_fmt % (round(pst_base_qty, prec_qty),
-            round(deal_base_qty, prec_price),
+            round(pst_quote_qty, prec_price),
             round(deal_quote_qty, prec_price),
             round(float_profit, prec_price),
             round(total_profit, prec_price),
@@ -303,7 +381,8 @@ def real_list(args):
         sr_info     = '%s' % slippage_rate if slippage_rate else ''
         threshold_info = '%s' % cell['threshold'] if 'threshold' in cell else ''
 
-        print(head_fmt % (cell_id, symbol) +
+        print(head_fmt % (cell_id, symbol, win_count_rate*100, win_count, oc_count,
+                          retrace_profit, min_profit_rate_b*100, max_profit_rate*100, min_profit_rate_a*100, cur_profit_rate*100) +
             profit_info +
             title_tail_fmt % (value_info, amount_info, sr_info, threshold_info, exchange_name, status, broker_path, config_path))
     close_all_exchange()
@@ -312,9 +391,9 @@ def real_list(args):
         print('assert stat:')
         for coin_name in all_asset_stat:
             asset_stat = all_asset_stat[coin_name]
-            print(title_head_fmt % (coin_name, "") +
+            print(title_head_fmt % (coin_name, "", '', '') +
                 title_pst_fmt % ('',
-                round(asset_stat[trade.POSITION_DEAL_BASE_QTY_KEY], prec_price),
+                round(asset_stat[trade.POSITION_QUOTE_QTY_KEY], prec_price),
                 round(asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY], prec_price),
                 round(asset_stat['float_profit'], prec_price),
                 round(asset_stat['total_profit'], prec_price),
@@ -395,13 +474,17 @@ def real_analyze(args):
     trader = trade_engine.get_cell_trader(cell_id)
     trade_engine.handle_open_bills(cell_id)
     bills = trade_engine.get_all_bills(cell_id)
+    oc_count = 0
+    win_count = 0
+    win_count_rate = 0
     his_gross_profit = 0
     total_gross_profit = 0
+    max_total_profit = 0
     total_commission = {}
     pst_qty = 0
     pst_quote_qty = 0
-    cb_fmt = '%26s  %14s  %10s  %5s  %5s  %10s  %12s  %10s  %12s  %12s  %15s  %15s  %18s  %30s  %12s  %12s  %7s  %12s'
-    cb_title = ('create_time', 'symbol', 'multiplier', 'oc', 'side', 'qty', 'limit_price', 'deal_qty', 'deal_price', 'profit', 'total_profit', 'commission', 'total_commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
+    cb_fmt = '%26s  %14s  %10s  %18s  %20s  %5s  %5s  %10s  %12s  %10s  %12s  %18s  %15s  %15s  %18s  %30s  %12s  %12s  %7s  %12s'
+    cb_title = ('create_time', 'symbol', 'multiplier', 'win_rate', 'retrace', 'oc', 'side', 'qty', 'limit_price', 'deal_qty', 'deal_price', 'profit', 'total_profit', 'commission', 'total_commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
     print(cb_fmt % (cb_title))
     for cb in bills:
         #print(cb)
@@ -413,8 +496,21 @@ def real_analyze(args):
         deal_qty, deal_price = trade_engine.get_bill_deal_info(cb)
 
         m = cb[common.BILL_MULTIPLIER_KEY]
+        deal_value = deal_qty * deal_price * m
+
         oc = cb['oc']
         side = cb['side']
+
+        if oc == OC_OPEN:
+            open_price = deal_price
+        else:
+            oc_count += 1
+            close_price = deal_price
+            if ((side == SIDE_SELL and close_price > open_price) or
+                (side == SIDE_BUY  and close_price < open_price)):
+                win_count += 1
+            win_count_rate = win_count / oc_count
+
         if side == SIDE_BUY:
             pst_qty += deal_qty
             pst_quote_qty -= deal_qty * deal_price * m
@@ -428,15 +524,23 @@ def real_analyze(args):
 
         if pst_qty == 0:
             gross_profit = pst_quote_qty
+            if deal_value:
+                gross_profit_rate = gross_profit / deal_value
+            else:
+                gross_profit_rate = 0
             pst_quote_qty = 0
         else:
             if deal_price:
                 gross_profit = pst_quote_qty + pst_qty * deal_price * m
             else:
                 gross_profit = 0
+            gross_profit_rate = 0
         total_gross_profit = gross_profit + his_gross_profit
         if pst_qty == 0:
             his_gross_profit += gross_profit
+
+        if total_gross_profit > max_total_profit:
+            max_total_profit = total_gross_profit
 
         symbol = cb[common.BILL_SYMBOL_KEY]
         multiplier = cb[common.BILL_MULTIPLIER_KEY]
@@ -445,9 +549,13 @@ def real_analyze(args):
             prec_qty   = config['prec']['qty']
         else:
             prec_qty, prec_price = trade_engine.get_symbol_prec(trader, symbol)
-        print(cb_fmt % (cb['create_time'], symbol, multiplier, oc, side,
+        print(cb_fmt % (cb['create_time'], symbol, multiplier,
+            '{:7.2%} ({:3d}/{:3d})'.format(win_count_rate, win_count, oc_count),
+            '{:.2f}'.format(total_gross_profit-max_total_profit),
+            oc, side,
             cb['qty'], cb['price'], deal_qty, round(deal_price, prec_price),
-            round(gross_profit, 2), round(total_gross_profit, 2),
+            '{} ({:3.2%})'.format(round(gross_profit, 2), gross_profit_rate) if gross_profit else '',
+            round(total_gross_profit, 2),
             round_commission(commission), round_commission(total_commission),
             cb['rmk'],
             round(pst_qty, prec_qty), round(pst_cost, prec_price), cb['status'], cb['order_id']))
