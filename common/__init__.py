@@ -99,6 +99,7 @@ def get_balance_free(balance):
 def get_balance_frozen(balance):
     return float(balance["frozen"])
 
+OC_KEY   = 'oc'
 OC_OPEN  = 'OPEN'
 OC_CLOSE = 'CLOSE'
 
@@ -114,6 +115,8 @@ TIME_IN_FORCE_GTC = 'GTC'  # Good till cancelled
 TIME_IN_FORCE_IOC = 'IOC'  # Immediate or cancel
 TIME_IN_FORCE_FOK = 'FOK'  # Fill or kill
 
+BILL_KEY_CELL_ID = 'instance_id'
+
 BILL_SYMBOL_KEY     = 'symbol'
 BILL_MULTIPLIER_KEY = 'multiplier'
 
@@ -125,6 +128,20 @@ BILL_ORDER_ID_KEY = 'order_id'
 #BILL_ORDER_TYPE_KEY = 'order_type'
 BILL_PRICE_KEY = 'price'
 BILL_QTY_KEY = 'qty'
+BILL_OPEN_ORDER_IDS_KEY = 'open_order_ids'
+
+def get_orderids_by_bill(bill):
+    order_ids = bill[BILL_ORDER_ID_KEY]
+    if type(order_ids) is list:
+        return order_ids
+    else:
+        return [order_ids]
+
+def get_orderids_by_bills(bills):
+    order_ids = []
+    for bill in bills:
+        order_ids += get_orderids_by_bill(bill)
+    return order_ids
 
 
 MATH_FLOOR = 0  # 向下，舍去多余

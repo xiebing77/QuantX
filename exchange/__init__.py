@@ -2,7 +2,7 @@ from pprint import pprint
 import common
 import common.log as log
 
-class Account():
+class Trade():
 
     need_oc = False
 
@@ -11,10 +11,15 @@ class Account():
             return self.SIDE_BUY
         return self.SIDE_SELL
 
-    def trans_oc(self, oc):
-        if oc == common.OC_OPEN:
-            return self.OC_OPEN
-        return self.OC_CLOSE
+    def _get_pos(self, ex_symbol, ex_side):
+        pos_long_his, pos_long_today, pos_short_his, pos_short_today = self._get_ex_pst(ex_symbol)
+        if ex_side == self.SIDE_SELL:
+            pos_his = pos_long_his
+            pos_today = pos_long_today
+        else:
+            pos_his = pos_short_his
+            pos_today = pos_short_today
+        return pos_his, pos_today
 
     # adpation
     def new_order(self, side, typ, symbol, price, qty, client_order_id=None, oc=None):
@@ -30,15 +35,68 @@ class Account():
         else:
             ex_type = typ
 
-        if self.need_oc:
-            ex_oc = self.trans_oc(oc)
-            extra = {'ex_oc': ex_oc}
-        else:
-            extra = {}
-        return self._new_order(ex_side=ex_side,
-            ex_type=ex_type,
-            ex_symbol=self._trans_symbol(symbol),
-            price=price, qty=qty, client_order_id=client_order_id, **extra)
+        ex_symbol = self._trans_symbol(symbol)
+        params = {
+            'ex_side': ex_side,
+            'ex_type': ex_type,
+            'ex_symbol': ex_symbol,
+            'price': price,
+            'qty': qty,
+            'client_order_id': client_order_id
+        }
+
+        if not self.need_oc:
+            return self._new_order(**params)
+
+        if oc == common.OC_OPEN:
+            params['ex_oc'] = self.OC_OPEN
+            return self._new_order(**params)
+
+        if not hasattr(self, 'OC_CLOSETODAY'):
+            params['ex_oc'] = self.OC_CLOSE
+            return self._new_order(**params)
+
+        # 上期所和上期能源分平今/平昨
+        pos_his, pos_toady = self._get_pos(ex_symbol, ex_side)
+        if qty <= pos_his:
+            params['ex_oc'] = self.OC_CLOSE
+            order = self._new_order(**params)
+            if not self.check_status_is_close(order):
+                return order
+            if not self.close_pos_his_not_enough(order):
+                return order
+            pos_his, pos_toady = self._get_pos(ex_symbol, ex_side)
+
+        # 上期所和上期能源才需要平今，其它返回
+        if qty <= pos_toady:
+            params['ex_oc'] = self.OC_CLOSETODAY
+            order = self._new_order(**params)
+            if not self.check_status_is_close(order):
+                return order
+            if not self.close_pos_today_not_enough(order):
+                return order
+            pos_his, pos_toady = self._get_pos(ex_symbol, ex_side)
+
+        for i in range(3):
+            if qty > pos_his + pos_toady:
+                log.critical('_new_order qty({}) > pos his({}) + today({})'.format(
+                    qty, pos_his, pos_toady))
+                break
+
+            params['ex_oc'] = self.OC_CLOSE
+            params['qty'] = pos_his
+            order = self._new_order(**params)
+            if self.check_status_is_close(order) and self.close_pos_his_not_enough(order):
+                pos_his, pos_toady = self._get_pos(ex_symbol, ex_side)
+                continue
+
+            params['ex_oc'] = self.OC_CLOSETODAY
+            params['qty'] = qty - pos_his
+            order2 = self._new_order(**params)
+            return [order, order2]
+
+        return None
+
 
     def cancel_order(self, symbol, order_id):
         self._cancel_order(self._trans_symbol(symbol), order_id=order_id)
@@ -109,7 +167,7 @@ class Account():
 
 import common.kline as kl
 kline_default_size = 200
-class MarketData():
+class Quote():
 
     def exchange_info(self, symbol: str = None, symbols: list = None):
         if symbol and symbols:
@@ -162,7 +220,7 @@ class MarketData():
         return self.klines(symbol, kl.KLINE_INTERVAL_1HOUR, size, since)
 
 
-class Exchange(MarketData, Account):
-    def __init__(self):
+class Exchange(Quote, Trade):
+    def __init__(self, broker):
         return
 

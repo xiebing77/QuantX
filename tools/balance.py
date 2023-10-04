@@ -22,7 +22,6 @@ if __name__ == "__main__":
     if not exchange:
         print("exchange name error!")
         exit(1)
-    exchange.connect()
 
     balances = exchange.get_all_balances()
     print(" %s      %s balances info:" % (datetime.now(), args.exchange) )

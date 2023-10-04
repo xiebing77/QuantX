@@ -8,16 +8,7 @@ import uuid
 from . import Kuaiqi
 import common
 import common.log as log
-from tqsdk import TqAccount, TqKq
-from tqsdk import TqApi, TqAuth
 
-
-yx_name     = os.environ.get('YIXIN_NAME')
-yx_password = os.environ.get('YIXIN_PWD')
-
-broker_name     = os.environ.get('BROKER_NAME')
-broker_account  = os.environ.get('BROKER_ACCOUNT')
-broker_password = os.environ.get('BROKER_PWD')
 
 class KuaiqiFutures(Kuaiqi):
     name = Kuaiqi.name + '_futures'
@@ -28,109 +19,118 @@ class KuaiqiFutures(Kuaiqi):
 
     need_oc = True
 
-    def __init__(self, debug=False):
+    def __init__(self, broker, debug=False):
+        if broker:
+            self.yx_name     = broker['YIXIN_NAME']
+            self.yx_password = broker['YIXIN_PWD']
+
+            self.broker_name     = broker['BROKER_NAME']
+            self.broker_account  = broker['BROKER_ACCOUNT']
+            self.broker_password = broker['BROKER_PWD']
+        else:
+            self.yx_name     = os.environ.get('YIXIN_NAME')
+            self.yx_password = os.environ.get('YIXIN_PWD')
+
+            self.broker_name     = os.environ.get('BROKER_NAME')
+            self.broker_account  = os.environ.get('BROKER_ACCOUNT')
+            self.broker_password = os.environ.get('BROKER_PWD')
+        self._api = None
         return
 
     #def __exit__(self, *exc_details):
     def close(self):
         log.info('KuaiqiFutures __exit__')
-        if self.__api:
-            self.__api.close()
-            self.__api = None
+        if self._api:
+            self._api.close()
+            self._api = None
 
     def connect(self):
-        account = TqAccount(broker_name, broker_account, broker_password)
-        api = TqApi(account, auth=TqAuth(yx_name, yx_password))
-        self.__api = api
-        return api
+        if not self._api:
+            from tqsdk import TqAccount
+            from tqsdk import TqApi, TqAuth
+            account = TqAccount(self.broker_name, self.broker_account, self.broker_password)
+            self._api = TqApi(account, auth=TqAuth(self.yx_name, self.yx_password))
+        return self._api
+
+    def _get_api(self):
+        if not self._api:
+            self.connect()
+        return self._api
 
     def _get_assetPrecision(self, ex_symbol):
         if ex_symbol not in self.symbol_info_map:
-            sy_infos = self._exchange_info()['data']
-            for sy_info in sy_infos:
-                if ex_symbol == sy_info['symbol']:
-                    self.symbol_info_map[sy_info['symbol']] = sy_info
-            #print(sy_info)
+            q = self._get_api().get_quote(ex_symbol)
+            self.symbol_info_map[ex_symbol] = [0, q['price_decs']]
         sy_info = self.symbol_info_map[ex_symbol]
-        return int(sy_info['quantityScale']), int(sy_info['priceScale'])
+        return sy_info[0], sy_info[1]
 
     # MARKETS
     def ping(self):
         return
 
     def time(self):
-        return self.get_time_from_data_ts(self.__api.time()['data'])
+        return self.get_time_from_data_ts(self._get_api().time()['data'])
 
     def _exchange_info(self, ex_symbol: str = None, ex_symbols: list = None):
-        return self.__api.exchange_info()
+        return None
 
     def _depth(self, exchange_symbol, **kwargs):
-        ret = self.__api.depth(symbol=exchange_symbol, **kwargs)
+        ret = self._get_api().depth(symbol=exchange_symbol, **kwargs)
         #print(ret)
         return ret['data']
 
     def _trades(self, exchange_symbol, limit=500):
-        trades = self.__api.trades(symbol=exchange_symbol, limit=limit)['data']
+        trades = self._get_api().trades(symbol=exchange_symbol, limit=limit)['data']
         return trades
 
     def _historical_trades(self, exchange_symbol):
-        trades = self.__api.historical_trades(symbol=exchange_symbol)
+        trades = self._get_api().historical_trades(symbol=exchange_symbol)
         return trades
 
     def _agg_trades(self, exchange_symbol):
-        trades = self.__api.agg_trades(symbol=exchange_symbol)
+        trades = self._get_api().agg_trades(symbol=exchange_symbol)
         return trades
 
     def _ticker_price(self, exchange_symbol):
-        ticker_info = self.__api.get_quote(exchange_symbol)
+        ticker_info = self._get_api().get_quote(exchange_symbol)
         return float(ticker_info.last_price)
 
     def _klines(self, exchange_symbol, interval, size, since):
-        klines = self.__api.get_kline_serial(exchange_symbol, interval, data_length=size)
+        klines = self._get_api().get_kline_serial(exchange_symbol, interval, data_length=size)
         return klines
 
     def account(self):
-        account = self.__api.get_account()
-        print(account)
-        if not account:
-            return None
-        nb = []
-        #balances = account['balances']
-        for item in account:
-            if float(item['available'])==0 and float(item['frozen'])==0 and float(item['lock'])==0:
-                continue
-            nb.append(item)
-        #account['balances'] = nb
-        return nb
-
+        return self._get_api().get_account()
 
     def get_balances(self):
         account = self.account()
         #print(account)
         return account
 
-
     def get_balances_by_assets(self, *coins):
-        """获取余额"""
-        coin_balances = []
-        balances = self.get_all_balances()
-        for coin in coins:
-            for item in balances:
-                if item[self.BALANCE_ASSET_KEY] in [coin.upper, coin.lower]:
-                    coin_balances.append(item)
-                    break
-        if len(coin_balances) <= 0:
-            return
-        elif len(coin_balances) == 1:
-            return coin_balances[0]
-        else:
-            return tuple(coin_balances)
+        return
 
     def _my_trades(self, exchange_symbol, **kwargs):
-        trades = self.__api.get_trade()
+        trades = self._get_api().get_trade()
         log.info('_my_trades: {}'.format(trades))
         return [trade for trade in trades.values()]
 
+
+    def _get_ex_pst(self, ex_symbol):
+        ex_pst = self._get_api().get_position(ex_symbol)
+        #self._get_api().wait_update()
+        log.info('ex_pst: {}'.format(ex_pst))
+        return ex_pst.pos_long_his, ex_pst.pos_long_today, ex_pst.pos_short_his, ex_pst.pos_short_today
+
+    def close_pos_his_not_enough(self, order):
+        if order['is_error'] and order['last_msg'] == 'CTP:平昨仓位不足':
+            return True
+        return False
+
+    def close_pos_today_not_enough(self, order):
+        if order['is_error'] and order['last_msg'] == 'CTP:平今仓位不足':
+            return True
+        return False
 
     def _new_order(self, ex_side, ex_type, ex_symbol, price, qty, ex_oc, client_order_id=None):
         #if not client_order_id:
@@ -143,21 +143,6 @@ class KuaiqiFutures(Kuaiqi):
         else:
             return None
 
-        # 上期所和上期能源分平今/平昨
-        if hasattr(self, 'OC_CLOSETODAY') and ex_oc == self.OC_CLOSE:
-            ex_pst = self.__api.get_position(ex_symbol)
-            self.__api.wait_update()
-            log.info('ex_pst: {}'.format(ex_pst))
-            if ex_side == self.SIDE_SELL:
-                pos_his = ex_pst.pos_long_his
-            else:
-                pos_his = ex_pst.pos_short_his
-
-            if pos_his >= qty:
-                ex_oc = self.OC_CLOSE
-            else:
-                ex_oc = self.OC_CLOSETODAY
-
         params = {
             'symbol': ex_symbol,
             'offset': ex_oc,
@@ -166,30 +151,20 @@ class KuaiqiFutures(Kuaiqi):
             'volume': qty
         }
         order = self._send_order(params)
-
-        if self.check_status_is_close(order) and order['is_error']:
-            if ex_oc == self.OC_CLOSE and order['last_msg'] == 'CTP:平昨仓位不足':
-                params['offset'] = self.OC_CLOSETODAY
-                order = self._send_order(params)
-
         return order
 
 
     def _send_order(self, params):
         log.info('-----> insert order:  {}'.format(params))
-        order = self.__api.insert_order(**params)
+        order = self._get_api().insert_order(**params)
         from datetime import datetime
         insert_dt = datetime.now()
         log.info('{} insert wait_update before: {}'.format(insert_dt, order))
         while not order.exchange_order_id:
             if (datetime.now()-insert_dt).total_seconds() > 5:
                 break
-            self.__api.wait_update(deadline=time.time() + 1)
+            self._get_api().wait_update(deadline=time.time() + 1)
         log.info('{} insert wait_update  after: {}'.format(datetime.now(), order))
-
-        #ex_pst = self.__api.get_position(ex_symbol)
-        #self.__api.wait_update()
-        #log.info('ex_pst: {}'.format(ex_pst))
         return order
 
 
@@ -197,7 +172,7 @@ class KuaiqiFutures(Kuaiqi):
         return []
 
     def _get_order(self, exchange_symbol, order_id):
-        order = self.__api.get_order(order_id)
+        order = self._get_api().get_order(order_id)
         log.info('_get_order id: {}'.format(order_id))
         log.info('_get_order before: {}'.format(order))
         get_dt = datetime.now()
@@ -205,21 +180,33 @@ class KuaiqiFutures(Kuaiqi):
             now = datetime.now()
             if (now-get_dt).total_seconds() > 10:
                 return None
-            self.__api.wait_update(deadline=time.time() + 1)
+            self._get_api().wait_update(deadline=time.time() + 1)
         log.info('_get_order  after: {}'.format(order))
         log.info('trade_records: {}'.format(order.trade_records))
         return order
 
     def _get_orders(self, exchange_symbol, limit=None):
         return []
-        orders = self.__api.get_order()
-        self.__api.wait_update()
+        orders = self._get_api().get_order()
+        self._get_api().wait_update()
         log.info('_get_orders: {}'.format(orders))
         return orders
 
     def _cancel_order(self, exchange_symbol, order_id):
         log.info('-----> cancel order id:  {}'.format(order_id))
-        self.__api.cancel_order(order_id)
+        self._get_api().cancel_order(order_id)
 
     def _cancel_open_orders(self, exchange_symbol):
         return
+
+
+class KuaiqiFuturesSim(KuaiqiFutures):
+    name = KuaiqiFutures.name + '_sim'
+    data_src = KuaiqiFutures.name
+    def connect(self):
+        if not self._api:
+            from tqsdk import TqKq
+            from tqsdk import TqApi, TqAuth
+            self._api = TqApi(TqKq(), auth=TqAuth(self.yx_name, self.yx_password))
+        return self._api
+

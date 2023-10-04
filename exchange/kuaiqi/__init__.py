@@ -129,7 +129,7 @@ class Kuaiqi(Exchange):
 
     TRADE_ORDER_ID_KEY = 'order_id'
 
-    def __init__(self, debug=False):
+    def __init__(self, broker, debug=False):
         return
 
     def _trans_symbol(self, symbol):
@@ -155,6 +155,9 @@ class Kuaiqi(Exchange):
 
     def get_order_exec_quote_qty(self, order):
         return self.get_order_exec_qty(order) * order[self.Order_Key_trade_Price]
+
+    def get_order_deal_price(self, order):
+        return order[self.Order_Key_trade_Price]
 
     def check_status_is_close(self, order):
         order_status = order[self.ORDER_STATUS_KEY]

@@ -27,7 +27,7 @@ if __name__ == "__main__":
 
     open_time_key = exchange.kline_key_open_time
     for f in args.files:
-        print('handle file: ', f)
+        print(f'load file: {f}', end='')
         cost_start = datetime.now()
         df = pd.read_csv(f)
         print('  cost: %s'%(datetime.now()-cost_start))
@@ -36,6 +36,7 @@ if __name__ == "__main__":
         open_time_0 = exchange.get_time_from_data_ts(open_times[0])
         open_time_1 = exchange.get_time_from_data_ts(open_times[1])
         interval_td = kl.get_interval_timedelta(args.interval)
+        print(f'{args.interval}  {interval_td=}')
         if not interval_td:
             print('interval {} not support'.format(args.interval))
         if open_time_1 - open_time_0 != interval_td:

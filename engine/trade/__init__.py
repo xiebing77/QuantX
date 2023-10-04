@@ -135,15 +135,20 @@ class TradeEngine(object):
         self._multiplieres = {}
         for contract in get_contractes():
             code = contract[CONTRACT_CODE]
-            multiplier = contract[CONTRACT_MULTIPLIER]
-            symbol = '{}{}'.format(code, int(contract[CONTRACT_MAIN]))
-            #self._multiplieres[code]   = multiplier
-            self._multiplieres[symbol] = int(multiplier)
+            self.update_symbol(code, contract)
         #print(self._multiplieres)
+
+    def update_symbol(self, code, contract):
+        multiplier = contract[CONTRACT_MULTIPLIER]
+        symbol = '{}{}'.format(code, int(contract[CONTRACT_MAIN]))
+        #self._multiplieres[code]   = multiplier
+        self._multiplieres[symbol] = int(multiplier)
+        return symbol
 
     def get_symbol_by_code(self, code):
         contract = get_contract(code)
-        return '{}{}'.format(code, int(contract[CONTRACT_MAIN]))
+        symbol = self.update_symbol(code, contract)
+        return symbol
 
     def get_multiplier_by_symbol(self, symbol):
         if symbol in self._multiplieres:

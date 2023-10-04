@@ -4,9 +4,10 @@ from datetime import timedelta
 import os
 import common
 import common.log as log
-from common import SIDE_BUY, SIDE_SELL, OC_OPEN, OC_CLOSE
+from common import SIDE_KEY, SIDE_BUY, SIDE_SELL, OC_KEY, OC_OPEN, OC_CLOSE
 from common import ORDER_TYPE_LIMIT
-from common.instance import INSTANCE_COLLECTION_NAME, INSTANCE_STATUS_START, INSTANCE_STATUS_STOP, instance_statuses, add_instance, delete_instance, update_instance
+from common.cell import cell_statuses, add_cell, delete_cell, update_cell
+from common.cell import get_cells, get_cell, get_cell_info, get_cell_broker
 from exchange.exchange_factory import get_exchange_names, create_exchange
 from engine.quote import QuoteEngine
 import engine.trade as trade
@@ -15,19 +16,16 @@ from db.mongodb import get_mongodb
 import setup
 
 
-td_db = get_mongodb(setup.trade_db_name)
-
-
 def real_run(args):
-    instance_id = args.iid
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, {"instance_id": instance_id})
-    if not ss:
-        print('%s not exist' % (instance_id))
+    cell_id = args.iid
+    cell = get_cell(cell_id)
+    if not cell:
+        print('%s not exist' % (cell_id))
         exit(1)
-    s = ss[0]
-    symbol = s['symbol']
-    exchange_name = s['exchange']
-    config_path = s["config_path"]
+
+    symbol = cell['symbol']
+    exchange_name = cell['exchange']
+    config_path = cell["config_path"]
     config = common.get_json_config(config_path)
     module_name = config["module_name"].replace("/", ".")
     class_name = config["class_name"]
@@ -36,28 +34,27 @@ def real_run(args):
         log.print_switch = True
     if args.log:
         log.log_switch = True
-        logfilename = instance_id + ".log"
+        logfilename = cell_id + ".log"
         print(logfilename)
         log.init('real', logfilename)
 
     #log.info("strategy name: %s;  config: %s" % (class_name, config))
-    log.info('instance_id: %s,  exchange_name: %s' % (instance_id, exchange_name))
+    log.info('cell_id: %s,  exchange_name: %s' % (cell_id, exchange_name))
 
-    exchange = create_exchange(exchange_name)
+    broker_path, broker = get_cell_broker(cell)
+    exchange = create_exchange(exchange_name, broker)
     if not exchange:
         print("exchange name error!")
         exit(1)
     exchange.connect()
     exchange.ping()
     quote_engine = QuoteEngine(exchange)
-    trade_engine = ExchangeTradeEngine(instance_id, exchange)
+    trade_engine = ExchangeTradeEngine()
+    cfg_commission = cell['commission']
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
 
-    strategy = common.createInstance(module_name, class_name, instance_id, config, quote_engine, trade_engine)
+    strategy = common.createInstance(module_name, class_name, config, quote_engine, trade_engine)
 
-    if hasattr(strategy, 'set_value'):
-        strategy.set_value(s['value'])
-    if hasattr(strategy, 'set_slippage_rate'):
-        strategy.set_slippage_rate(s['slippage_rate'])
     if hasattr(strategy, 'trainning'):
         strategy.trainning()
 
@@ -78,33 +75,33 @@ def real_run(args):
 
 
 def real_hand(args):
-    instance_id = args.iid
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, {"instance_id": instance_id})
-    if not ss:
-        print('%s not exist' % (instance_id))
+    cell_id = args.iid
+    cell = get_cell(cell_id)
+    if not cell:
+        print('%s not exist' % (cell_id))
         exit(1)
-    s = ss[0]
 
-    exchange_name = s['exchange']
+    exchange_name = cell['exchange']
     if args.print:
         log.print_switch = True
     if args.log:
         log.log_switch = True
-        logfilename = instance_id + ".log"
+        logfilename = cell_id + ".log"
         print(logfilename)
         log.init('real', logfilename)
-        info = 'instance_id: %s,  exchange_name: %s' % (instance_id, exchange_name)
+        info = 'cell_id: %s,  exchange_name: %s' % (cell_id, exchange_name)
         log.info("%s" % (info))
 
-    exchange = create_exchange(exchange_name)
+    broker_path, broker = get_cell_broker(cell)
+    exchange = create_exchange(exchange_name, broker)
     if not exchange:
         print("exchange name error!")
         exit(1)
-    exchange.connect()
-    exchange.ping()
-    trade_engine = ExchangeTradeEngine(instance_id, exchange)
+    trade_engine = ExchangeTradeEngine()
+    cfg_commission = cell['commission']
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
 
-    config_path = s["config_path"]
+    config_path = cell["config_path"]
     if config_path:
         config = common.get_json_config(config_path)
         if 'contract_code' in config:
@@ -113,25 +110,41 @@ def real_hand(args):
         else:
             symbol = config['symbol']
     else:
-        symbol = s['symbol']
+        symbol = cell['symbol']
+
+    side = args.side
+    oc = args.oc
+    pst = trade_engine.get_position(cell_id)
+    print("pst: {}".format(pst))
+    from strategy import check_pst
+    if not check_pst(pst, oc, side):
+        print("oc: {} error!".format(oc))
+        exchange.close()
+        exit(1)
+
+    qty = args.qty
+    pst_base_qty = trade.get_pst_qty(pst)
+    if oc == OC_CLOSE and qty > abs(pst_base_qty):
+        print("qty: cmd {} > pst {}".format(qty, pst_base_qty))
+        exchange._get_ex_pst(symbol)
+        exchange.close()
+        exit(1)
 
     params = {
-        'side': args.side,
+        "cell_id": cell_id,
+        'side': side,
         'symbol': symbol,
         'multiplier': trade_engine.get_multiplier_by_symbol(symbol),
         'price': args.price,
-        'qty': args.qty
+        'qty': qty
     }
-    if args.oc:
-        params['oc'] = args.oc
+    if oc:
+        params['oc'] = oc
     print('real hand params: ', params)
-    order_id = trade_engine.new_limit_bill(**params)
+    ret = trade_engine.new_limit_bill(**params)
+    print('send order ok!  {}'.format(ret))
 
-    for i in range(5):
-        time.sleep(1)
-        buy_open_bills, sell_open_bills = trade_engine.handle_open_bills()
-        if len(buy_open_bills)+len(sell_open_bills) == 0:
-            break
+    exchange.close()
 
 
 def round_commission(commission):
@@ -141,26 +154,32 @@ def round_commission(commission):
 
 
 exchanges = {}
-def init_exchanges(exchange_names):
-    for exchange_name in set(exchange_names):
+def get_exchange_key(exchange_name, broker_path):
+    return '{}_{}'.format(exchange_name, broker_path)
+
+def init_exchanges(cells):
+    for cell in cells:
+        exchange_name = cell["exchange"]
+        broker_path, broker = get_cell_broker(cell)
+        exchange_key = get_exchange_key(exchange_name, broker_path)
+        if exchange_key in exchanges:
+            continue
         try:
-            exchange = create_exchange(exchange_name)
+            exchange = create_exchange(exchange_name, broker)
             if not exchange:
                 print("exchange name error!")
                 exit(1)
             exchange.connect()
             exchange.ping()
-            exchanges[exchange_name] = exchange
+            exchanges[exchange_key] = exchange
         except Exception as ept:
             log.critical(ept)
             print(ept)
 
 
-def get_exchange(exchange_name):
-    if exchange_name in exchanges:
-        return exchanges[exchange_name]
-    return None
-
+def get_exchange(exchange_name, broker_path):
+    exchange_key = get_exchange_key(exchange_name, broker_path)
+    return exchanges[exchange_key] if exchange_key in exchanges else None
 
 def close_all_exchange():
     for exchange in exchanges.values():
@@ -171,52 +190,52 @@ def real_list(args):
     query = {"user": args.user}
     if args.status:
         query["status"] = args.status
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, query)
-    #print(ss)
+    cells = get_cells(query)
     all_asset_stat = {}
 
-    exchange_names = [s["exchange"] for s in ss]
-    init_exchanges(exchange_names)
+    init_exchanges(cells)
 
-    title_head_fmt = "%-25s  %12s"
-    head_fmt       = "%-25s  %12s"
+    title_head_fmt = "%-25s  %12s  %18s  %42s"
+    head_fmt       = "%-25s  %12s  %7.2f%% (%3d/%3d)  %8.1f (%6.2f%%, %6.2f%%, %6.2f%%, %6.2f%%)"
 
     title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s  %32s  %11s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
-    title_tail_fmt = "  %10s  %10s  %13s  %20s  %-16s  %-6s  %-s"
+    title_tail_fmt = "  %10s  %10s  %13s  %20s  %-20s  %-6s  %-30s  %-s"
 
-    print(title_head_fmt % ("instance_id", "symbol") +
-        title_pst_fmt % ('pst_base_qty', 'deal_base_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
-        title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "config_path"))
-    for s in ss:
-        instance_id = s["instance_id"]
-        exchange_name = s["exchange"]
-        if "status" in s:
-            status = s["status"]
+    print(title_head_fmt % (common.BILL_KEY_CELL_ID, "symbol", "win_rate", 'retrace') +
+        title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
+        title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "broker_path", "config_path"))
+    for cell in cells:
+        cell_id = cell[common.BILL_KEY_CELL_ID]
+        exchange_name = cell["exchange"]
+        if "status" in cell:
+            status = cell["status"]
         else:
             status = ""
         #if status != args.status and status != "":
         #    continue
 
-        config_path = s["config_path"]
+        config_path = cell["config_path"]
         if config_path:
             config = common.get_json_config(config_path)
         else:
             config = None
 
+        broker_path, broker = get_cell_broker(cell)
+
         #all_value += value
         profit_info = ""
-        exchange = get_exchange(exchange_name)
+        exchange = get_exchange(exchange_name, broker_path)
         if not exchange:
             continue
 
-        trade_engine = ExchangeTradeEngine(instance_id, exchange)
-        cfg_commission = s['commission']
-        trade_engine.set_commission(cfg_commission['rate'], int(cfg_commission['prec']))
-        pst = trade_engine.get_position()
+        trade_engine = ExchangeTradeEngine()
+        cfg_commission = cell['commission']
+        trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
+        pst = trade_engine.get_position(cell_id)
         pst_base_qty = trade.get_pst_qty(pst)
-        deal_base_qty = pst[trade.POSITION_DEAL_BASE_QTY_KEY]
+        pst_quote_qty = trade.get_pst_quote_qty(pst)
         deal_quote_qty = pst[trade.POSITION_DEAL_QUOTE_QTY_KEY]
 
         symbol = trade.get_pst_symbol(pst)
@@ -225,14 +244,95 @@ def real_list(args):
             float_profit, total_profit = trade.get_gross_profit(pst, ticker_price)
         else:
             float_profit, total_profit = 0, 0
-            if config and 'contract_code' in config:
-                code = config['contract_code']
-                symbol = code # trade_engine.get_symbol_by_code(code)
+            if config:
+                if 'contract_code' in config:
+                    code = config['contract_code']
+                    symbol = code # trade_engine.get_symbol_by_code(code)
+                else:
+                    symbol = config['symbol']
             else:
-                symbol = config['symbol']
+                symbol = cell['symbol']
+
+        bills = trade_engine.get_bills(cell_id)
+        oc_count = 0
+        win_count = 0
+        pst_qty = 0
+        pst_quote_qty = 0
+        his_gross_profit = 0
+        max_total_profit = 0
+        max_profit_rate = 0
+        min_total_profit_b = 0
+        min_profit_rate_b  = 0
+        min_total_profit_a = 0
+        min_profit_rate_a  = 0
+        sum_deal_num   = 0
+        sum_deal_value = 0
+        for bill in bills:
+            deal_qty, deal_price = trade_engine.get_bill_deal_info(bill)
+            oc = bill[OC_KEY]
+            side = bill[SIDE_KEY]
+            if oc == OC_OPEN:
+                open_price = deal_price
+            else:
+                oc_count += 1
+                close_price = deal_price
+                if ((side == SIDE_SELL and close_price > open_price) or
+                    (side == SIDE_BUY  and close_price < open_price)):
+                    win_count += 1
+
+            m = bill[common.BILL_MULTIPLIER_KEY]
+            deal_value = deal_qty * deal_price * m
+            if side == SIDE_BUY:
+                pst_qty += deal_qty
+                pst_quote_qty -= deal_value
+            else:
+                pst_qty -= deal_qty
+                pst_quote_qty += deal_value
+
+            if pst_qty == 0:
+                gross_profit = pst_quote_qty
+                pst_quote_qty = 0
+            else:
+                if deal_price:
+                    gross_profit = pst_quote_qty + pst_qty * deal_price * m
+                else:
+                    gross_profit = 0
+            total_gross_profit = gross_profit + his_gross_profit
+            if pst_qty == 0:
+                his_gross_profit += gross_profit
+
+            if deal_value:
+                sum_deal_num   += 1
+                sum_deal_value += deal_value
+
+            if total_gross_profit > max_total_profit:
+                max_total_profit = total_gross_profit
+                max_profit_rate = max_total_profit / (sum_deal_value / sum_deal_num)
+                if min_total_profit_b > min_total_profit_a:
+                    min_total_profit_b = min_total_profit_a
+                    min_profit_rate_b  = min_profit_rate_a
+                min_total_profit_a = max_total_profit
+                min_profit_rate_a  = max_profit_rate
+            elif total_gross_profit < min_total_profit_a:
+                #print(total_gross_profit, sum_deal_num, sum_deal_value, sum_deal_value / sum_deal_num)
+                min_total_profit_a = total_gross_profit
+                min_profit_rate_a = min_total_profit_a / (sum_deal_value / sum_deal_num)
+
+
+        if oc_count:
+            win_count_rate = win_count / oc_count
+        else:
+            win_count_rate = 0
+
+        retrace_profit = total_profit - max_total_profit
+        #retrace_rate   = 0
+        if sum_deal_num:
+            cur_profit_rate = total_profit / (sum_deal_value / sum_deal_num)
+        else:
+            cur_profit_rate = 0
 
         commission = trade.get_pst_commission(pst)
-        trader = trade_engine.trader
+        trader = trade_engine.get_cell_trader(cell_id)
         if hasattr(trader, 'currency'):
             base_asset_name = None
             quote_asset_name = trader.currency
@@ -240,7 +340,7 @@ def real_list(args):
             base_asset_name, quote_asset_name = common.split_symbol_coins(symbol)
         if quote_asset_name not in all_asset_stat:
             all_asset_stat[quote_asset_name] = {
-                trade.POSITION_DEAL_BASE_QTY_KEY: 0,
+                trade.POSITION_QUOTE_QTY_KEY: 0,
                 trade.POSITION_DEAL_QUOTE_QTY_KEY: 0,
                 "float_profit": 0,
                 "total_profit": 0,
@@ -248,7 +348,7 @@ def real_list(args):
             }
 
         asset_stat = all_asset_stat[quote_asset_name]
-        asset_stat[trade.POSITION_DEAL_BASE_QTY_KEY] += deal_base_qty
+        asset_stat[trade.POSITION_QUOTE_QTY_KEY] += abs(pst_quote_qty)
         asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY] += deal_quote_qty
         asset_stat['float_profit'] += float_profit
         asset_stat['total_profit'] += total_profit
@@ -262,9 +362,9 @@ def real_list(args):
             prec_price = config['prec']['price']
             prec_qty   = config['prec']['qty']
         else:
-            prec_qty, prec_price = trade_engine.get_symbol_prec(symbol)
+            prec_qty, prec_price = trade_engine.get_symbol_prec(exchange, symbol)
         profit_info = pst_fmt % (round(pst_base_qty, prec_qty),
-            round(deal_base_qty, prec_price),
+            round(pst_quote_qty, prec_price),
             round(deal_quote_qty, prec_price),
             round(float_profit, prec_price),
             round(total_profit, prec_price),
@@ -275,38 +375,25 @@ def real_list(args):
         #except Exception as ept:
         #    profit_info = "error:  %s" % (ept)
 
-        if 'value' in s:
-            value_info = '%s'%s['value']
-        else:
-            value_info = ''
+        value, amount, slippage_rate, commission_rate, commission_prec = get_cell_info(cell)
+        value_info  = '%s' % value if value else ''
+        amount_info = '%s' % amount if amount else ''
+        sr_info     = '%s' % slippage_rate if slippage_rate else ''
+        threshold_info = '%s' % cell['threshold'] if 'threshold' in cell else ''
 
-        if 'amount' in s:
-            amount_info = '%s'%s['amount']
-        else:
-            amount_info = ''
-
-        if 'slippage_rate' in s:
-            sr_info = '%s'%s['slippage_rate']
-        else:
-            sr_info = ''
-
-        if 'threshold' in s:
-            threshold_info = '%s'%s['threshold']
-        else:
-            threshold_info = ''
-
-        print(head_fmt % (instance_id, symbol) +
+        print(head_fmt % (cell_id, symbol, win_count_rate*100, win_count, oc_count,
+                          retrace_profit, min_profit_rate_b*100, max_profit_rate*100, min_profit_rate_a*100, cur_profit_rate*100) +
             profit_info +
-            title_tail_fmt % (value_info, amount_info, sr_info, threshold_info, exchange_name, status, config_path))
+            title_tail_fmt % (value_info, amount_info, sr_info, threshold_info, exchange_name, status, broker_path, config_path))
     close_all_exchange()
 
     if args.stat:
         print('assert stat:')
         for coin_name in all_asset_stat:
             asset_stat = all_asset_stat[coin_name]
-            print(title_head_fmt % (coin_name, "") +
+            print(title_head_fmt % (coin_name, "", '', '') +
                 title_pst_fmt % ('',
-                round(asset_stat[trade.POSITION_DEAL_BASE_QTY_KEY], prec_price),
+                round(asset_stat[trade.POSITION_QUOTE_QTY_KEY], prec_price),
                 round(asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY], prec_price),
                 round(asset_stat['float_profit'], prec_price),
                 round(asset_stat['total_profit'], prec_price),
@@ -316,9 +403,9 @@ def real_list(args):
 
 
 def real_add(args):
-    add_instance({
+    add_cell({
         "user": args.user,
-        "instance_id": args.iid,
+        common.BILL_KEY_CELL_ID: args.iid,
         "symbol": args.symbol,
         "config_path": args.config_path,
         "exchange": args.exchange,
@@ -327,7 +414,7 @@ def real_add(args):
 
 
 def real_delete(args):
-    delete_instance({"instance_id": args.iid})
+    delete_cell(args.iid)
 
 
 def real_update(args):
@@ -335,7 +422,7 @@ def real_update(args):
     if args.user:
         record["user"] = args.user
     if args.new_iid:
-        record["instance_id"] = args.new_iid
+        record[common.BILL_KEY_CELL_ID] = args.new_iid
     if args.symbol:
         record["symbol"] = args.symbol
     if args.config_path:
@@ -352,107 +439,144 @@ def real_update(args):
         record["slippage_rate"] = args.slippage_rate
     if args.threshold:
         record["threshold"] = args.threshold
+    if args.broker:
+        record["broker"] = args.broker
 
     if record:
-        update_instance({"instance_id": args.iid}, record)
+        update_cell(args.iid, record)
 
 
 def real_analyze(args):
-    instance_id = args.iid
-    ss = td_db.find(INSTANCE_COLLECTION_NAME, {"instance_id": instance_id})
-    if not ss:
-        print('%s not exist' % (instance_id))
-        exit(1)
-    s = ss[0]
+    if args.print:
+        log.print_switch = True
 
-    config_path = s["config_path"]
+    cell_id = args.iid
+    cell = get_cell(cell_id)
+    if not cell:
+        print('%s not exist' % (cell_id))
+        exit(1)
+
+    config_path = cell["config_path"]
     if config_path:
         config = common.get_json_config(config_path)
+    else:
+        config = None
 
-    exchange_name = s['exchange']
-    exchange = create_exchange(exchange_name)
+    exchange_name = cell['exchange']
+    broker_path, broker = get_cell_broker(cell)
+    exchange = create_exchange(exchange_name, broker)
     if not exchange:
         print("exchange name error!")
         exit(1)
 
-    trade_engine = ExchangeTradeEngine(instance_id, exchange)
-    cfg_commission = s['commission']
-    trade_engine.set_commission(cfg_commission['rate'], int(cfg_commission['prec']))
-    trader = trade_engine.trader
-    close_bills = trade_engine.get_bills(common.BILL_STATUS_CLOSE)
+    trade_engine = ExchangeTradeEngine()
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
+    trader = trade_engine.get_cell_trader(cell_id)
+    trade_engine.handle_open_bills(cell_id)
+    bills = trade_engine.get_all_bills(cell_id)
+    oc_count = 0
+    win_count = 0
+    win_count_rate = 0
+    his_gross_profit = 0
     total_gross_profit = 0
+    max_total_profit = 0
     total_commission = {}
     pst_qty = 0
     pst_quote_qty = 0
-    cb_fmt = '%26s  %14s  %10s  %5s  %5s  %10s  %12s  %12s  %12s  %15s  %15s  %18s  %30s  %12s  %12s  %7s  %12s'
-    cb_title = ('create_time', 'symbol', 'multiplier', 'oc', 'side', 'qty', 'limit_price', 'deal_price', 'profit', 'total_profit', 'commission', 'total_commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
+    cb_fmt = '%26s  %14s  %10s  %18s  %20s  %5s  %5s  %10s  %12s  %10s  %12s  %18s  %15s  %15s  %18s  %30s  %12s  %12s  %7s  %12s'
+    cb_title = ('create_time', 'symbol', 'multiplier', 'win_rate', 'retrace', 'oc', 'side', 'qty', 'limit_price', 'deal_qty', 'deal_price', 'profit', 'total_profit', 'commission', 'total_commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
     print(cb_fmt % (cb_title))
-    for cb in close_bills:
+    for cb in bills:
         #print(cb)
         order_id = cb['order_id']
-        order = trade_engine.get_order_from_db(cb['order_id'])
         #print(order)
         commission = trade_engine.get_bill_commission(cb)
         trade.stat_commission(total_commission, commission)
 
-        deal_price = 0
-        pst_cost = 0
-        if order:
-            executedQty = trader.get_order_exec_qty(order)
-            if executedQty > 0:
-                cummulativeQuoteQty = trader.get_order_exec_quote_qty(order)
-                if exchange.order_is_buy(order):
-                    pst_qty += executedQty
-                    pst_quote_qty += cummulativeQuoteQty
-                else:
-                    pst_qty -= executedQty
-                    pst_quote_qty -= cummulativeQuoteQty
-                deal_price = cummulativeQuoteQty / executedQty
-                if pst_qty != 0:
-                    pst_cost = float(pst_quote_qty / pst_qty)
+        deal_qty, deal_price = trade_engine.get_bill_deal_info(cb)
+
+        m = cb[common.BILL_MULTIPLIER_KEY]
+        deal_value = deal_qty * deal_price * m
 
         oc = cb['oc']
         side = cb['side']
-        gross_profit = 0
-        if deal_price > 0:
-            if oc == OC_OPEN:
-                pre_deal_price = deal_price
+
+        if oc == OC_OPEN:
+            open_price = deal_price
+        else:
+            oc_count += 1
+            close_price = deal_price
+            if ((side == SIDE_SELL and close_price > open_price) or
+                (side == SIDE_BUY  and close_price < open_price)):
+                win_count += 1
+            win_count_rate = win_count / oc_count
+
+        if side == SIDE_BUY:
+            pst_qty += deal_qty
+            pst_quote_qty -= deal_qty * deal_price * m
+        else:
+            pst_qty -= deal_qty
+            pst_quote_qty += deal_qty * deal_price * m
+        if pst_qty > 0:
+            pst_cost = abs(pst_quote_qty / pst_qty / m)
+        else:
+            pst_cost = 0
+
+        if pst_qty == 0:
+            gross_profit = pst_quote_qty
+            if deal_value:
+                gross_profit_rate = gross_profit / deal_value
             else:
-                gross_profit = (deal_price - pre_deal_price) * cb[common.BILL_MULTIPLIER_KEY]
-                if side == SIDE_BUY:
-                    gross_profit = -gross_profit
-                total_gross_profit += gross_profit
+                gross_profit_rate = 0
+            pst_quote_qty = 0
+        else:
+            if deal_price:
+                gross_profit = pst_quote_qty + pst_qty * deal_price * m
+            else:
+                gross_profit = 0
+            gross_profit_rate = 0
+        total_gross_profit = gross_profit + his_gross_profit
+        if pst_qty == 0:
+            his_gross_profit += gross_profit
+
+        if total_gross_profit > max_total_profit:
+            max_total_profit = total_gross_profit
 
         symbol = cb[common.BILL_SYMBOL_KEY]
         multiplier = cb[common.BILL_MULTIPLIER_KEY]
-        if 'prec' in config:
+        if config and 'prec' in config:
             prec_price = config['prec']['price']
             prec_qty   = config['prec']['qty']
         else:
-            exchange.connect()
-            prec_qty, prec_price = trade_engine.get_symbol_prec(symbol)
-        print(cb_fmt % (cb['create_time'], symbol, multiplier, oc, side,
-            cb['qty'], cb['price'], round(deal_price, prec_price),
-            round(gross_profit, 2), round(total_gross_profit, 2),
+            prec_qty, prec_price = trade_engine.get_symbol_prec(trader, symbol)
+        print(cb_fmt % (cb['create_time'], symbol, multiplier,
+            '{:7.2%} ({:3d}/{:3d})'.format(win_count_rate, win_count, oc_count),
+            '{:.2f}'.format(total_gross_profit-max_total_profit),
+            oc, side,
+            cb['qty'], cb['price'], deal_qty, round(deal_price, prec_price),
+            '{} ({:3.2%})'.format(round(gross_profit, 2), gross_profit_rate) if gross_profit else '',
+            round(total_gross_profit, 2),
             round_commission(commission), round_commission(total_commission),
             cb['rmk'],
             round(pst_qty, prec_qty), round(pst_cost, prec_price), cb['status'], cb['order_id']))
+    #print(symbol, exchange._get_ex_pst(symbol))
+    exchange.close()
 
 
 def real():
     parser = argparse.ArgumentParser(description='real run one')
     subparsers = parser.add_subparsers(help='sub-command help')
 
-    parser_run = subparsers.add_parser('run', help='run instance')
-    parser_run.add_argument('-iid', required=True, help='instance id')
+    parser_run = subparsers.add_parser('run', help='run cell')
+    parser_run.add_argument('-iid', required=True, help='cell id')
     parser_run.add_argument('-loop', action="store_true", help='run loop')
     parser_run.add_argument('-debug', action="store_true", help='run debug')
     parser_run.add_argument('--log', action="store_true", help='log info')
     parser_run.add_argument('--print', action="store_true", help='print info')
     parser_run.set_defaults(func=real_run)
 
-    parser_hand = subparsers.add_parser('hand', help='handmade instance')
-    parser_hand.add_argument('-iid', required=True, help='instance id')
+    parser_hand = subparsers.add_parser('hand', help='handmade cell')
+    parser_hand.add_argument('-iid', required=True, help='cell id')
     parser_hand.add_argument('-oc', choices=[OC_OPEN, OC_CLOSE], help='')
     parser_hand.add_argument('-side', required=True, choices=[SIDE_BUY, SIDE_SELL], help='')
     parser_hand.add_argument('-price', required=True, type=float, help='price')
@@ -462,41 +586,43 @@ def real():
     parser_hand.set_defaults(func=real_hand)
 
 
-    parser_list = subparsers.add_parser('list', help='list of instance')
+    parser_list = subparsers.add_parser('list', help='list of cell')
     parser_list.add_argument('-user', help='user name')
-    parser_list.add_argument('--status', choices=instance_statuses, help='instance status')
+    parser_list.add_argument('--status', choices=cell_statuses, help='cell status')
     parser_list.add_argument('--stat', help='stat all', action="store_true")
     parser_list.set_defaults(func=real_list)
 
-    parser_add = subparsers.add_parser('add', help='add new instance')
+    parser_add = subparsers.add_parser('add', help='add new cell')
     parser_add.add_argument('-user', required=True, help='user name')
     parser_add.add_argument('-exchange', required=True, choices=get_exchange_names(), help='exchange name')
-    parser_add.add_argument('-iid', required=True, help='instance id')
+    parser_add.add_argument('-iid', required=True, help='cell id')
     parser_add.add_argument('-symbol', help='symbol')
     parser_add.add_argument('-config_path', help='config path')
-    parser_add.add_argument('-status', choices=instance_statuses, default=INSTANCE_STATUS_START, help='instance status')
+    parser_add.add_argument('-status', choices=cell_statuses, default=cell_statuses[0], help='cell status')
     parser_add.set_defaults(func=real_add)
 
-    parser_delete = subparsers.add_parser('delete', help='delete instance')
-    parser_delete.add_argument('-iid', required=True, help='instance id')
+    parser_delete = subparsers.add_parser('delete', help='delete cell')
+    parser_delete.add_argument('-iid', required=True, help='cell id')
     parser_delete.set_defaults(func=real_delete)
 
-    parser_update = subparsers.add_parser('update', help='update instance')
-    parser_update.add_argument('-iid', required=True, help='instance id')
+    parser_update = subparsers.add_parser('update', help='update cell')
+    parser_update.add_argument('-iid', required=True, help='cell id')
     parser_update.add_argument('--user', help='user name')
-    parser_update.add_argument('--new_iid', help='new instance id')
+    parser_update.add_argument('--new_iid', help='new cell id')
     parser_update.add_argument('--symbol', help='symbol')
     parser_update.add_argument('--config_path', help='config path')
-    parser_update.add_argument('--exchange', help='instance exchange')
-    parser_update.add_argument('--status', choices=instance_statuses, help='instance status')
+    parser_update.add_argument('--exchange', help='cell exchange')
+    parser_update.add_argument('--status', choices=cell_statuses, help='cell status')
     parser_update.add_argument('--value', type=int, help='value')
     parser_update.add_argument('--amount', type=int, help='amount')
     parser_update.add_argument('--slippage_rate', type=float, help='value')
     parser_update.add_argument('--threshold', type=float, nargs=2, help='y threshold for open and close, eg: 0.001 -0.001')
+    parser_update.add_argument('--broker', help='broker path')
     parser_update.set_defaults(func=real_update)
 
-    parser_analyze = subparsers.add_parser('analyze', help='analyze instance')
-    parser_analyze.add_argument('-iid', required=True, help='instance id')
+    parser_analyze = subparsers.add_parser('analyze', help='analyze cell')
+    parser_analyze.add_argument('-iid', required=True, help='cell id')
+    parser_analyze.add_argument('--print', action="store_true", help='print info')
     parser_analyze.set_defaults(func=real_analyze)
 
     args = parser.parse_args()
