@@ -24,10 +24,16 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
 
     name = 'CV'
     if key_high and (calc_all or name in config):
-        key_x = '%s' % (name)
-        period = 10
-        df[key_x] = CV(df[key_high], df[key_low], period)
-        key_xs.append(key_x)
+        scs = [{"n": 10}]
+        if name in config and config[name]:
+            scs = config[name]
+            if type(scs) != list:
+                scs = [scs]
+        for sc in scs:
+            period = sc['n']
+            key_x = '%s_%s' % (name, period)
+            df[key_x] = CV(df[key_high], df[key_low], period)
+            key_xs.append(key_x)
 
     name = 'DBCD'
     if key_high and (calc_all or name in config):
@@ -178,6 +184,13 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
             df[key_x] = BIAS(s, n)
             key_xs.append(key_x)
 
+            print(sc)
+            if 'diff' in sc:
+                for N in sc['diff']:
+                    key_x_diff = f'{key_x}_diff_{N}'
+                    df[key_x_diff] = df[key_x].diff(N)
+                    key_xs.append(key_x_diff)
+
     name = 'n-mBIAS'
     if calc_all or name in config:
         ary = []
@@ -205,6 +218,12 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
                 s = df[key_close]
             df[key_x] = nmBIAS(s, n, m)
             key_xs.append(key_x)
+
+            if 'diff' in sc:
+                for N in sc['diff']:
+                    key_x_diff = f'{key_x}_diff_{N}'
+                    df[key_x_diff] = df[key_x].diff(N)
+                    key_xs.append(key_x_diff)
 
     name = 'OIV'
     if key_oi and (calc_all or name in config):

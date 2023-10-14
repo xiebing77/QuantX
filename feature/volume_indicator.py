@@ -1,4 +1,5 @@
 import talib
+from . import *
 
 def calc_volume_indicators(quoter, is_tick, config, df, calc_all=False):
     key_xs = []
@@ -14,10 +15,19 @@ def calc_volume_indicators(quoter, is_tick, config, df, calc_all=False):
         key_low = quoter.kline_key_low
         key_volume = quoter.kline_key_volume
 
+    '''
     name = 'AD'
     if key_high and (calc_all or name in config):
         key_x = '%s' % (name)
         df[key_x] = talib.AD(df[key_high], df[key_low], df[key_close], df[key_volume])
+        key_xs.append(key_x)
+    '''
+
+    name = 'ADER'
+    if key_high and (calc_all or name in config):
+        key_x = '%s' % (name)
+        AD = talib.AD(df[key_high], df[key_low], df[key_close], df[key_volume])
+        df[key_x] = AD / EMA(AD, 3) - 1
         key_xs.append(key_x)
 
     name = 'ADOSC'
@@ -33,10 +43,26 @@ def calc_volume_indicators(quoter, is_tick, config, df, calc_all=False):
                                fastperiod=fp, slowperiod=sp)
         key_xs.append(key_x)
 
+    '''
     name = 'OBV'
     if key_high and (calc_all or name in config):
         key_x = '%s' % (name)
         df[key_x] = talib.OBV(df[key_close], df[key_volume])
+        key_xs.append(key_x)
+    '''
+
+    name = 'OBVER'
+    if key_high and (calc_all or name in config):
+        key_x = '%s' % (name)
+        OBV = talib.OBV(df[key_close], df[key_volume])
+        df[key_x] = OBV / EMA(OBV, 4) - 1
+        key_xs.append(key_x)
+
+    name = 'EMV'
+    if key_high and (calc_all or name in config):
+        key_x = '%s' % (name)
+        emv = EMV(df[key_high], df[key_low], df[key_volume])
+        df[key_x] = emv / EMA(emv, 4) - 1
         key_xs.append(key_x)
 
     return key_xs
