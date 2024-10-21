@@ -1,6 +1,7 @@
 import talib
+from . import *
 
-def calc_volatility_indicators(quoter, config, kdf, calc_all=False):
+def calc_overlap_indicators(quoter, is_tick, config, kdf, calc_all=False):
     key_xs = []
     key_open = quoter.kline_key_open
     key_close = quoter.kline_key_close
@@ -12,12 +13,15 @@ def calc_volatility_indicators(quoter, config, kdf, calc_all=False):
         if name in config and 'period' in config[name]:
             tp = config[name]['period']
         else:
-            tp = 5
+            tp = 20
         key_x = '%s_%s' % (name, tp)
         upperband, middleband, lowerband = talib.BBANDS(kdf[key_close], timeperiod=tp)
-        kdf[key_x] = middleband
+        kdf[key_x] = (upperband - lowerband) / middleband
+        #m = MA(kdf[key_close], tp)
+        #kdf[key_x] = 4 * m.std() / m
         key_xs.append(key_x)
 
+    '''
     name = 'DEMA'
     if calc_all or name in config:
         tp = config[name]['period']
@@ -135,6 +139,7 @@ def calc_volatility_indicators(quoter, config, kdf, calc_all=False):
         key_x = '%s_%s' % (name, tp)
         kdf[key_x] = talib.TSF(kdf[key_close], timeperiod=tp)
         key_xs.append(key_x)
+    '''
 
     return key_xs
 
