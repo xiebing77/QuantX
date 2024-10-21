@@ -195,15 +195,15 @@ def real_list(args):
 
     init_exchanges(cells)
 
-    title_head_fmt = "%-25s  %12s  %18s  %42s"
-    head_fmt       = "%-25s  %12s  %7.2f%% (%3d/%3d)  %8.1f (%6.2f%%, %6.2f%%, %6.2f%%, %6.2f%%)"
+    title_head_fmt = "%-25s  %12s  %18s  %16s  %36s"
+    head_fmt       = "%-25s  %12s  %7.2f%% (%3d/%3d)  %8.1f(%6.2f%%) (%6.2f%%, %6.2f%%, %6.2f%%, %6.2f%%)"
 
     title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s  %32s  %11s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
     title_tail_fmt = "  %10s  %10s  %13s  %20s  %-20s  %-6s  %-30s  %-s"
 
-    print(title_head_fmt % (common.BILL_KEY_CELL_ID, "symbol", "win_rate", 'retrace') +
+    print(title_head_fmt % (common.BILL_KEY_CELL_ID, "symbol", "win_rate", 'max retrace', 'rate') +
         title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
         title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "broker_path", "config_path"))
     for cell in cells:
@@ -241,6 +241,7 @@ def real_list(args):
         symbol = trade.get_pst_symbol(pst)
         if symbol:
             ticker_price = exchange.ticker_price(symbol)
+            #print(symbol, ticker_price)
             float_profit, total_profit = trade.get_gross_profit(pst, ticker_price)
         else:
             float_profit, total_profit = 0, 0
@@ -260,13 +261,16 @@ def real_list(args):
         pst_quote_qty = 0
         his_gross_profit = 0
         max_total_profit = 0
+        max_retrace_profit = 0
         max_profit_rate = 0
         min_total_profit_b = 0
         min_profit_rate_b  = 0
         min_total_profit_a = 0
         min_profit_rate_a  = 0
+        max_profit_rr = 0
         sum_deal_num   = 0
         sum_deal_value = 0
+        arg_deal_value = 0
         for bill in bills:
             deal_qty, deal_price = trade_engine.get_bill_deal_info(bill)
             oc = bill[OC_KEY]
@@ -304,10 +308,11 @@ def real_list(args):
             if deal_value:
                 sum_deal_num   += 1
                 sum_deal_value += deal_value
+                arg_deal_value = sum_deal_value / sum_deal_num
 
             if total_gross_profit > max_total_profit:
                 max_total_profit = total_gross_profit
-                max_profit_rate = max_total_profit / (sum_deal_value / sum_deal_num)
+                max_profit_rate = max_total_profit / arg_deal_value
                 if min_total_profit_b > min_total_profit_a:
                     min_total_profit_b = min_total_profit_a
                     min_profit_rate_b  = min_profit_rate_a
@@ -316,18 +321,24 @@ def real_list(args):
             elif total_gross_profit < min_total_profit_a:
                 #print(total_gross_profit, sum_deal_num, sum_deal_value, sum_deal_value / sum_deal_num)
                 min_total_profit_a = total_gross_profit
-                min_profit_rate_a = min_total_profit_a / (sum_deal_value / sum_deal_num)
+                min_profit_rate_a = min_total_profit_a / arg_deal_value
 
+            retrace_profit = total_gross_profit - max_total_profit
+            if arg_deal_value:
+                retrace_rate = retrace_profit / arg_deal_value
+            else:
+                retrace_rate = 0
+            if retrace_rate < max_profit_rr:
+                max_retrace_profit = retrace_profit
+                max_profit_rr = retrace_rate
 
         if oc_count:
             win_count_rate = win_count / oc_count
         else:
             win_count_rate = 0
 
-        retrace_profit = total_profit - max_total_profit
-        #retrace_rate   = 0
         if sum_deal_num:
-            cur_profit_rate = total_profit / (sum_deal_value / sum_deal_num)
+            cur_profit_rate = total_profit / arg_deal_value
         else:
             cur_profit_rate = 0
 
@@ -382,7 +393,7 @@ def real_list(args):
         threshold_info = '%s' % cell['threshold'] if 'threshold' in cell else ''
 
         print(head_fmt % (cell_id, symbol, win_count_rate*100, win_count, oc_count,
-                          retrace_profit, min_profit_rate_b*100, max_profit_rate*100, min_profit_rate_a*100, cur_profit_rate*100) +
+                          max_retrace_profit, max_profit_rr*100, min_profit_rate_b*100, max_profit_rate*100, min_profit_rate_a*100, cur_profit_rate*100) +
             profit_info +
             title_tail_fmt % (value_info, amount_info, sr_info, threshold_info, exchange_name, status, broker_path, config_path))
     close_all_exchange()
@@ -391,7 +402,7 @@ def real_list(args):
         print('assert stat:')
         for coin_name in all_asset_stat:
             asset_stat = all_asset_stat[coin_name]
-            print(title_head_fmt % (coin_name, "", '', '') +
+            print(title_head_fmt % (coin_name, "", '', '', '') +
                 title_pst_fmt % ('',
                 round(asset_stat[trade.POSITION_QUOTE_QTY_KEY], prec_price),
                 round(asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY], prec_price),

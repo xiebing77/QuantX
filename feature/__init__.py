@@ -25,6 +25,9 @@ def BIAS(s, N):
 def nmBIAS(s, N, M):
     return MA(s, N) / MA(s, M) - 1
 
+def nmEMA(s, N, M):
+    return EMA(s, N) / EMA(s, M) - 1
+
 def PB(close, N):
     k = 2
     diff = k * RSTD(close, N)

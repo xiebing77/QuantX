@@ -127,8 +127,9 @@ def tq_loop(strategy, cell_id):
         interval_secs.append(interval_sec)
         interval_timedeltas.append(interval_timedelta)
 
-    #pd.set_option('display.max_rows', None)
-    #pd.set_option('display.max_columns', None)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', 1000)
 
     trade_engine = strategy.trade_engine
     log.info('cell_id: {},  pst: {}'.format(cell_id, trade_engine.get_position(cell_id)))
@@ -202,7 +203,7 @@ def tq_loop(strategy, cell_id):
                 '-'*30, now_time, '-'*30, cur_k.id, cur_sub_open_time, pre_k.close, cur_k.close))
             if (cur_sub_open_time - pre_k.open_time_dt).total_seconds() > interval_secs[0]:
                 continue
-            log.info(sub_df)
+            #log.info(sub_df)
 
             new_sub_df = sub_df[:-1].copy()
             new_dfs = [new_sub_df]

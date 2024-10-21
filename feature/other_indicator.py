@@ -184,7 +184,6 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
             df[key_x] = BIAS(s, n)
             key_xs.append(key_x)
 
-            print(sc)
             if 'diff' in sc:
                 for N in sc['diff']:
                     key_x_diff = f'{key_x}_diff_{N}'
@@ -217,6 +216,40 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
             else:
                 s = df[key_close]
             df[key_x] = nmBIAS(s, n, m)
+            key_xs.append(key_x)
+
+            if 'diff' in sc:
+                for N in sc['diff']:
+                    key_x_diff = f'{key_x}_diff_{N}'
+                    df[key_x_diff] = df[key_x].diff(N)
+                    key_xs.append(key_x_diff)
+
+    name = 'n-mEMA'
+    if calc_all or name in config:
+        ary = []
+        if name in config:
+            scs = config[name]
+            if type(scs) != list:
+                scs = [scs]
+            if not scs:
+                scs = [{"n": 13, "m": 39}]
+
+        for sc in scs:
+            if 't' not in sc:
+                continue
+            t = sc['t']
+            n = sc['n']
+            m = sc['m']
+            key_x = '%s_%s_%s_%s' % (name, t, n, m)
+            if t == 'c':
+                s = df[key_close]
+            elif t == 'v':
+                s = df[key_volume]
+            elif t == 'oi':
+                s = df[quoter.kline_key_oi]
+            else:
+                s = df[key_close]
+            df[key_x] = nmEMA(s, n, m)
             key_xs.append(key_x)
 
             if 'diff' in sc:
