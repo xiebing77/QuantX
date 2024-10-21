@@ -13,22 +13,26 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='klines print or check')
     parser.add_argument('-symbol', required=True, help='')
     parser.add_argument('-sec', type=int, default=0, help='')
-    parser.add_argument('-year', required=True, type=int, help='')
+    parser.add_argument('-code', required=True, help='')
     args = parser.parse_args()
 
-    symbol = args.symbol
-    year = args.year
     if args.sec == 300:
         tt = '5m'
     elif args.sec == 24*60*60:
         tt = '1d'
-    csv_file_name = '{}_{}_{}.csv'.format(symbol, year, tt)
+
+    symbol = args.symbol + args.code
+    csv_file_name = '{}_{}.csv'.format(symbol, tt)
     print('{} {}'.format(args.sec ,csv_file_name))
+
+    y = int('20'+args.code[:2])
+    m = int(args.code[2:])
+    print(y,m)
 
     api = TqApi(auth=TqAuth("xj2024", "G267cp_SPsYge"))
     kd = DataDownloader(api, symbol_list=symbol, dur_sec=args.sec,
-                        start_dt=datetime(year, 1, 1, 1, 0 ,0),
-                        end_dt=datetime(year+1, 1, 1, 1, 0 ,0),
+                        start_dt=datetime(y-1, m, 1, 1, 0 ,0),
+                        end_dt=datetime(y, m+1, 1, 1, 0 ,0),
                         csv_file_name=csv_file_name)
 
     # 使用with closing机制确保下载完成后释放对应的资源

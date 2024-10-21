@@ -1,4 +1,5 @@
 import common
+from common import SIDE_KEY, SIDE_BUY, SIDE_SELL, OC_OPEN, OC_CLOSE
 
 POSITION_KEY = 'position'
 POSITION_BASE_QTY_KEY = 'base_qty'
@@ -128,11 +129,17 @@ def stat_commission(total_commission, commission):
         else:
             total_commission[coin_name] = n
 
+def round_commission(commission):
+    for coin in commission:
+        commission[coin] = round(commission[coin], 8)
+    return commission
 
-from common.contract import get_contractes, get_contract, CONTRACT_CODE, CONTRACT_MAIN, CONTRACT_MULTIPLIER
+
+#from common.contract import get_contractes, get_contract, CONTRACT_CODE, CONTRACT_MAIN, CONTRACT_MULTIPLIER
 class TradeEngine(object):
     def __init__(self):
         self._multiplieres = {}
+        '''
         for contract in get_contractes():
             code = contract[CONTRACT_CODE]
             self.update_symbol(code, contract)
@@ -144,10 +151,18 @@ class TradeEngine(object):
         #self._multiplieres[code]   = multiplier
         self._multiplieres[symbol] = int(multiplier)
         return symbol
+        '''
 
     def get_symbol_by_code(self, code):
+        '''
         contract = get_contract(code)
         symbol = self.update_symbol(code, contract)
+        return symbol
+        '''
+
+        from common.contract import get_contract_main
+        symbol, multiplier = get_contract_main(self.now_time, code)
+        self._multiplieres[symbol] = multiplier
         return symbol
 
     def get_multiplier_by_symbol(self, symbol):
@@ -159,3 +174,148 @@ class TradeEngine(object):
         if common.BILL_MULTIPLIER_KEY in bill:
             return bill[common.BILL_MULTIPLIER_KEY]
         return self.get_multiplier_by_symbol(bill[common.BILL_SYMBOL_KEY])
+
+
+    def print_bills(self, cell_id,
+                    show_rmk=True,
+                    show_multiplier=True,
+                    show_win_rate=True,
+                    show_qp=True,
+                    show_deal=True,
+                    show_profit=True,
+                    show_total_profit=True,
+                    show_retrace=True,
+                    show_commission=True,
+                    show_status=True,
+                    show_order=True):
+        fmt_start          = '%s  %14s  %5s  %5s'
+        fmt_rmk            = '  %24s'
+        fmt_multiplier     = '  %10s'
+        fmt_qp             = '  %10s  %12s'
+        fmt_deal           = '  %10s  %12s  %18s'
+        fmt_win_rate       = '  %18s'
+        fmt_profit         = '  %20s'
+        fmt_total_profit   = '  %20s'
+        fmt_retrace        = '  %18s'
+        fmt_commission     = '  %15s  %18s'
+        fmt_status         = '  %7s'
+        fmt_order          = '  %12s'
+
+        title = fmt_start % ('create_time', 'symbol', 'oc', 'side')
+        if show_rmk:
+            title += fmt_rmk % ('rmk')
+        if show_multiplier:
+            title += fmt_multiplier % (common.BILL_MULTIPLIER_KEY)
+        if show_win_rate:
+            title += fmt_win_rate % ('win_rate')
+        if show_qp:
+            title += fmt_qp % ('qty', 'price')
+        if show_deal:
+            title += fmt_deal % ('deal_qty', 'deal_price', 'dear_value')
+        if show_profit:
+            title += fmt_profit % ('profit')
+        if show_total_profit:
+            title += fmt_total_profit % ('total_profit')
+        if show_retrace:
+            title += fmt_retrace % ('retrace')
+        if show_commission:
+            title += fmt_commission % ('commission', 'total_commission')
+        if show_status:
+            title += fmt_status % ('status')
+        if show_order:
+            title += fmt_order % ('order_id')
+        print(title)
+
+        oc_count = 0
+        win_count = 0
+        win_count_rate = 0
+        his_gross_profit = 0
+        total_gross_profit = 0
+        max_total_profit = 0
+        total_commission = {}
+        pst_qty = 0
+        pst_quote_qty = 0
+
+        bills = self.get_all_bills(cell_id)
+        for b in bills:
+            oc = b['oc']
+            side = b['side']
+            info = fmt_start % (b['create_time'], b['symbol'], oc, side)
+
+            if show_rmk:
+                info += fmt_rmk % (b['rmk'])
+
+            m = b[common.BILL_MULTIPLIER_KEY]
+            if show_multiplier:
+                info += fmt_multiplier % (m)
+
+            deal_qty, deal_price = self.get_bill_deal_info(b)
+            if oc == OC_OPEN:
+                open_price = deal_price
+            else:
+                oc_count += 1
+                close_price = deal_price
+                if ((side == SIDE_SELL and close_price > open_price) or
+                    (side == SIDE_BUY  and close_price < open_price)):
+                    win_count += 1
+                win_count_rate = win_count / oc_count
+            if show_win_rate:
+                info += fmt_win_rate % '{:7.2%} ({:3d}/{:3d})'.format(win_count_rate, win_count, oc_count)
+
+            if show_qp:
+                info += fmt_qp % (b['qty'], b['price'])
+
+            deal_value = deal_qty * deal_price * m
+            if show_deal:
+                info += fmt_deal % (deal_qty, deal_price, deal_value)
+
+            if side == SIDE_BUY:
+                pst_qty += deal_qty
+                pst_quote_qty -= deal_value
+            else:
+                pst_qty -= deal_qty
+                pst_quote_qty += deal_value
+            if pst_qty == 0:
+                gross_profit = pst_quote_qty
+                if deal_value:
+                    gross_profit_rate = gross_profit / deal_value
+                else:
+                    gross_profit_rate = 0
+                pst_quote_qty = 0
+            else:
+                if deal_price:
+                    gross_profit = pst_quote_qty + pst_qty * deal_price * m
+                else:
+                    gross_profit = 0
+                gross_profit_rate = 0
+            if show_profit:
+                info += fmt_profit % '{} ({:3.2%})'.format(round(gross_profit, 2), gross_profit_rate) if oc==OC_CLOSE else ''
+
+            total_gross_profit = gross_profit + his_gross_profit
+            if pst_qty == 0:
+                his_gross_profit += gross_profit
+
+            if deal_value:
+                total_profit_rate = total_gross_profit/deal_value
+            else:
+                total_profit_rate = 0
+            if show_total_profit:
+                info += fmt_total_profit % '{} ({:3.2%})'.format(round(total_gross_profit, 2), total_profit_rate) if oc==OC_CLOSE else ''
+
+            if total_gross_profit > max_total_profit:
+                max_total_profit = total_gross_profit
+            retrace = total_gross_profit-max_total_profit
+            retrace_rate = retrace / deal_value
+            if show_retrace:
+                info += fmt_retrace % ('{} ({:3.2%})'.format(round(retrace, 2), retrace_rate) if oc==OC_CLOSE else '')
+
+            commission = self.get_bill_commission(b)
+            stat_commission(total_commission, commission)
+            if show_commission:
+                info += fmt_commission % (round_commission(commission), round_commission(total_commission))
+
+            if show_status:
+                info += fmt_status % (b['status'])
+            if show_order:
+                info += fmt_order % (b['order_id'])
+            print(info)

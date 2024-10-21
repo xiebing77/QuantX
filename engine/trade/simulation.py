@@ -87,7 +87,7 @@ class SimulationTradeEngine(TradeEngine):
     def get_position_by_bills(self, bills):
         return self.calc_position(bills)
 
-    def get_bills(self, cell_id):
+    def get_all_bills(self, cell_id):
         return self.bills[cell_id]
 
     def reset_bills(self, cell_id):
@@ -95,3 +95,12 @@ class SimulationTradeEngine(TradeEngine):
 
     def reset_all_bills(self):
         self.bills = {}
+
+    def get_bill_deal_info(self, bill):
+        return bill['qty'], bill['price']
+
+    def get_bill_commission(self, bill):
+        deal_qty, deal_price = self.get_bill_deal_info(bill)
+        deal_value = deal_qty * deal_price * bill[common.BILL_MULTIPLIER_KEY]
+        #return {self.trader.currency: deal_value * self.commission_rate}
+        return {"CNY": deal_value * self.commission_rate}

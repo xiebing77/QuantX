@@ -195,7 +195,7 @@ def real_list(args):
 
     init_exchanges(cells)
 
-    title_head_fmt = "%-25s  %12s  %18s  %16s  %36s"
+    title_head_fmt = "%-25s  %12s  %18s  %16s  %42s"
     head_fmt       = "%-25s  %12s  %7.2f%% (%3d/%3d)  %8.1f(%6.2f%%) (%6.2f%%, %6.2f%%, %6.2f%%, %6.2f%%)"
 
     title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s  %32s  %11s"

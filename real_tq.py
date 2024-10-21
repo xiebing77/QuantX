@@ -12,7 +12,7 @@ import common.kline as kl
 import common.log as log
 from common.cell import get_cell, get_cell_info, get_cell_broker
 from exchange.exchange_factory import get_exchange_names, create_exchange
-from engine.quote import QuoteEngine
+from engine.quote.exchange import ExchangeQuoteEngine
 from engine.trade.exchange import ExchangeTradeEngine
 from db.mongodb import get_mongodb
 import setup
@@ -282,7 +282,7 @@ def tq_run():
     if not exchange:
         log.info("exchange name: {} error!".format(exchange_name))
         exit(1)
-    quote_engine = QuoteEngine(exchange)
+    quote_engine = ExchangeQuoteEngine(exchange)
     trade_engine = ExchangeTradeEngine()
     trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
     strategy = common.createInstance(module_name, class_name, config, quote_engine, trade_engine)

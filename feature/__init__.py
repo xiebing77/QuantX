@@ -20,10 +20,14 @@ def EMA(s, N):
     return s.ewm(span=N, adjust=False).mean()
 
 def BIAS(s, N):
-    return s / MA(s, N) - 1
+    b = s / MA(s, N) - 1
+    b.fillna(0, inplace=True)
+    return b
 
 def nmBIAS(s, N, M):
-    return MA(s, N) / MA(s, M) - 1
+    b = MA(s, N) / MA(s, M) - 1
+    b.fillna(0, inplace=True)
+    return b
 
 def nmEMA(s, N, M):
     return EMA(s, N) / EMA(s, M) - 1
@@ -38,11 +42,15 @@ def BW(close, N):
     return RSTD(close, N) / MA(close, N)
 
 def CLV(high, low, close):
-    return (2*close - high - low) / (high - low)
+    clv = (2*close - high - low) / (high - low)
+    clv.fillna(0, inplace=True)
+    return clv
 
 def CV(high, low, N=10):
     hlema = EMA(high - low, N)
-    return hlema.diff(N) / hlema.shift(N)
+    cv = hlema.diff(N) / hlema.shift(N)
+    #cv.fillna(0, inplace=True)
+    return cv
 
 def DBCD(close, N=5, M=16, T=17):
     bias = BIAS(close, N)
@@ -64,14 +72,24 @@ def KDJ(high, low, close, N=9):
 def CMF(high, low, close, volume, N=21):
     clv = CLV(high, low, close)
     va = clv * volume
-    return RSUM(va, N) / RSUM(volume, N)
+    cmf = RSUM(va, N) / RSUM(volume, N)
+    cmf.fillna(0, inplace=True)
+    return cmf
 
 def CR(high, low, close, N=20):
     typ = (high + low + close) / 3
     pre_typ = typ.shift()
     hp = (high - pre_typ).apply(lambda x: max(x, 0))
     pl = (pre_typ - low).apply(lambda x: max(x, 0))
-    return RSUM(hp, N) / RSUM(pl, N)
+    cr = RSUM(hp, N) / RSUM(pl, N)
+    cr.fillna(0, inplace=True)
+    #print(cr)
+
+    #print(f'{cr[cr>8]}')
+    #cr.where(cr.isin([np.inf])).fillna(10, inplace=True)
+    cr[np.isinf(cr)] = 0
+    #print(f'{cr[cr>8]}')
+    return cr
 
 def CR2(high, low, close, N=20):
     return CR(HIGHEST(high, N), LOWEST(low, N), close, N)
@@ -79,6 +97,7 @@ def CR2(high, low, close, N=20):
 def MassIndex(high, low, close, N=9):
     emahl = EMA(high - low, N)
     emaratio = emahl / EMA(emahl, N)
+    #emaratio.fillna(0, inplace=True)
     return emaratio#RSUM(emaratio, 25)
 
 def MassIndex2(high, low, close, N=9):
@@ -117,6 +136,7 @@ def UOS(high, low, close, M=7, N=14, O=28):
     XRN = RSUM(xr, N) / RSUM(tr, N)
     XRO = RSUM(xr, O) / RSUM(tr, O)
     UOS = 100 * (XRM*N*O + XRN*M*O + XRO*M*N) / (M*N + M*O+ N*O)
+    UOS.fillna(0, inplace=True)
     return UOS
 
 def UOS2(high, low, close, M=7, N=14, O=28):
@@ -196,7 +216,11 @@ def Hurst(close, N):
 def EMV(high, low, volume):
     mid = (high + low) / 2
     prev_mid = mid.shift()
-    return (mid - prev_mid) / (high - low)
+    emv = (mid - prev_mid) / (high - low)
+    emv.fillna(0, inplace=True)
+    emv[np.isinf(emv)] = 0
+    return emv
+
 
 def WVAD(open, high, low, close, volume):
     return volume * ((close - open)/(high - low))

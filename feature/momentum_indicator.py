@@ -243,12 +243,44 @@ def calc_momentum_indicators(quoter, is_tick, config, df, calc_all=False):
         df[key_x] = slowk - slowd
         key_xs.append(key_x)
 
+    name = 'STOCH-k'
+    if key_high and (calc_all or name in config):
+        key_x = '%s' % (name)
+        slowk, slowd = talib.STOCH(df[key_high], df[key_low], df[key_close],
+            fastk_period=5, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
+        df[key_x] = slowk
+        key_xs.append(key_x)
+
+    name = 'STOCH-d'
+    if key_high and (calc_all or name in config):
+        key_x = '%s' % (name)
+        slowk, slowd = talib.STOCH(df[key_high], df[key_low], df[key_close],
+            fastk_period=5, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
+        df[key_x] = slowd
+        key_xs.append(key_x)
+
     name = 'STOCHF'
     if key_high and (calc_all or name in config):
         key_x = '%s' % (name)
         fastk, fastd = talib.STOCHF(df[key_high], df[key_low], df[key_close],
             fastk_period=5, fastd_period=3, fastd_matype=0)
         df[key_x] = fastk - fastd
+        key_xs.append(key_x)
+
+    name = 'STOCHF-k'
+    if key_high and (calc_all or name in config):
+        key_x = '%s' % (name)
+        fastk, fastd = talib.STOCHF(df[key_high], df[key_low], df[key_close],
+            fastk_period=5, fastd_period=3, fastd_matype=0)
+        df[key_x] = fastk
+        key_xs.append(key_x)
+
+    name = 'STOCHF-d'
+    if key_high and (calc_all or name in config):
+        key_x = '%s' % (name)
+        fastk, fastd = talib.STOCHF(df[key_high], df[key_low], df[key_close],
+            fastk_period=5, fastd_period=3, fastd_matype=0)
+        df[key_x] = fastd
         key_xs.append(key_x)
 
     name = 'STOCHRSI'
@@ -261,6 +293,30 @@ def calc_momentum_indicators(quoter, is_tick, config, df, calc_all=False):
         fastk, fastd = talib.STOCHRSI(df[key_close],
             timeperiod=tp, fastk_period=5, fastd_period=3, fastd_matype=0)
         df[key_x] = fastk - fastd
+        key_xs.append(key_x)
+
+    name = 'STOCHRSI-k'
+    if calc_all or name in config:
+        if name in config and 'period' in config[name]:
+            tp = config[name]['period']
+        else:
+            tp = 14
+        key_x = '%s_%s' % (name, tp)
+        fastk, fastd = talib.STOCHRSI(df[key_close],
+            timeperiod=tp, fastk_period=5, fastd_period=3, fastd_matype=0)
+        df[key_x] = fastk
+        key_xs.append(key_x)
+
+    name = 'STOCHRSI-d'
+    if calc_all or name in config:
+        if name in config and 'period' in config[name]:
+            tp = config[name]['period']
+        else:
+            tp = 14
+        key_x = '%s_%s' % (name, tp)
+        fastk, fastd = talib.STOCHRSI(df[key_close],
+            timeperiod=tp, fastk_period=5, fastd_period=3, fastd_matype=0)
+        df[key_x] = fastd
         key_xs.append(key_x)
 
     name = 'TRIX'
