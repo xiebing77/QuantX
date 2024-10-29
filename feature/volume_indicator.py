@@ -65,4 +65,11 @@ def calc_volume_indicators(quoter, is_tick, config, df, calc_all=False):
         df[key_x] = emv / EMA(emv, 4) - 1
         key_xs.append(key_x)
 
+    name = 'WVAD'
+    if key_high and (calc_all or name in config):
+        key_x = '%s' % (name)
+        emv = WVAD(df[key_open], df[key_high], df[key_low], df[key_close], df[key_volume])
+        df[key_x] = emv / EMA(emv, 4) - 1
+        key_xs.append(key_x)
+
     return key_xs

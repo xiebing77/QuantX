@@ -30,13 +30,17 @@ def nmBIAS(s, N, M):
     return b
 
 def nmEMA(s, N, M):
-    return EMA(s, N) / EMA(s, M) - 1
+    b = EMA(s, N) / EMA(s, M) - 1
+    b.fillna(0, inplace=True)
+    return b
 
 def PB(close, N):
     k = 2
     diff = k * RSTD(close, N)
     down = MA(close, N) - diff
-    return (close - down) / (2 * diff)
+    pb = (close - down) / (2 * diff)
+    pb.fillna(0, inplace=True)
+    return pb
 
 def BW(close, N):
     return RSTD(close, N) / MA(close, N)
@@ -49,7 +53,7 @@ def CLV(high, low, close):
 def CV(high, low, N=10):
     hlema = EMA(high - low, N)
     cv = hlema.diff(N) / hlema.shift(N)
-    #cv.fillna(0, inplace=True)
+    cv.fillna(0, inplace=True)
     return cv
 
 def DBCD(close, N=5, M=16, T=17):
@@ -60,7 +64,9 @@ def DBCD(close, N=5, M=16, T=17):
 def RSV(high, low, close, N):
     highest = HIGHEST(high, N)
     lowest = LOWEST(low, N)
-    return (close - lowest) / (highest - lowest) * 100
+    rsv = (close - lowest) / (highest - lowest) * 100
+    rsv.fillna(0, inplace=True)
+    return rsv
 
 def KDJ(high, low, close, N=9):
     rsv = RSV(high, low, close, N)
@@ -97,7 +103,7 @@ def CR2(high, low, close, N=20):
 def MassIndex(high, low, close, N=9):
     emahl = EMA(high - low, N)
     emaratio = emahl / EMA(emahl, N)
-    #emaratio.fillna(0, inplace=True)
+    emaratio.fillna(0, inplace=True)
     return emaratio#RSUM(emaratio, 25)
 
 def MassIndex2(high, low, close, N=9):
@@ -182,10 +188,11 @@ def SI(open, high, low, close, N):
         R = C + D/4
     '''
     SI = 16 * X / R * K
+    SI.fillna(0, inplace=True)
 
-    df['k'] = K
-    df['r'] = R
-    df['si'] = SI
+    #df['k'] = K
+    #df['r'] = R
+    #df['si'] = SI
     #print(df)
 
     return SI
@@ -206,31 +213,40 @@ def UI(close, N):
 
 def Hurst(close, N):
     n = N
-    x = log(close) - log(close.shift())
+    x = np.log(close).diff()
     mean = x.rolling(n).mean()
     std = x.rolling(n).std()
     z = (close - mean).rolling(n).sum()
     r = z.rolling(N).max() - z.rolling(N).min()
-    y = log(r/std)
+    y = np.log(r/std)
+    y.fillna(0, inplace=True)
+    y[np.isinf(y)] = 0
+    return y
 
 def EMV(high, low, volume):
     mid = (high + low) / 2
-    prev_mid = mid.shift()
-    emv = (mid - prev_mid) / (high - low)
+    emv = volume * (mid.diff() / (high - low))
     emv.fillna(0, inplace=True)
     emv[np.isinf(emv)] = 0
     return emv
 
 
 def WVAD(open, high, low, close, volume):
-    return volume * ((close - open)/(high - low))
+    wvad = volume * ((close - open)/(high - low))
+    wvad.fillna(0, inplace=True)
+    return wvad
 
 def OIV(volume, oi):
-    diff_oi = oi - oi.shift()
-    return diff_oi / volume
+    oiv = oi.diff() / volume
+    oiv.fillna(0, inplace=True)
+    return oiv
 
 def VOI(volume, oi):
-    return volume / oi.shift()
+    voi = volume / oi.shift()
+    voi.fillna(0, inplace=True)
+    return voi
 
 def WPR(bid, bid_size, ask, ask_size):
-    return (bid*ask_size + ask*bid_size) / (bid_size+ask_size)
+    wpr = (bid*ask_size + ask*bid_size) / (bid_size+ask_size)
+    wpr.fillna(0, inplace=True)
+    return wpr

@@ -60,13 +60,44 @@ def get_add_value(pst):
     return add_value
 
 
+def init_retrace():
+    return {
+        "max_total_profit": 0,
+        "retraces": [0]
+    }
+
+def calc_retrace(r, total_profit, value=None):
+    if total_profit < r['max_total_profit']:
+        if value:
+            retrace = (total_profit+value)/(r['max_total_profit']+value) - 1
+        else:
+            retrace = total_profit - r['max_total_profit']
+        if retrace < r['retraces'][-1]:
+            r['retraces'][-1] = retrace
+
+    elif total_profit > r['max_total_profit']:
+        r['max_total_profit'] = total_profit
+        if r['retraces'][-1] < 0:
+            r['retraces'].append(0)
+
+def get_r_list(r):
+    return r['retraces']
+
+
 def get_win_loss(bills, value=None):
+    r = init_retrace()
+    total_profit = 0
+
     wins = []
     losses = []
     for b in bills:
         pst = b['position']
         if pst[POSITION_BASE_QTY_KEY] == 0:
             p = pst[POSITION_QUOTE_QTY_KEY]
+
+            total_profit += p
+            calc_retrace(r, total_profit, value)
+
             if value:
                 p /= value
             if p > 0:
@@ -75,7 +106,7 @@ def get_win_loss(bills, value=None):
             else:
                 #loss
                 losses.append(p)
-    return wins, losses, []
+    return wins, losses, get_r_list(r)
 
 
 def init_position():
@@ -226,6 +257,8 @@ class TradeEngine(object):
             title += fmt_order % ('order_id')
         print(title)
 
+        cell_value  = self.get_cell_value(cell_id)
+
         oc_count = 0
         win_count = 0
         win_count_rate = 0
@@ -250,11 +283,15 @@ class TradeEngine(object):
                 info += fmt_multiplier % (m)
 
             deal_qty, deal_price = self.get_bill_deal_info(b)
+            deal_value = deal_qty * deal_price * m
+
             if oc == OC_OPEN:
                 open_price = deal_price
+                deal_value_open = deal_value
             else:
                 oc_count += 1
                 close_price = deal_price
+                deal_value_close = deal_value
                 if ((side == SIDE_SELL and close_price > open_price) or
                     (side == SIDE_BUY  and close_price < open_price)):
                     win_count += 1
@@ -265,7 +302,6 @@ class TradeEngine(object):
             if show_qp:
                 info += fmt_qp % (b['qty'], b['price'])
 
-            deal_value = deal_qty * deal_price * m
             if show_deal:
                 info += fmt_deal % (deal_qty, deal_price, deal_value)
 
@@ -278,7 +314,7 @@ class TradeEngine(object):
             if pst_qty == 0:
                 gross_profit = pst_quote_qty
                 if deal_value:
-                    gross_profit_rate = gross_profit / deal_value
+                    gross_profit_rate = gross_profit / deal_value_open
                 else:
                     gross_profit_rate = 0
                 pst_quote_qty = 0
@@ -295,17 +331,20 @@ class TradeEngine(object):
             if pst_qty == 0:
                 his_gross_profit += gross_profit
 
-            if deal_value:
-                total_profit_rate = total_gross_profit/deal_value
-            else:
-                total_profit_rate = 0
-            if show_total_profit:
-                info += fmt_total_profit % '{} ({:3.2%})'.format(round(total_gross_profit, 2), total_profit_rate) if oc==OC_CLOSE else ''
-
             if total_gross_profit > max_total_profit:
                 max_total_profit = total_gross_profit
             retrace = total_gross_profit-max_total_profit
-            retrace_rate = retrace / deal_value
+
+            if cell_value:
+                total_profit_rate = total_gross_profit / cell_value
+                retrace_rate = retrace / cell_value
+            else:
+                total_profit_rate = 0
+                retrace_rate = 0
+
+            if show_total_profit:
+                info += fmt_total_profit % '{} ({:3.2%})'.format(round(total_gross_profit, 2), total_profit_rate) if oc==OC_CLOSE else ''
+
             if show_retrace:
                 info += fmt_retrace % ('{} ({:3.2%})'.format(round(retrace, 2), retrace_rate) if oc==OC_CLOSE else '')
 
