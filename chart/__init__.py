@@ -3,6 +3,8 @@
 import matplotlib.pyplot as plt
 import matplotlib.dates as dts
 from matplotlib import gridspec
+import mplfinance as mpf2
+
 import numpy as np
 import pandas as pd
 import talib
@@ -21,6 +23,38 @@ from chart.pattern_recognition import *
 from chart.statistic_functions import *
 
 
+def chart_mpf3(title, args, code, df, md, mainplotlines=[], subplotsets=[]):
+    df.index = pd.to_datetime(df[md.kline_key_open_time],
+        unit=md.unit, utc=True)
+    df.index = df.index.tz_convert('Asia/Shanghai')
+
+    apds = []
+    panel_idx = 0
+    panel_ratios = [6]
+
+    for idx, subplotset in enumerate(subplotsets):
+        panel_idx += 1
+        panel_ratios.append(3)
+        for ss in subplotset:
+            kwargs = {}
+            if 'color' in ss:
+                kwargs['color'] = ss['color']
+            if 'type' in ss:
+                kwargs['type'] = ss['type']
+            apds.append(mpf2.make_addplot(ss['data'], panel=panel_idx,
+                ylabel=ss['name'], secondary_y=False, **kwargs))
+
+    customstyle = mpf2.make_mpf_style(base_mpf_style='binance',
+        y_on_right=False#, facecolor='w'
+    )
+    mpf2.plot(df, type='candle', style=customstyle, #show_nontrading=True,
+        tight_layout=True, warn_too_much_data=100000, #figratio=(3,1), #figscale=1.2
+        title=title, yscale=args.yscale,
+        addplot=apds, panel_ratios=panel_ratios,
+        datetime_format='%Y-%m-%d %H', #xrotation=20,
+        volume=args.volume)
+
+
 def chart_mpf2(title, args, symbol, kdf, md, signalsets=[], subplotsets=[], need_calc=True):
     kdf.index = pd.to_datetime(kdf[md.kline_key_close_time],
         unit=md.unit, utc=True)
@@ -32,7 +66,6 @@ def chart_mpf2(title, args, symbol, kdf, md, signalsets=[], subplotsets=[], need
     kdf[md.kline_key_low] = pd.to_numeric(kdf[md.kline_key_low])
     kdf[md.kline_key_volume] = pd.to_numeric(kdf[md.kline_key_volume])
 
-    import mplfinance as mpf2
     apds = []
     panel_idx = 0
     panel_ratios = [6]

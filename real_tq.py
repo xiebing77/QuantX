@@ -286,7 +286,7 @@ def tq_run():
     trade_engine = ExchangeTradeEngine()
     trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
     strategy = common.createInstance(module_name, class_name, config, quote_engine, trade_engine)
-    strategy.set_y_threshold(cell_id, threshold[0], threshold[1])
+    strategy.set_y_threshold(cell_id, threshold)
 
     if hasattr(strategy, 'trainning'):
         strategy.trainning()
