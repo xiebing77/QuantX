@@ -111,7 +111,7 @@ def tq_loop(strategy, cell_id):
     log.info('{}  {}  tq connect start!'.format(now_time, cell_id))
     api = exchange.connect()
 
-    strategy.open_day()
+    strategy.open_day(now_time)
     symbol = strategy.symbol
     dfs = []
     interval_secs = []

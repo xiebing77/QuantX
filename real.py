@@ -195,13 +195,13 @@ def real_list(args):
 
     init_exchanges(cells)
 
-    title_head_fmt = "%-25s  %12s  %18s  %16s  %42s"
+    title_head_fmt = "%-25s  %12s  %18s  %16s  %36s"
     head_fmt       = "%-25s  %12s  %7.2f%% (%3d/%3d)  %8.1f(%6.2f%%) (%6.2f%%, %6.2f%%, %6.2f%%, %6.2f%%)"
 
     title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s  %32s  %11s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
-    title_tail_fmt = "  %10s  %10s  %13s  %20s  %-20s  %-6s  %-30s  %-s"
+    title_tail_fmt = "  %10s  %10s  %13s  %68s  %-20s  %-6s  %-30s  %-s"
 
     print(title_head_fmt % (common.BILL_KEY_CELL_ID, "symbol", "win_rate", 'max retrace', 'rate') +
         title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
