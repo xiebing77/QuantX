@@ -121,15 +121,11 @@ def tq_loop(strategy, cell_id):
         interval_sec = int(interval_timedelta.total_seconds())
         log.info('{}  {}'.format(symbol, interval_sec))
 
-        df = api.get_kline_serial(symbol, interval_sec, data_length=300)
+        df = api.get_kline_serial(symbol, interval_sec, data_length=strategy.window)
         log.info(df)
         dfs.append(df)
         interval_secs.append(interval_sec)
         interval_timedeltas.append(interval_timedelta)
-
-    pd.set_option('display.max_rows', None)
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', 1000)
 
     trade_engine = strategy.trade_engine
     log.info('cell_id: {},  pst: {}'.format(cell_id, trade_engine.get_position(cell_id)))
@@ -244,7 +240,7 @@ def tq_loop(strategy, cell_id):
                 elif sl_signal:
                     sl_orders = create_orders(strategy, sl_signal, cell_id, trader, 'new stoploss')
                     sl_signal = None
-            log.info('-----> kline handle finish!')
+            log.info(f'-----> kline handle finish!    cost: {datetime.now()-now_time}')
     exchange.close()
 
 
@@ -291,7 +287,13 @@ def tq_run():
     if hasattr(strategy, 'trainning'):
         strategy.trainning()
 
-    pd.reset_option('display.float_format')
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', 1000)
+    pd.set_option('display.float_format', None)
+    #pd.set_option('display.float_format', lambda x: '%.6f' % x)
+    #pd.options.display.float_format = None
+    #pd.reset_option('display.float_format')
 
     while True:
 

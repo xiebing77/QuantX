@@ -9,11 +9,22 @@ from tqsdk.tools import DataDownloader
 symtem_start_dt = datetime(2016, 1, 1, 6, 0, 0)
 
 
+def get_tq(broker):
+    if broker:
+        name     = broker['YIXIN_NAME']
+        password = broker['YIXIN_PWD']
+    else:
+        name     = os.environ.get('YIXIN_NAME')
+        password = os.environ.get('YIXIN_PWD')
+    return name, password
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='klines print or check')
     parser.add_argument('-symbol', required=True, help='')
     parser.add_argument('-sec', type=int, default=0, help='')
     parser.add_argument('-code', required=True, help='')
+    parser.add_argument('--broker', help='')
     args = parser.parse_args()
 
     if args.sec == 300:
@@ -29,7 +40,9 @@ if __name__ == "__main__":
     m = int(args.code[2:])
     print(y,m)
 
-    api = TqApi(auth=TqAuth("xj2024", "G267cp_SPsYge"))
+    name, password = get_tq(args.broker)
+    api = TqApi(auth=TqAuth(name, password))
+
     kd = DataDownloader(api, symbol_list=symbol, dur_sec=args.sec,
                         start_dt=datetime(y-1, m, 1, 1, 0 ,0),
                         end_dt=datetime(y, m+1, 1, 1, 0 ,0),

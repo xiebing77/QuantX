@@ -25,7 +25,8 @@ if __name__ == "__main__":
     csv_file_name = '{}_{}_{}.csv'.format(symbol, year, tt)
     print('{} {}'.format(args.sec ,csv_file_name))
 
-    api = TqApi(auth=TqAuth("xj2024", "G267cp_SPsYge"))
+    name, password = get_tq(args.broker)
+    api = TqApi(auth=TqAuth(name, password))
     kd = DataDownloader(api, symbol_list=symbol, dur_sec=args.sec,
                         start_dt=datetime(year, 1, 1, 1, 0 ,0),
                         end_dt=datetime(year+1, 1, 1, 1, 0 ,0),
