@@ -31,6 +31,14 @@ def chart_mpf3(title, args, code, df, md, mainplotlines=[], subplotsets=[]):
     apds = []
     panel_idx = 0
     panel_ratios = [6]
+    for ss in mainplotlines:
+        kwargs = {}
+        if 'color' in ss:
+            kwargs['color'] = ss['color']
+        if 'type' in ss:
+            kwargs['type'] = ss['type']
+        apds.append(mpf2.make_addplot(ss['data'], panel=panel_idx,
+            ylabel=ss['name'], secondary_y=True, **kwargs))
 
     for idx, subplotset in enumerate(subplotsets):
         panel_idx += 1
@@ -51,7 +59,7 @@ def chart_mpf3(title, args, code, df, md, mainplotlines=[], subplotsets=[]):
         tight_layout=True, warn_too_much_data=100000, #figratio=(3,1), #figscale=1.2
         title=title, yscale=args.yscale,
         addplot=apds, panel_ratios=panel_ratios,
-        datetime_format='%Y-%m-%d %H', #xrotation=20,
+        datetime_format='%Y-%m-%d %H:%M', #xrotation=20,
         volume=args.volume)
 
 

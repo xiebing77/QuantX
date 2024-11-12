@@ -66,23 +66,27 @@ def init_retrace():
         "retraces": [0]
     }
 
-def calc_retrace(r, total_profit, value=None):
+def calc_retrace(r, total_profit):
     if total_profit < r['max_total_profit']:
-        if value:
-            retrace = (total_profit+value)/(r['max_total_profit']+value) - 1
-        else:
-            retrace = total_profit - r['max_total_profit']
+        retrace = total_profit - r['max_total_profit']
         if retrace < r['retraces'][-1]:
             r['retraces'][-1] = retrace
-
+        return retrace
     elif total_profit > r['max_total_profit']:
         r['max_total_profit'] = total_profit
         if r['retraces'][-1] < 0:
             r['retraces'].append(0)
+        return 0
 
 def get_r_list(r):
     return r['retraces']
 
+def get_rts(r, value):
+    if value:
+        rr = [rt/value for rt in get_r_list(r)]
+    else:
+        rr = get_r_list(r)
+    return rr
 
 def get_win_loss(bills, value=None):
     r = init_retrace()
@@ -96,7 +100,7 @@ def get_win_loss(bills, value=None):
             p = pst[POSITION_QUOTE_QTY_KEY]
 
             total_profit += p
-            calc_retrace(r, total_profit, value)
+            calc_retrace(r, total_profit)
 
             if value:
                 p /= value
@@ -106,7 +110,7 @@ def get_win_loss(bills, value=None):
             else:
                 #loss
                 losses.append(p)
-    return wins, losses, get_r_list(r)
+    return wins, losses, get_rts(r, value)
 
 
 def init_position():
