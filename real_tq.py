@@ -213,7 +213,7 @@ def tq_loop(strategy, cell_id):
                 new_dfs.append(new_super_df)
 
             kdf = strategy.handle_feature(new_dfs)
-            kdf = strategy.handle_df(kdf)
+            kdf = strategy.predict(kdf)
             log.info(kdf)
 
             log.info('  {}  cell id: {}  {}'.format('*'*20, cell_id, '*'*20))
