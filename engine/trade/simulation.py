@@ -8,7 +8,7 @@ class SimulationTradeEngine(TradeEngine):
         self.value = value
         self.amount = amount
         self.commission_rate = commission_rate
-        self.bills = {}
+        self.cell_bills = {}
         self.now_time = None
 
     def get_cell_value(self, cell_id):
@@ -21,7 +21,7 @@ class SimulationTradeEngine(TradeEngine):
         return 0
 
     def get_all_cell_ids(self):
-        return self.bills.keys()
+        return self.cell_bills.keys()
 
     def new_limit_bill(self, cell_id, side, symbol, multiplier, price, qty, rmk='', oc=None):
         bill = {
@@ -39,10 +39,10 @@ class SimulationTradeEngine(TradeEngine):
         if oc:
             bill['oc'] = oc
 
-        if cell_id in self.bills:
-            self.bills[cell_id].append(bill)
+        if cell_id in self.cell_bills:
+            self.cell_bills[cell_id].append(bill)
         else:
-            self.bills[cell_id] = [bill]
+            self.cell_bills[cell_id] = [bill]
 
     def update_bill_position(self, pst, bill):
         symbol = bill[common.BILL_SYMBOL_KEY]
@@ -78,8 +78,8 @@ class SimulationTradeEngine(TradeEngine):
         return pst
 
     def get_position(self, cell_id):
-        if cell_id in self.bills:
-            bills = self.bills[cell_id]
+        if cell_id in self.cell_bills:
+            bills = self.cell_bills[cell_id]
         else:
             bills = []
         return self.calc_position(bills)
@@ -87,11 +87,23 @@ class SimulationTradeEngine(TradeEngine):
     def get_position_by_bills(self, bills):
         return self.calc_position(bills)
 
-    def get_bills(self, cell_id):
-        return self.bills[cell_id]
+    def get_all_bills(self, cell_id):
+        if cell_id in self.cell_bills:
+            return self.cell_bills[cell_id]
+        else:
+            return []
 
     def reset_bills(self, cell_id):
-        self.bills[cell_id] = []
+        self.cell_bills[cell_id] = []
 
     def reset_all_bills(self):
-        self.bills = {}
+        self.cell_bills = {}
+
+    def get_bill_deal_info(self, bill):
+        return bill['qty'], bill['price']
+
+    def get_bill_commission(self, bill):
+        deal_qty, deal_price = self.get_bill_deal_info(bill)
+        deal_value = deal_qty * deal_price * bill[common.BILL_MULTIPLIER_KEY]
+        #return {self.trader.currency: deal_value * self.commission_rate}
+        return {"CNY": deal_value * self.commission_rate}

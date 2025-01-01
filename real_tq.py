@@ -12,7 +12,7 @@ import common.kline as kl
 import common.log as log
 from common.cell import get_cell, get_cell_info, get_cell_broker
 from exchange.exchange_factory import get_exchange_names, create_exchange
-from engine.quote import QuoteEngine
+from engine.quote.exchange import ExchangeQuoteEngine
 from engine.trade.exchange import ExchangeTradeEngine
 from db.mongodb import get_mongodb
 import setup
@@ -111,7 +111,7 @@ def tq_loop(strategy, cell_id):
     log.info('{}  {}  tq connect start!'.format(now_time, cell_id))
     api = exchange.connect()
 
-    strategy.open_day()
+    strategy.open_day(now_time)
     symbol = strategy.symbol
     dfs = []
     interval_secs = []
@@ -121,15 +121,11 @@ def tq_loop(strategy, cell_id):
         interval_sec = int(interval_timedelta.total_seconds())
         log.info('{}  {}'.format(symbol, interval_sec))
 
-        df = api.get_kline_serial(symbol, interval_sec, data_length=300)
+        df = api.get_kline_serial(symbol, interval_sec, data_length=strategy.window)
         log.info(df)
         dfs.append(df)
         interval_secs.append(interval_sec)
         interval_timedeltas.append(interval_timedelta)
-
-    pd.set_option('display.max_rows', None)
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', 1000)
 
     trade_engine = strategy.trade_engine
     log.info('cell_id: {},  pst: {}'.format(cell_id, trade_engine.get_position(cell_id)))
@@ -217,7 +213,7 @@ def tq_loop(strategy, cell_id):
                 new_dfs.append(new_super_df)
 
             kdf = strategy.handle_feature(new_dfs)
-            kdf = strategy.handle_df(kdf)
+            kdf = strategy.predict(kdf)
             log.info(kdf)
 
             log.info('  {}  cell id: {}  {}'.format('*'*20, cell_id, '*'*20))
@@ -244,7 +240,7 @@ def tq_loop(strategy, cell_id):
                 elif sl_signal:
                     sl_orders = create_orders(strategy, sl_signal, cell_id, trader, 'new stoploss')
                     sl_signal = None
-            log.info('-----> kline handle finish!')
+            log.info(f'-----> kline handle finish!    cost: {datetime.now()-now_time}')
     exchange.close()
 
 
@@ -282,16 +278,22 @@ def tq_run():
     if not exchange:
         log.info("exchange name: {} error!".format(exchange_name))
         exit(1)
-    quote_engine = QuoteEngine(exchange)
+    quote_engine = ExchangeQuoteEngine(exchange)
     trade_engine = ExchangeTradeEngine()
     trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
     strategy = common.createInstance(module_name, class_name, config, quote_engine, trade_engine)
-    strategy.set_y_threshold(cell_id, threshold[0], threshold[1])
+    strategy.set_y_threshold(cell_id, threshold)
 
     if hasattr(strategy, 'trainning'):
         strategy.trainning()
 
-    pd.reset_option('display.float_format')
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', 1000)
+    pd.set_option('display.float_format', None)
+    #pd.set_option('display.float_format', lambda x: '%.6f' % x)
+    #pd.options.display.float_format = None
+    #pd.reset_option('display.float_format')
 
     while True:
 
