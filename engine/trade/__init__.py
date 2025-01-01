@@ -223,7 +223,7 @@ class TradeEngine(object):
                     show_commission=True,
                     show_status=True,
                     show_order=True):
-        fmt_start          = '%s  %14s  %5s  %5s'
+        fmt_start          = '%19s  %14s  %5s  %5s'
         fmt_rmk            = '  %24s'
         fmt_multiplier     = '  %10s'
         fmt_qp             = '  %10s  %12s'

@@ -223,17 +223,19 @@ def Hurst(close, N):
     y[np.isinf(y)] = 0
     return y
 
-def EMV(high, low, volume):
+def EMV(high, low, volume, N=14):
     mid = (high + low) / 2
-    emv = volume * (mid.diff() / (high - low))
-    emv.fillna(0, inplace=True)
-    emv[np.isinf(emv)] = 0
+    em = volume * (mid.diff() / (high - low))
+    em.fillna(0, inplace=True)
+    em[np.isinf(em)] = 0
+    emv = RSUM(em, N)
     return emv
 
 
-def WVAD(open, high, low, close, volume):
-    wvad = volume * ((close - open)/(high - low))
-    wvad.fillna(0, inplace=True)
+def WVAD(open, high, low, close, volume, N=12):
+    vad = volume * ((close - open)/(high - low))
+    vad.fillna(0, inplace=True)
+    wvad = RSUM(vad, N)
     return wvad
 
 def OIV(volume, oi):

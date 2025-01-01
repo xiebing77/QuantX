@@ -40,6 +40,10 @@ def chart_mpf3(title, args, code, df, md, mainplotlines=[], subplotsets=[]):
         apds.append(mpf2.make_addplot(ss['data'], panel=panel_idx,
             ylabel=ss['name'], secondary_y=True, **kwargs))
 
+    if args.volume:
+        panel_idx += 1
+        panel_ratios.append(2)
+
     for idx, subplotset in enumerate(subplotsets):
         panel_idx += 1
         panel_ratios.append(3)

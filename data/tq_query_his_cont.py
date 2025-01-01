@@ -1,10 +1,9 @@
 import sys
-import os
 import argparse
 from datetime import datetime
 import pandas as pd
 from tqsdk import TqApi, TqAuth
-from download_tq_to_csv import get_tq
+from data import get_tq
 
 
 if __name__ == "__main__":

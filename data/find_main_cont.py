@@ -55,18 +55,27 @@ def print_ss(ss):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='switch main contracte')
     parser.add_argument('-product', required=True, help='egg: SHFE.rb')
-    parser.add_argument('-multiplier', required=True, type=int, help='')
     parser.add_argument('-codes', nargs='*', help='egg: 1605')
     parser.add_argument('--window', type=int, default=56, help='')
     parser.add_argument('--broker', help='')
     args = parser.parse_args()
+
+    if args.codes:
+        codes = args.codes
+    else:
+        from data import get_main_codes
+        codes = get_main_codes(args.product)
+    print(codes)
+
+    from data import get_multiplier
+    multiplier = get_multiplier(args.product)
 
     pd.set_option('display.max_rows', None)
     pd.set_option('display.max_columns', None)
     pd.set_option('display.width', 1000)
 
     symbol_prev = None
-    for code in args.codes:
+    for code in codes:
         symbol = args.product + code
         df = load_days_df(symbol)
 
@@ -75,7 +84,7 @@ if __name__ == "__main__":
                     left_on=key_time, right_on=key_time)
             #print(join_df)
 
-            check_switch(args.multiplier, symbol_prev, symbol, join_df)
+            check_switch(multiplier, symbol_prev, symbol, join_df)
         
         symbol_prev = symbol
         df_prev = df
