@@ -90,8 +90,8 @@ def round_commission(commission):
 
 
 class ExchangeTradeEngine(TradeEngine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, config=None):
+        super().__init__(config)
         self.trade_db = get_mongodb(setup.trade_db_name)
         self.bills_collection_name = 'bills'
         self.symbol_precs = {}

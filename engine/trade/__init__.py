@@ -172,8 +172,17 @@ def round_commission(commission):
 
 #from common.contract import get_contractes, get_contract, CONTRACT_CODE, CONTRACT_MAIN, CONTRACT_MULTIPLIER
 class TradeEngine(object):
-    def __init__(self):
+    def __init__(self, config=None):
         self._multiplieres = {}
+
+        self.min_price_change = 1
+        self.min_qty_change   = 1
+        if config:
+            if 'min_price_change' in config['prec']:
+                self.min_price_change = config['prec']['min_price_change']
+            if 'min_qty_change' in config['prec']:
+                self.min_qty_change = config['prec']['min_qty_change']
+
         '''
         for contract in get_contractes():
             code = contract[CONTRACT_CODE]
@@ -187,6 +196,12 @@ class TradeEngine(object):
         self._multiplieres[symbol] = int(multiplier)
         return symbol
         '''
+
+    def round_qty(self, qty):
+        return qty - qty % self.min_qty_change
+
+    def round_price(self, price):
+        return price - price % self.min_price_change
 
     def get_symbol_by_code(self, code):
         '''
