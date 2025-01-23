@@ -23,7 +23,7 @@ def init(path, logname, server_ip=None, server_port=None):
         os.mkdir(fullpath)
 
     filename = os.path.join(fullpath, logname)
-    logging.basicConfig(level=logging.NOTSET, filename=filename)
+    logging.basicConfig(level=logging.INFO, filename=filename)
 
     if server_ip != None:
         extra = {'tags':logname}

@@ -41,6 +41,10 @@ def load_contractes(code):
     return get_json_config(setup.contract_info_name)
 
 
+def get_multiplier_by_symbol(symbol):
+    return None
+
+
 from common import trans_time_from_str
 def get_contract_main(t, code):
     info = code.split('.')

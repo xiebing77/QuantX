@@ -213,12 +213,15 @@ class TradeEngine(object):
         from common.contract import get_contract_main
         symbol, multiplier = get_contract_main(self.now_time, code)
         self._multiplieres[symbol] = multiplier
-        return symbol
+        return symbol, multiplier
 
     def get_multiplier_by_symbol(self, symbol):
-        if symbol in self._multiplieres:
-            return self._multiplieres[symbol]
-        return 1
+        if symbol not in self._multiplieres:
+            from common.contract import get_multiplier_by_symbol
+            multiplier = get_multiplier_by_symbol(symbol)
+            self._multiplieres[symbol] = multiplier
+        return self._multiplieres[symbol]
+
 
     def get_multiplier_by_bill(self, bill):
         if common.BILL_MULTIPLIER_KEY in bill:

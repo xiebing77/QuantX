@@ -1,6 +1,6 @@
 import argparse
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 import os
 import common
 import common.log as log
@@ -97,20 +97,36 @@ def real_hand(args):
     if not exchange:
         print("exchange name error!")
         exit(1)
-    trade_engine = ExchangeTradeEngine(config)
-    cfg_commission = cell['commission']
-    trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
 
     config_path = cell["config_path"]
     if config_path:
         config = common.get_json_config(config_path)
-        if 'contract_code' in config:
-            code = config['contract_code']
-            symbol = trade_engine.get_symbol_by_code(code)
-        else:
-            symbol = config['symbol']
     else:
-        symbol = cell['symbol']
+        config = None
+
+    trade_engine = ExchangeTradeEngine(config)
+    cfg_commission = cell['commission']
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
+    trade_engine.now_time = datetime.now()
+
+    pst = trade_engine.get_position(cell_id)
+    pst_base_qty = trade.get_pst_qty(pst)
+    if pst_base_qty:
+        symbol = trade.get_pst_symbol(pst)
+        multiplier = trade.get_pst_multiplier(pst)
+    else:
+        from common.contract import get_multiplier_by_symbol
+        if config:
+            if 'contract_code' in config:
+                code = config['contract_code']
+                symbol, multiplier = trade_engine.get_symbol_by_code(code)
+            else:
+                symbol = config['symbol']
+                multiplier = get_multiplier_by_symbol(symbol)
+        else:
+            symbol = cell['symbol']
+            multiplier = get_multiplier_by_symbol(symbol)
+
 
     side = args.side
     oc = args.oc
@@ -134,7 +150,7 @@ def real_hand(args):
         "cell_id": cell_id,
         'side': side,
         'symbol': symbol,
-        'multiplier': trade_engine.get_multiplier_by_symbol(symbol),
+        'multiplier': multiplier,
         'price': args.price,
         'qty': qty
     }
@@ -233,22 +249,25 @@ def real_list(args):
         trade_engine = ExchangeTradeEngine(config)
         cfg_commission = cell['commission']
         trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
+        trade_engine.now_time = datetime.now()
         pst = trade_engine.get_position(cell_id)
         pst_base_qty = trade.get_pst_qty(pst)
-        pst_quote_qty = trade.get_pst_quote_qty(pst)
         deal_quote_qty = pst[trade.POSITION_DEAL_QUOTE_QTY_KEY]
 
         symbol = trade.get_pst_symbol(pst)
         if symbol:
-            ticker_price = exchange.ticker_price(symbol)
-            #print(symbol, ticker_price)
+            if pst_base_qty:
+                ticker_price = exchange.ticker_price(symbol)
+                #print(symbol, ticker_price)
+            else:
+                ticker_price = None
             float_profit, total_profit = trade.get_gross_profit(pst, ticker_price)
         else:
             float_profit, total_profit = 0, 0
             if config:
                 if 'contract_code' in config:
                     code = config['contract_code']
-                    symbol = code # trade_engine.get_symbol_by_code(code)
+                    symbol, multiplier= trade_engine.get_symbol_by_code(code)
                 else:
                     symbol = config['symbol']
             else:
@@ -305,7 +324,7 @@ def real_list(args):
             if pst_qty == 0:
                 his_gross_profit += gross_profit
 
-            if deal_value:
+            if deal_value and oc == OC_OPEN:
                 sum_deal_num   += 1
                 sum_deal_value += deal_value
                 arg_deal_value = sum_deal_value / sum_deal_num
