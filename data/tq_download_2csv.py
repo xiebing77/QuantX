@@ -11,6 +11,8 @@ from data import get_tq
 def tq_download_his_data(api, product, code, sec):
     if args.sec == 300:
         tt = '5m'
+    if args.sec == 900:
+        tt = '15m'
     elif args.sec == 24*60*60:
         tt = '1d'
 
@@ -76,7 +78,7 @@ if __name__ == "__main__":
             sys.stdout.flush()
             info = { k:("%.2f%%" % v.get_progress()) for k,v in download_tasks.items() }
             sys.stdout.write("\rprogress: %s" % info)
-    sys.stdout.write('\n')
+        sys.stdout.write('\n')
     '''
     # 使用with closing机制确保下载完成后释放对应的资源
     with closing(api):

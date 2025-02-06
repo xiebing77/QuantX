@@ -43,7 +43,7 @@ def PB(close, N):
     return pb
 
 def BW(close, N):
-    return RSTD(close, N) / MA(close, N)
+    return RSTD(close, N) / MA(close, N) - 1
 
 def CLV(high, low, close):
     clv = (2*close - high - low) / (high - low)
@@ -237,6 +237,13 @@ def WVAD(open, high, low, close, volume, N=12):
     vad.fillna(0, inplace=True)
     wvad = RSUM(vad, N)
     return wvad
+
+def WVADR(open, high, low, close, volume, N=12, M=24):
+    vad = volume * ((close - open)/(high - low))
+    vad.fillna(0, inplace=True)
+    wvadn = RSUM(vad, N)
+    wvadm = RSUM(vad, M)
+    return wvadn / wvadm - 1
 
 def OIV(volume, oi):
     oiv = oi.diff() / volume
