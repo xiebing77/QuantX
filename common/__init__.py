@@ -99,6 +99,12 @@ def get_balance_free(balance):
 def get_balance_frozen(balance):
     return float(balance["frozen"])
 
+
+DIRECTION_KEY = "direction"
+DIRECTION_LONG = "LONG"   # 做多
+DIRECTION_SHORT = "SHORT"  # 做空
+DIRECTION_BOTH = "BOTH"
+
 OC_KEY   = 'oc'
 OC_OPEN  = 'OPEN'
 OC_CLOSE = 'CLOSE'

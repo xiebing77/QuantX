@@ -27,7 +27,8 @@ if __name__ == "__main__":
         start_dt = symtem_start_dt
     print('{}  {} ~ {} '.format(symbol, start_dt, end_dt))
 
-    api = TqApi(auth=TqAuth("xx2022", "2Fq.YNGZ9.w.JZF"))
+    name, password = get_tq(args.broker)
+    api = TqApi(auth=TqAuth(name, password))
     kd = DataDownloader(api, symbol_list=symbol, dur_sec=300,
                         start_dt=start_dt, end_dt=end_dt,
                         csv_file_name=symbol+".csv")

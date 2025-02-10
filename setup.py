@@ -5,7 +5,9 @@ location = lambda x: os.path.join(
     os.path.dirname(os.path.realpath(__file__)), x)
 
 #db_name = location('database/main.db')
-quote_db_name = "quantx_quote"
+#quote_db_name = "quantx_quote"
+datas_path = '../../data/'
+contract_info_name = "contractes.json"
 trade_db_name = "quantx"
 mongo_user = os.environ.get('MONGO_USER')
 mongo_pwd = os.environ.get('MONGO_PWD')

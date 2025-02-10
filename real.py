@@ -1,6 +1,6 @@
 import argparse
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 import os
 import common
 import common.log as log
@@ -49,7 +49,7 @@ def real_run(args):
     exchange.connect()
     exchange.ping()
     quote_engine = QuoteEngine(exchange)
-    trade_engine = ExchangeTradeEngine()
+    trade_engine = ExchangeTradeEngine(config)
     cfg_commission = cell['commission']
     trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
 
@@ -97,20 +97,36 @@ def real_hand(args):
     if not exchange:
         print("exchange name error!")
         exit(1)
-    trade_engine = ExchangeTradeEngine()
-    cfg_commission = cell['commission']
-    trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
 
     config_path = cell["config_path"]
     if config_path:
         config = common.get_json_config(config_path)
-        if 'contract_code' in config:
-            code = config['contract_code']
-            symbol = trade_engine.get_symbol_by_code(code)
-        else:
-            symbol = config['symbol']
     else:
-        symbol = cell['symbol']
+        config = None
+
+    trade_engine = ExchangeTradeEngine(config)
+    cfg_commission = cell['commission']
+    trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
+    trade_engine.now_time = datetime.now()
+
+    pst = trade_engine.get_position(cell_id)
+    pst_base_qty = trade.get_pst_qty(pst)
+    if pst_base_qty:
+        symbol = trade.get_pst_symbol(pst)
+        multiplier = trade.get_pst_multiplier(pst)
+    else:
+        from common.contract import get_multiplier_by_symbol
+        if config:
+            if 'contract_code' in config:
+                code = config['contract_code']
+                symbol, multiplier = trade_engine.get_symbol_by_code(code)
+            else:
+                symbol = config['symbol']
+                multiplier = get_multiplier_by_symbol(symbol)
+        else:
+            symbol = cell['symbol']
+            multiplier = get_multiplier_by_symbol(symbol)
+
 
     side = args.side
     oc = args.oc
@@ -134,7 +150,7 @@ def real_hand(args):
         "cell_id": cell_id,
         'side': side,
         'symbol': symbol,
-        'multiplier': trade_engine.get_multiplier_by_symbol(symbol),
+        'multiplier': multiplier,
         'price': args.price,
         'qty': qty
     }
@@ -201,7 +217,7 @@ def real_list(args):
     title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s  %32s  %11s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
-    title_tail_fmt = "  %10s  %10s  %13s  %20s  %-20s  %-6s  %-30s  %-s"
+    title_tail_fmt = "  %10s  %10s  %13s  %68s  %-20s  %-6s  %-30s  %-s"
 
     print(title_head_fmt % (common.BILL_KEY_CELL_ID, "symbol", "win_rate", 'max retrace', 'rate') +
         title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
@@ -230,25 +246,28 @@ def real_list(args):
         if not exchange:
             continue
 
-        trade_engine = ExchangeTradeEngine()
+        trade_engine = ExchangeTradeEngine(config)
         cfg_commission = cell['commission']
         trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
+        trade_engine.now_time = datetime.now()
         pst = trade_engine.get_position(cell_id)
         pst_base_qty = trade.get_pst_qty(pst)
-        pst_quote_qty = trade.get_pst_quote_qty(pst)
         deal_quote_qty = pst[trade.POSITION_DEAL_QUOTE_QTY_KEY]
 
         symbol = trade.get_pst_symbol(pst)
         if symbol:
-            ticker_price = exchange.ticker_price(symbol)
-            #print(symbol, ticker_price)
+            if pst_base_qty:
+                ticker_price = exchange.ticker_price(symbol)
+                #print(symbol, ticker_price)
+            else:
+                ticker_price = None
             float_profit, total_profit = trade.get_gross_profit(pst, ticker_price)
         else:
             float_profit, total_profit = 0, 0
             if config:
                 if 'contract_code' in config:
                     code = config['contract_code']
-                    symbol = code # trade_engine.get_symbol_by_code(code)
+                    symbol, multiplier= trade_engine.get_symbol_by_code(code)
                 else:
                     symbol = config['symbol']
             else:
@@ -305,7 +324,7 @@ def real_list(args):
             if pst_qty == 0:
                 his_gross_profit += gross_profit
 
-            if deal_value:
+            if deal_value and oc == OC_OPEN:
                 sum_deal_num   += 1
                 sum_deal_value += deal_value
                 arg_deal_value = sum_deal_value / sum_deal_num
@@ -369,16 +388,11 @@ def real_list(args):
             else:
                 asset_stat['commission'][coin] = commission[coin]
 
-        if config and 'prec' in config:
-            prec_price = config['prec']['price']
-            prec_qty   = config['prec']['qty']
-        else:
-            prec_qty, prec_price = trade_engine.get_symbol_prec(exchange, symbol)
-        profit_info = pst_fmt % (round(pst_base_qty, prec_qty),
-            round(pst_quote_qty, prec_price),
-            round(deal_quote_qty, prec_price),
-            round(float_profit, prec_price),
-            round(total_profit, prec_price),
+        profit_info = pst_fmt % (trade_engine.round_qty(pst_base_qty),
+            trade_engine.round_price(pst_quote_qty),
+            trade_engine.round_price(deal_quote_qty),
+            trade_engine.round_price(float_profit),
+            trade_engine.round_price(total_profit),
             round_commission(commission),
             cfg_commission,
             pst['order_count'])
@@ -404,10 +418,10 @@ def real_list(args):
             asset_stat = all_asset_stat[coin_name]
             print(title_head_fmt % (coin_name, "", '', '', '') +
                 title_pst_fmt % ('',
-                round(asset_stat[trade.POSITION_QUOTE_QTY_KEY], prec_price),
-                round(asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY], prec_price),
-                round(asset_stat['float_profit'], prec_price),
-                round(asset_stat['total_profit'], prec_price),
+                trade_engine.round_price(asset_stat[trade.POSITION_QUOTE_QTY_KEY]),
+                trade_engine.round_price(asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY]),
+                trade_engine.round_price(asset_stat['float_profit']),
+                trade_engine.round_price(asset_stat['total_profit']),
                 round_commission(asset_stat['commission']),
                 '',
                 ''))
@@ -480,7 +494,7 @@ def real_analyze(args):
         print("exchange name error!")
         exit(1)
 
-    trade_engine = ExchangeTradeEngine()
+    trade_engine = ExchangeTradeEngine(config)
     trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
     trader = trade_engine.get_cell_trader(cell_id)
     trade_engine.handle_open_bills(cell_id)
@@ -555,21 +569,17 @@ def real_analyze(args):
 
         symbol = cb[common.BILL_SYMBOL_KEY]
         multiplier = cb[common.BILL_MULTIPLIER_KEY]
-        if config and 'prec' in config:
-            prec_price = config['prec']['price']
-            prec_qty   = config['prec']['qty']
-        else:
-            prec_qty, prec_price = trade_engine.get_symbol_prec(trader, symbol)
+
         print(cb_fmt % (cb['create_time'], symbol, multiplier,
             '{:7.2%} ({:3d}/{:3d})'.format(win_count_rate, win_count, oc_count),
             '{:.2f}'.format(total_gross_profit-max_total_profit),
             oc, side,
-            cb['qty'], cb['price'], deal_qty, round(deal_price, prec_price),
+            cb['qty'], cb['price'], deal_qty, trade_engine.round_price(deal_price),
             '{} ({:3.2%})'.format(round(gross_profit, 2), gross_profit_rate) if gross_profit else '',
             round(total_gross_profit, 2),
             round_commission(commission), round_commission(total_commission),
             cb['rmk'],
-            round(pst_qty, prec_qty), round(pst_cost, prec_price), cb['status'], cb['order_id']))
+            trade_engine.round_qty(pst_qty), trade_engine.round_price(pst_cost), cb['status'], cb['order_id']))
     #print(symbol, exchange._get_ex_pst(symbol))
     exchange.close()
 
