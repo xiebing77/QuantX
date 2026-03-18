@@ -214,7 +214,7 @@ def real_list(args):
     title_head_fmt = "%-25s  %12s  %18s  %16s  %36s"
     head_fmt       = "%-25s  %12s  %7.2f%% (%3d/%3d)  %8.1f(%6.2f%%) (%6.2f%%, %6.2f%%, %6.2f%%, %6.2f%%)"
 
-    title_pst_fmt = "%16s  %16s  %16s  %14s  %14s  %32s  %32s  %11s"
+    title_pst_fmt = "%16s  %16s  %16s  %20s  %14s  %32s  %32s  %11s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
     title_tail_fmt = "  %10s  %10s  %13s  %68s  %-20s  %-6s  %-30s  %-s"
@@ -290,6 +290,7 @@ def real_list(args):
         sum_deal_num   = 0
         sum_deal_value = 0
         arg_deal_value = 0
+        arg_pst_value = 0
         for bill in bills:
             deal_qty, deal_price = trade_engine.get_bill_deal_info(bill)
             oc = bill[OC_KEY]
@@ -325,13 +326,17 @@ def real_list(args):
                 his_gross_profit += gross_profit
 
             if deal_value and oc == OC_OPEN:
-                sum_deal_num   += 1
+                sum_deal_num   += deal_qty
                 sum_deal_value += deal_value
                 arg_deal_value = sum_deal_value / sum_deal_num
 
+            if pst_qty:
+                arg_pst_value = abs(pst_qty) * arg_deal_value
+            #print(pst_qty, arg_deal_value)
+
             if total_gross_profit > max_total_profit:
                 max_total_profit = total_gross_profit
-                max_profit_rate = max_total_profit / arg_deal_value
+                max_profit_rate = max_total_profit / arg_pst_value
                 if min_total_profit_b > min_total_profit_a:
                     min_total_profit_b = min_total_profit_a
                     min_profit_rate_b  = min_profit_rate_a
@@ -340,11 +345,11 @@ def real_list(args):
             elif total_gross_profit < min_total_profit_a:
                 #print(total_gross_profit, sum_deal_num, sum_deal_value, sum_deal_value / sum_deal_num)
                 min_total_profit_a = total_gross_profit
-                min_profit_rate_a = min_total_profit_a / arg_deal_value
+                min_profit_rate_a = min_total_profit_a / arg_pst_value
 
             retrace_profit = total_gross_profit - max_total_profit
-            if arg_deal_value:
-                retrace_rate = retrace_profit / arg_deal_value
+            if arg_pst_value:
+                retrace_rate = retrace_profit / arg_pst_value
             else:
                 retrace_rate = 0
             if retrace_rate < max_profit_rr:
@@ -357,7 +362,7 @@ def real_list(args):
             win_count_rate = 0
 
         if sum_deal_num:
-            cur_profit_rate = total_profit / arg_deal_value
+            cur_profit_rate = total_profit / arg_pst_value
         else:
             cur_profit_rate = 0
 
@@ -374,6 +379,7 @@ def real_list(args):
                 trade.POSITION_DEAL_QUOTE_QTY_KEY: 0,
                 "float_profit": 0,
                 "total_profit": 0,
+                "order_count": 0,
                 "commission": {}
             }
 
@@ -382,6 +388,7 @@ def real_list(args):
         asset_stat[trade.POSITION_DEAL_QUOTE_QTY_KEY] += deal_quote_qty
         asset_stat['float_profit'] += float_profit
         asset_stat['total_profit'] += total_profit
+        asset_stat['order_count']  += pst['order_count']
         for coin in commission:
             if coin in asset_stat['commission']:
                 asset_stat['commission'][coin] += commission[coin]
@@ -391,7 +398,7 @@ def real_list(args):
         profit_info = pst_fmt % (trade_engine.round_qty(pst_base_qty),
             trade_engine.round_price(pst_quote_qty),
             trade_engine.round_price(deal_quote_qty),
-            trade_engine.round_price(float_profit),
+            '{} ({:6.2%})'.format(trade_engine.round_price(float_profit), float_profit/abs(pst_quote_qty)) if pst_quote_qty else '',
             trade_engine.round_price(total_profit),
             round_commission(commission),
             cfg_commission,
@@ -424,7 +431,7 @@ def real_list(args):
                 trade_engine.round_price(asset_stat['total_profit']),
                 round_commission(asset_stat['commission']),
                 '',
-                ''))
+                asset_stat['order_count']))
 
 
 def real_add(args):
@@ -458,7 +465,7 @@ def real_update(args):
         record["status"] = args.status
     if args.value:
         record["value"] = args.value
-    if args.amount:
+    if not args.amount is None:
         record["amount"] = args.amount
     if args.slippage_rate:
         record["slippage_rate"] = args.slippage_rate

@@ -108,8 +108,8 @@ class ExchangeTradeEngine(TradeEngine):
     def set_cell(self, cell_id, trader, value, amount, slippage_rate, rate, prec):
         if cell_id in self.cells:
             return
-        if value and amount:
-            return
+        #if value and amount:
+        #    return
         if not value and not amount:
             return
         cell = {
