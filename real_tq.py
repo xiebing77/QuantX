@@ -57,8 +57,8 @@ def create_orders(strategy, signal, cell_id, trader, rmk):
 
 
 def check_run_time(now_time):
-    #if now_time.weekday() in [5, 6]:
-    #    return
+    if now_time.weekday() in [5, 6]:
+        return
 
     if 15 <= now_time.hour < 20:
         return False

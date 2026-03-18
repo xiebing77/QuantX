@@ -49,7 +49,7 @@ class KuaiqiFutures(Kuaiqi):
             from tqsdk import TqAccount
             from tqsdk import TqApi, TqAuth
             account = TqAccount(self.broker_name, self.broker_account, self.broker_password)
-            self._api = TqApi(account, auth=TqAuth(self.yx_name, self.yx_password))
+            self._api = TqApi(account, auth=TqAuth(self.yx_name, self.yx_password), debug=False)
         return self._api
 
     def _get_api(self):
