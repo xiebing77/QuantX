@@ -241,7 +241,7 @@ class TradeEngine(object):
                     show_commission=True,
                     show_status=True,
                     show_order=True):
-        fmt_start          = '%19s  %14s  %5s  %5s'
+        fmt_start          = '%8s  %19s  %14s  %5s  %5s'
         fmt_rmk            = '  %24s'
         fmt_multiplier     = '  %10s'
         fmt_qp             = '  %10s  %12s'
@@ -254,7 +254,7 @@ class TradeEngine(object):
         fmt_status         = '  %7s'
         fmt_order          = '  %12s'
 
-        title = fmt_start % ('create_time', 'symbol', 'oc', 'side')
+        title = fmt_start % ('id', 'create_time', 'symbol', 'oc', 'side')
         if show_rmk:
             title += fmt_rmk % ('rmk')
         if show_multiplier:
@@ -291,11 +291,13 @@ class TradeEngine(object):
         pst_qty = 0
         pst_quote_qty = 0
 
+        id = 0
         bills = self.get_all_bills(cell_id)
         for b in bills:
+            id += 1
             oc = b['oc']
             side = b['side']
-            info = fmt_start % (b['create_time'], b['symbol'], oc, side)
+            info = fmt_start % (id, b['create_time'], b['symbol'], oc, side)
 
             if show_rmk:
                 info += fmt_rmk % (b['rmk'])

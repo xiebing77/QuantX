@@ -9,10 +9,16 @@ from data import get_tq
 
 
 def tq_download_his_data(api, product, code, sec):
-    if args.sec == 300:
+    if args.sec < 60:
+        tt = f'{args.sec}s'
+    elif args.sec == 60:
+        tt = '1m'
+    elif args.sec == 300:
         tt = '5m'
-    if args.sec == 900:
+    elif args.sec == 900:
         tt = '15m'
+    elif args.sec == 3600:
+        tt = '1h'
     elif args.sec == 24*60*60:
         tt = '1d'
 

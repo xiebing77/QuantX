@@ -156,14 +156,14 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
         key_x = '%s_%s' % (name, n)
         df[key_x] = UI(df[key_close], n)
         key_xs.append(key_x)
-
+    '''
     name = 'Hurst'
     if key_high and (calc_all or name in config):
         n = 10
         key_x = '%s_%s' % (name, n)
         df[key_x] = Hurst(df[key_close], n)
         key_xs.append(key_x)
-
+    '''
     name = 'nBIAS'
     if calc_all or name in config:
         ary = []
@@ -339,7 +339,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
         b = talib.EMA(df[key_close], timeperiod=tp)
         df[key_x] = a / b - 1
         key_xs.append(key_x)
-
+    '''
     name = 'SAR-MIDPRICE'
     if calc_all or name in config:
         if name in config and 'period' in config[name]:
@@ -351,7 +351,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
         b = talib.MIDPRICE(df[key_high], df[key_low], timeperiod=tp)
         df[key_x] = a / b - 1
         key_xs.append(key_x)
-
+    '''
 
     return key_xs
 
