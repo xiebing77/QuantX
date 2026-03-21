@@ -3,8 +3,8 @@ from . import *
 
 
 class SimulationTradeEngine(TradeEngine):
-    def __init__(self, value, amount, commission_rate):
-        super().__init__()
+    def __init__(self, value, amount, commission_rate, config=None):
+        super().__init__(config)
         self.value = value
         self.amount = amount
         self.commission_rate = commission_rate
@@ -24,6 +24,13 @@ class SimulationTradeEngine(TradeEngine):
         return self.cell_bills.keys()
 
     def new_limit_bill(self, cell_id, side, symbol, multiplier, price, qty, rmk='', oc=None):
+        '''
+        if side == SIDE_BUY:
+            price_s = price + self.min_price_change
+        else:
+            price_s = price - self.min_price_change
+        #print(price, price_s)
+        '''
         bill = {
             common.BILL_KEY_CELL_ID: cell_id,
             common.ORDER_TYPE_KEY: common.ORDER_TYPE_LIMIT,

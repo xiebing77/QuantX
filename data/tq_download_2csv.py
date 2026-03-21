@@ -9,7 +9,9 @@ from data import get_tq
 
 
 def tq_download_his_data(api, product, code, sec):
-    if args.sec < 60:
+    if args.sec == 0:
+        tt = 'tick'
+    elif args.sec < 60:
         tt = f'{args.sec}s'
     elif args.sec == 60:
         tt = '1m'
@@ -22,7 +24,11 @@ def tq_download_his_data(api, product, code, sec):
     elif args.sec == 24*60*60:
         tt = '1d'
 
-    symbol = product + code
+    e_name, p_name = product.split('.')
+    if e_name == 'CZCE' and len(code) == 4:
+        symbol = product + code[1:]
+    else:
+        symbol = product + code
     csv_file_name = '{}_{}.csv'.format(symbol, tt)
     if os.path.exists(csv_file_name):
         print(f'{csv_file_name} already exists!')
@@ -30,7 +36,10 @@ def tq_download_his_data(api, product, code, sec):
 
     print('{} {}'.format(sec ,csv_file_name))
 
-    y = int('20'+code[:2])
+    if len(code) == 4:
+        y = int('20'+code[:2])
+    else:
+        y = int('202'+code[:1])
     m = int(code[2:])
     #print(y,m)
     y_start = y - 1

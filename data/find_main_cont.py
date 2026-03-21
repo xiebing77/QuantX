@@ -26,7 +26,12 @@ def check_switch(multiplier, symbol_prev, symbol, df):
     key_oi      = f'{symbol}.close_oi'
 
     print(symbol)
-    code = int(symbol[-4:])
+    e_name, _ = symbol.split('.')
+    if e_name == 'CZCE':
+        code_len = 3
+    else:
+        code_len = 4
+    code = int(symbol[-code_len:])
     for idx, k in df.iterrows():
         k_t = k[key_time]
         v_is_over  = k[key_v_prev]  < k[key_v]
