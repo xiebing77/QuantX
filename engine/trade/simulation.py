@@ -12,11 +12,10 @@ class SimulationTradeEngine(TradeEngine):
         self.now_time = None
 
         if 'slippage' in config and 'default' in config['slippage']:
-            slippage = config['slippage']['default']
+            self.slippage = config['slippage']['default']
         else:
-            slippage = 1
-        self.slippage_w = slippage * self.min_price_change
-        print(f'slippage: {slippage}, min_price_change: {self.min_price_change}')
+            self.slippage = 1
+        self.slippage_w = self.slippage * self.min_price_change
 
     def get_cell_value(self, cell_id):
         return self.value

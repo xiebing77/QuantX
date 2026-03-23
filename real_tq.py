@@ -283,6 +283,7 @@ def tq_run():
     trade_engine.set_cell(cell_id, exchange, *get_cell_info(cell))
     strategy = common.createInstance(module_name, class_name, config, quote_engine, trade_engine)
     strategy.set_y_threshold(cell_id, threshold)
+    log.info(f'slippage: {trade_engine.slippage}, min_price_change: {trade_engine.min_price_change}')
 
     if hasattr(strategy, 'trainning'):
         strategy.trainning()

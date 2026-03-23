@@ -97,11 +97,10 @@ class ExchangeTradeEngine(TradeEngine):
         self.symbol_precs = {}
 
         if 'slippage' in config and 'limit' in config['slippage']:
-            slippage = config['slippage']['limit']
+            self.slippage = config['slippage']['limit']
         else:
-            slippage = 3
-        self.slippage_w = slippage * self.min_price_change
-        print(f'slippage: {slippage}, min_price_change: {self.min_price_change}')
+            self.slippage = 3
+        self.slippage_w = self.slippage * self.min_price_change
 
         self.position = {}
         self.cells = {}
