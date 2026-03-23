@@ -123,6 +123,12 @@ TIME_IN_FORCE_FOK = 'FOK'  # Fill or kill
 
 BILL_KEY_CELL_ID = 'instance_id'
 
+BILL_TIME_CREATE     = 'create_time'
+BILL_TIME_SUBMITTED  = 'submitted_time'
+BILL_TIME_FINISH     = 'finish_time'
+
+BILL_MSG = 'msg'
+
 BILL_SYMBOL_KEY     = 'symbol'
 BILL_MULTIPLIER_KEY = 'multiplier'
 

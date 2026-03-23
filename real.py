@@ -6,6 +6,7 @@ import common
 import common.log as log
 from common import SIDE_KEY, SIDE_BUY, SIDE_SELL, OC_KEY, OC_OPEN, OC_CLOSE
 from common import ORDER_TYPE_LIMIT
+from common import BILL_TIME_CREATE, BILL_TIME_SUBMITTED, BILL_TIME_FINISH, BILL_MSG
 from common.cell import cell_statuses, add_cell, delete_cell, update_cell
 from common.cell import get_cells, get_cell, get_cell_info, get_cell_broker
 from exchange.exchange_factory import get_exchange_names, create_exchange
@@ -515,8 +516,8 @@ def real_analyze(args):
     total_commission = {}
     pst_qty = 0
     pst_quote_qty = 0
-    cb_fmt = '%26s  %14s  %10s  %18s  %20s  %5s  %5s  %10s  %12s  %10s  %12s  %18s  %15s  %15s  %18s  %30s  %12s  %12s  %7s  %12s'
-    cb_title = ('create_time', 'symbol', 'multiplier', 'win_rate', 'retrace', 'oc', 'side', 'qty', 'limit_price', 'deal_qty', 'deal_price', 'profit', 'total_profit', 'commission', 'total_commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'order_id')
+    cb_fmt = '%26s  %26s  %26s  %14s  %10s  %18s  %20s  %5s  %5s  %10s  %12s  %10s  %12s  %18s  %15s  %15s  %18s  %30s  %12s  %12s  %7s  %20s  %12s'
+    cb_title = (BILL_TIME_CREATE, BILL_TIME_SUBMITTED, BILL_TIME_FINISH, 'symbol', 'multiplier', 'win_rate', 'retrace', 'oc', 'side', 'qty', 'limit_price', 'deal_qty', 'deal_price', 'profit', 'total_profit', 'commission', 'total_commission', 'rmk', 'pst_qty', 'pst_cost', 'status', 'msg', 'order_id')
     print(cb_fmt % (cb_title))
     for cb in bills:
         #print(cb)
@@ -577,7 +578,10 @@ def real_analyze(args):
         symbol = cb[common.BILL_SYMBOL_KEY]
         multiplier = cb[common.BILL_MULTIPLIER_KEY]
 
-        print(cb_fmt % (cb['create_time'], symbol, multiplier,
+        print(cb_fmt % (cb[BILL_TIME_CREATE],
+            cb[BILL_TIME_SUBMITTED] if BILL_TIME_SUBMITTED in cb else '',
+            cb[BILL_TIME_FINISH]    if BILL_TIME_FINISH in cb else '',
+            symbol, multiplier,
             '{:7.2%} ({:3d}/{:3d})'.format(win_count_rate, win_count, oc_count),
             '{:.2f}'.format(total_gross_profit-max_total_profit),
             oc, side,
@@ -586,7 +590,10 @@ def real_analyze(args):
             round(total_gross_profit, 2),
             round_commission(commission), round_commission(total_commission),
             cb['rmk'],
-            trade_engine.round_qty(pst_qty), trade_engine.round_price(pst_cost), cb['status'], cb['order_id']))
+            trade_engine.round_qty(pst_qty), trade_engine.round_price(pst_cost),
+            cb['status'],
+            cb[BILL_MSG] if BILL_MSG in cb else '',
+            cb['order_id']))
     #print(symbol, exchange._get_ex_pst(symbol))
     exchange.close()
 

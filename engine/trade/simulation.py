@@ -11,26 +11,23 @@ class SimulationTradeEngine(TradeEngine):
         self.cell_bills = {}
         self.now_time = None
 
+        if 'slippage' in config and 'default' in config['slippage']:
+            slippage = config['slippage']['default']
+        else:
+            slippage = 1
+        self.slippage_w = slippage * self.min_price_change
+        print(f'slippage: {slippage}, min_price_change: {self.min_price_change}')
+
     def get_cell_value(self, cell_id):
         return self.value
 
     def get_cell_amount(self, cell_id):
         return self.amount
 
-    def get_cell_slippage_rate(self, cell_id):
-        return 0
-
     def get_all_cell_ids(self):
         return self.cell_bills.keys()
 
     def new_limit_bill(self, cell_id, side, symbol, multiplier, price, qty, rmk='', oc=None):
-        '''
-        if side == SIDE_BUY:
-            price_s = price + self.min_price_change
-        else:
-            price_s = price - self.min_price_change
-        #print(price, price_s)
-        '''
         bill = {
             common.BILL_KEY_CELL_ID: cell_id,
             common.ORDER_TYPE_KEY: common.ORDER_TYPE_LIMIT,

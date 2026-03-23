@@ -96,6 +96,13 @@ class ExchangeTradeEngine(TradeEngine):
         self.bills_collection_name = 'bills'
         self.symbol_precs = {}
 
+        if 'slippage' in config and 'limit' in config['slippage']:
+            slippage = config['slippage']['limit']
+        else:
+            slippage = 3
+        self.slippage_w = slippage * self.min_price_change
+        print(f'slippage: {slippage}, min_price_change: {self.min_price_change}')
+
         self.position = {}
         self.cells = {}
 
@@ -145,10 +152,6 @@ class ExchangeTradeEngine(TradeEngine):
         cell = self.cells[cell_id]
         return cell['amount']
 
-    def get_cell_slippage_rate(self, cell_id):
-        cell = self.cells[cell_id]
-        return cell['slippage_rate']
-
     def get_cell_commission(self, cell_id):
         cell = self.cells[cell_id]
         return cell['commission_rate'], cell['commission_prec']
@@ -157,6 +160,7 @@ class ExchangeTradeEngine(TradeEngine):
         return self.cells.keys()
 
     def new_limit_bill(self, cell_id, side, symbol, multiplier, price, qty, rmk='', oc=None):
+        create_time =  datetime.datetime.now()
         trader = self.get_cell_trader(cell_id)
         typ = common.ORDER_TYPE_LIMIT
         ret = trader.new_order(side, typ, symbol, price, qty, oc=oc)
@@ -164,6 +168,7 @@ class ExchangeTradeEngine(TradeEngine):
         if not ret:
             return None
 
+        order_msg = ''
         if type(ret) in [str, int] :
             order_ids = ret
         elif type(ret) is list:
@@ -174,12 +179,14 @@ class ExchangeTradeEngine(TradeEngine):
         else:
             order = ret
             order_ids = order[trader.Order_Id_Key]
+            order_msg = order['last_msg'] if 'last_msg' in ret else '' #暂时，后续改进
             ret = [ret]
 
         if not order_ids:
             return None
         bill = {
-            "create_time": datetime.datetime.now(),#time.time(),
+            common.BILL_TIME_CREATE:    create_time,
+            common.BILL_TIME_SUBMITTED: datetime.datetime.now(),
             common.BILL_KEY_CELL_ID: cell_id,
             common.BILL_SYMBOL_KEY: symbol,
             common.BILL_MULTIPLIER_KEY: multiplier,
@@ -190,6 +197,7 @@ class ExchangeTradeEngine(TradeEngine):
             "qty": qty,
             common.BILL_ORDER_ID_KEY: order_ids,
             "rmk": rmk,
+            common.BILL_MSG: order_msg
         }
         if type(order_ids) is list:
             bill[common.BILL_OPEN_ORDER_IDS_KEY] = order_ids
@@ -373,7 +381,8 @@ class ExchangeTradeEngine(TradeEngine):
                 return
 
         self.trade_db.update_one(self.bills_collection_name, bill['_id'],
-            {common.BILL_STATUS_KEY: common.BILL_STATUS_CLOSE})
+            {common.BILL_STATUS_KEY:  common.BILL_STATUS_CLOSE,
+             common.BILL_TIME_FINISH: datetime.datetime.now()})
 
 
     def sync_bill(self, trader, order, trades):
