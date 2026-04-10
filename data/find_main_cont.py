@@ -4,7 +4,7 @@ import argparse
 from datetime import datetime
 import pandas as pd
 
-key_time = 'datetime'
+key_time = 'datetime_str'
 vs  = []
 ois  = []
 vois = []
@@ -19,11 +19,11 @@ def append_to_ss(ss, code, multiplier, k_t):
         ss.append([code, multiplier, f'{k_t.split(" ")[0]}T15'])
 
 
-def check_switch(multiplier, symbol_prev, symbol, df):
-    key_v_prev  = f'{symbol_prev}.volume'
-    key_v       = f'{symbol}.volume'
-    key_oi_prev = f'{symbol_prev}.close_oi'
-    key_oi      = f'{symbol}.close_oi'
+def check_switch(multiplier, symbol_prev, symbol, df, suffix_last):
+    key_v_prev  = f'volume'
+    key_v       = f'volume{suffix_last}'
+    key_oi_prev = f'close_oi'
+    key_oi      = f'close_oi{suffix_last}'
 
     print(symbol)
     e_name, _ = symbol.split('.')
@@ -79,6 +79,7 @@ if __name__ == "__main__":
     pd.set_option('display.max_columns', None)
     pd.set_option('display.width', 1000)
 
+    suffix_last = '_last'
     symbol_prev = None
     for code in codes:
         symbol = args.product + code
@@ -86,10 +87,9 @@ if __name__ == "__main__":
 
         if symbol_prev:
             join_df = pd.merge(df_prev[-args.window:], df, how='left',
-                    left_on=key_time, right_on=key_time)
-            #print(join_df)
+                    left_on=key_time, right_on=key_time, suffixes=('', suffix_last) )
 
-            check_switch(multiplier, symbol_prev, symbol, join_df)
+            check_switch(multiplier, symbol_prev, symbol, join_df, suffix_last)
         
         symbol_prev = symbol
         df_prev = df

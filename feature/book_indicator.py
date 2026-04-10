@@ -1,15 +1,8 @@
 import talib
 from . import *
 
-def calc_book_indicators(quoter, config, df, calc_all=False):
+def calc_book_indicators(quoter, config, df, calc_all, key_bid, key_bid_size, key_ask, key_ask_size):
     key_xs = []
-
-    key_close = quoter.tick_key_close
-    key_volume = quoter.tick_key_volume
-    key_bid_size = quoter.book_key_bid_size
-    key_ask_size = quoter.book_key_ask_size
-    key_ask = quoter.book_key_ask
-    key_bid = quoter.book_key_bid
 
     name = 'size.imb'
     if calc_all or name in config:

@@ -14,6 +14,8 @@ KLINE_KEY_HIGH       = "high"
 KLINE_KEY_LOW        = "low"
 KLINE_KEY_VOLUME     = "volume"
 
+KLINE_INTERVAL_TICK  = 'tick'
+
 KLINE_INTERVAL_1SECOND  = '1s'
 KLINE_INTERVAL_5SECOND  = '5s'
 KLINE_INTERVAL_10SECOND = '10s'
@@ -166,7 +168,9 @@ def get_open_time(interval, dt):
         return None
 
 def get_interval_timedelta(interval):
-    if interval == KLINE_INTERVAL_1SECOND:
+    if interval == KLINE_INTERVAL_TICK:
+        return timedelta(seconds=0.5)
+    elif interval == KLINE_INTERVAL_1SECOND:
         return timedelta(seconds=1)
     elif interval == KLINE_INTERVAL_5SECOND:
         return timedelta(seconds=5)

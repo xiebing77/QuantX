@@ -14,14 +14,14 @@ class Kuaiqi(Exchange):
 
     currency = 'CNY'
 
-    tick_key_close_time = 'datetime'
-    tick_key_close      = 'last_price'
+    tick_key_time = 'datetime'
+    tick_key_price      = 'last_price'
     tick_key_volume     = 'volume'
 
-    book_key_bid        = 'bid_price1'
-    book_key_bid_size   = 'bid_volume1'
-    book_key_ask        = 'ask_price1'
-    book_key_ask_size   = 'ask_volume1'
+    tick_key_bid_price1  = 'bid_price1'
+    tick_key_bid_size1   = 'bid_volume1'
+    tick_key_ask_price1  = 'ask_price1'
+    tick_key_ask_size1   = 'ask_volume1'
 
     kl_bt_accuracy = kl.KLINE_INTERVAL_1MINUTE
 

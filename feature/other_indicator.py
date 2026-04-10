@@ -1,24 +1,13 @@
 import talib
 from . import *
 
-def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
+def calc_other_indicators(quoter, config, df, calc_all,
+        key_open, key_high, key_low, key_close, key_volume, key_oi, prefix=''):
     key_xs = []
-
-    if is_tick:
-        key_high = None
-        key_close = quoter.tick_key_close
-        key_volume = quoter.tick_key_volume
-    else:
-        key_open = quoter.kline_key_open
-        key_close = quoter.kline_key_close
-        key_high = quoter.kline_key_high
-        key_low = quoter.kline_key_low
-        key_volume = quoter.kline_key_volume
-        key_oi = quoter.kline_key_oi
 
     name = 'CLV'
     if key_high and (calc_all or name in config):
-        key_x = '%s' % (name)
+        key_x = f'{prefix}{name}'
         df[key_x] = CLV(df[key_high], df[key_low], df[key_close])
         key_xs.append(key_x)
 
@@ -31,13 +20,13 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
                 scs = [scs]
         for sc in scs:
             period = sc['n']
-            key_x = '%s_%s' % (name, period)
+            key_x = f'{prefix}{name}_{period}'
             df[key_x] = CV(df[key_high], df[key_low], period)
             key_xs.append(key_x)
 
     name = 'DBCD'
     if key_high and (calc_all or name in config):
-        key_x = '%s' % (name)
+        key_x = f'{prefix}{name}'
         df[key_x] = DBCD(df[key_close])
         key_xs.append(key_x)
 
@@ -50,7 +39,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
                 scs = [scs]
         for sc in scs:
             period = sc['n']
-            key_x = '%s_%s' % (name, period)
+            key_x = f'{prefix}{name}_{period}'
             df[key_x] = PB(df[key_close], period)
             key_xs.append(key_x)
 
@@ -63,13 +52,13 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
                 scs = [scs]
         for sc in scs:
             period = sc['n']
-            key_x = '%s_%s' % (name, period)
+            key_x = f'{prefix}{name}_{period}'
             df[key_x] = BW(df[key_close], period)
             key_xs.append(key_x)
 
     name = 'KDJ'
     if key_high and (calc_all or name in config):
-        key_x = '%s' % (name)
+        key_x = f'{prefix}{name}'
         period = 9
         k, d, j = KDJ(df[key_high], df[key_low], df[key_close], period)
         df[key_x] = j
@@ -78,82 +67,82 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
     name = 'CMF'
     if key_high and (calc_all or name in config):
         n = 21
-        key_x = '%s_%s' % (name, n)
+        key_x = f'{prefix}{name}_{n}'
         df[key_x] = CMF(df[key_high], df[key_low], df[key_close], df[key_volume], n)
         key_xs.append(key_x)
 
     name = 'CR'
     if key_high and (calc_all or name in config):
         n = 20
-        key_x = '%s_%s' % (name, n)
+        key_x = f'{prefix}{name}_{n}'
         df[key_x] = CR(df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
     name = 'CR2'
     if key_high and (calc_all or name in config):
         n = 20
-        key_x = '%s_%s' % (name, n)
+        key_x = f'{prefix}{name}_{n}'
         df[key_x] = CR2(df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
     name = 'MassIndex'
     if key_high and (calc_all or name in config):
         n = 9
-        key_x = '%s_%s' % (name, n)
+        key_x = f'{prefix}{name}_{n}'
         df[key_x] = MassIndex(df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
     name = 'MassIndex2'
     if key_high and (calc_all or name in config):
         n = 9
-        key_x = '%s_%s' % (name, n)
+        key_x = f'{prefix}{name}_{n}'
         df[key_x] = MassIndex2(df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
     name = 'ElderRayIndex'
     if key_high and (calc_all or name in config):
         n = 13
-        key_x = '%s_%s' % (name, n)
+        key_x = f'{prefix}{name}_{n}'
         df[key_x] = ElderRayIndex(df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
     name = 'ElderRayIndex2'
     if key_high and (calc_all or name in config):
         n = 13
-        key_x = '%s_%s' % (name, n)
+        key_x = f'{prefix}{name}_{n}'
         df[key_x] = ElderRayIndex2(df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
     name = 'UOS'
     if key_high and (calc_all or name in config):
-        key_x = '%s' % (name)
+        key_x = f'{prefix}{name}'
         df[key_x] = UOS(df[key_high], df[key_low], df[key_close])
         key_xs.append(key_x)
 
     name = 'UOS2'
     if key_high and (calc_all or name in config):
-        key_x = '%s' % (name)
+        key_x = f'{prefix}{name}'
         df[key_x] = UOS2(df[key_high], df[key_low], df[key_close])
         key_xs.append(key_x)
 
     name = 'ASIR'
     if key_high and (calc_all or name in config):
         n = 20
-        key_x = '%s_%s' % (name, n)
+        key_x = f'{prefix}{name}_{n}'
         df[key_x] = ASIR(df[key_open], df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
     name = 'ASIR2'
     if key_high and (calc_all or name in config):
         n = 20
-        key_x = '%s_%s' % (name, n)
+        key_x = f'{prefix}{name}_{n}'
         df[key_x] = ASIR2(df[key_open], df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
     name = 'UI'
     if key_high and (calc_all or name in config):
         n = 10
-        key_x = '%s_%s' % (name, n)
+        key_x = f'{prefix}{name}_{n}'
         df[key_x] = UI(df[key_close], n)
         key_xs.append(key_x)
     '''
@@ -179,7 +168,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
                 continue
             t = sc['t']
             n = sc['n']
-            key_x = '%s_%s_%s' % (name, t, n)
+            key_x = f'{prefix}{name}_{t}_{n}'
             if t == 'c':
                 s = df[key_close]
             elif t == 'v':
@@ -193,7 +182,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
 
             if 'diff' in sc:
                 for N in sc['diff']:
-                    key_x_diff = f'{key_x}_diff_{N}'
+                    key_x_diff = f'{prefix}{key_x}_diff_{N}'
                     df[key_x_diff] = df[key_x].diff(N)
                     key_xs.append(key_x_diff)
 
@@ -213,7 +202,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
             t = sc['t']
             n = sc['n']
             m = sc['m']
-            key_x = '%s_%s_%s_%s' % (name, t, n, m)
+            key_x = f'{prefix}{name}_{t}_{n}_{m}'
             if t == 'c':
                 s = df[key_close]
             elif t == 'v':
@@ -227,7 +216,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
 
             if 'diff' in sc:
                 for N in sc['diff']:
-                    key_x_diff = f'{key_x}_diff_{N}'
+                    key_x_diff = f'{prefix}{key_x}_diff_{N}'
                     df[key_x_diff] = df[key_x].diff(N)
                     key_xs.append(key_x_diff)
 
@@ -247,7 +236,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
             t = sc['t']
             n = sc['n']
             m = sc['m']
-            key_x = '%s_%s_%s_%s' % (name, t, n, m)
+            key_x = f'{prefix}{name}_{t}_{n}_{m}'
             if t == 'c':
                 s = df[key_close]
             elif t == 'v':
@@ -261,19 +250,19 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
 
             if 'diff' in sc:
                 for N in sc['diff']:
-                    key_x_diff = f'{key_x}_diff_{N}'
+                    key_x_diff = f'{prefix}{key_x}_diff_{N}'
                     df[key_x_diff] = df[key_x].diff(N)
                     key_xs.append(key_x_diff)
 
     name = 'OIV'
     if key_oi and (calc_all or name in config):
-        key_x = '%s' % (name)
+        key_x = f'{prefix}{name}'
         df[key_x] = OIV(df[key_volume], df[key_oi])
         key_xs.append(key_x)
 
     name = 'VOI'
     if key_oi and (calc_all or name in config):
-        key_x = '%s' % (name)
+        key_x = f'{prefix}{name}'
         df[key_x] = VOI(df[key_volume], df[key_oi])
         key_xs.append(key_x)
 
@@ -283,7 +272,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
             tp = config[name]['period']
         else:
             tp = 16
-        key_x = '%s_%s' % (name, tp)
+        key_x = f'{prefix}{name}_{tp}'
         a = talib.MA(df[key_close], timeperiod=tp)
         b = talib.EMA(df[key_close], timeperiod=tp)
         df[key_x] = a / b - 1
@@ -309,7 +298,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
             tp = config[name]['period']
         else:
             tp = 16
-        key_x = '%s_%s' % (name, tp)
+        key_x = f'{prefix}{name}_{tp}'
         a = talib.KAMA(df[key_close], timeperiod=tp)
         b = talib.EMA(df[key_close], timeperiod=tp)
         df[key_x] = a / b - 1
@@ -334,7 +323,7 @@ def calc_other_indicators(quoter, is_tick, config, df, calc_all=False):
             tp = config[name]['period']
         else:
             tp = 16
-        key_x = '%s_%s' % (name, tp)
+        key_x = f'{prefix}{name}_{tp}'
         a = talib.WMA(df[key_close], timeperiod=tp)
         b = talib.EMA(df[key_close], timeperiod=tp)
         df[key_x] = a / b - 1

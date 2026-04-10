@@ -10,6 +10,6 @@ do
     prefix=${filename%_*}
     #echo ${prefix}
     sed -i "" "s/${prefix}.//g" ${filename}
-    sed -i "" "s/datetime,/datetime_str,/g" ${filename}
-    sed -i "" "s/datetime_nano/datetime/g" ${filename}
+    sed -i "" "s/datetime,datetime_nano/datetime_str,datetime/g" ${filename}
+    #sed -i "" "s/datetime_nano/datetime/g" ${filename}
 done

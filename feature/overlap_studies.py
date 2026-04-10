@@ -1,12 +1,9 @@
 import talib
 from . import *
 
-def calc_overlap_indicators(quoter, is_tick, config, kdf, calc_all=False):
+def calc_overlap_indicators(quoter, config, kdf, calc_all,
+        key_open, key_high, key_low, key_close, key_volume, key_oi, prefix=''):
     key_xs = []
-    key_open = quoter.kline_key_open
-    key_close = quoter.kline_key_close
-    key_high = quoter.kline_key_high
-    key_low = quoter.kline_key_low
 
     name = 'BBANDS'
     if calc_all or name in config:
@@ -14,7 +11,7 @@ def calc_overlap_indicators(quoter, is_tick, config, kdf, calc_all=False):
             tp = config[name]['period']
         else:
             tp = 20
-        key_x = '%s_%s' % (name, tp)
+        key_x = f'{prefix}{name}_{tp}'
         upperband, middleband, lowerband = talib.BBANDS(kdf[key_close], timeperiod=tp)
         kdf[key_x] = (upperband - lowerband) / middleband
         #m = MA(kdf[key_close], tp)

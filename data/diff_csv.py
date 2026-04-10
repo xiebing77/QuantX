@@ -39,7 +39,7 @@ if __name__ == "__main__":
     max_i_b = len(df_b) - 1
     i_a = 0
     i_b = 0
-    fmt_k = '{}  o: {},  h: {},  l: {},  c: {},  v: {}'
+    fmt_k = '{}  o: {},  h: {},  l: {},  c: {},  v: {}, oi: {}'
     while i_a < len(df_a) and i_b <= max_i_b:
         k_a = df_a.iloc[i_a]
         k_b = df_b.iloc[i_b]
@@ -69,22 +69,23 @@ if __name__ == "__main__":
 
         #print('index a: {},  b: {}'.format(i_a, i_b))
         if open_time_a > open_time_b:
+            i_b += 1
             o_p = k_b[open_key]
             h_p = k_b[high_key]
             l_p = k_b[low_key]
             c_p = k_b[close_key]
-            info = fmt_k.format('', o_p, h_p, l_p, c_p, k_b[volume_key])
+            info = fmt_k.format('', o_p, h_p, l_p, c_p, k_b[volume_key], k_b[oi_key])
             print('old lack {},    new{}'.format(open_time_b, info))
-            i_b += 1
         else:
+            i_a += 1
+            #if i_b == 0:
+            #    continue
             o_p = k_a[open_key]
             h_p = k_a[high_key]
             l_p = k_a[low_key]
             c_p = k_a[close_key]
-            if k_a[volume_key] != 0 or not (o_p == c_p and h_p == l_p and o_p == h_p):
-                info = fmt_k.format('', o_p, h_p, l_p, c_p, k_a[volume_key])
-                print('new lack {},    old{}'.format(open_time_a, info))
-            i_a += 1        
+            info = fmt_k.format('', o_p, h_p, l_p, c_p, k_a[volume_key], k_a[oi_key])
+            print('new lack {},    old{}'.format(open_time_a, info))
 
     sys.stdout.write('\n')
 
