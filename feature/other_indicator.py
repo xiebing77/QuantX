@@ -2,277 +2,242 @@ import talib
 from . import *
 
 def calc_other_indicators(quoter, config, df, calc_all,
-        key_open, key_high, key_low, key_close, key_volume, key_oi, prefix=''):
+        key_open, key_high, key_low, key_close, key_volume, key_oi, prefix='', trial=None):
     key_xs = []
 
+    name = 'ret'
+    key_x = get_feature_key(name, config, prefix, calc_all, trial)
+    if key_x:
+        if trial:
+            f_cfg = config[name]
+            shift = trial.suggest_categorical(f'{key_x}_shift', f_cfg['shift'])
+        else:
+            shift = config.get(name, {}).get('shift', 1) if name in config else 1
+
+        key_x = f'{key_x}_{shift}'
+        df[key_x] = (df[key_close] / df[key_close].shift(shift) - 1) * 10000
+        key_xs.append(key_x)
+
+    name = 'ma-slope'
+    key_x = get_feature_key(name, config, prefix, calc_all, trial)
+    if key_high and key_x:
+        if trial:
+            f_cfg = config[name]
+            window = trial.suggest_categorical(f'{key_x}_window', f_cfg['window'])
+            shift = trial.suggest_categorical(f'{key_x}_shift',  f_cfg['shift'])
+
+            trial.set_user_attr(f'{key_x}_params', {
+                'window': window,
+                'shift': shift
+            })
+        else:
+            defaults = {'window': 20, 'shift': 3}
+            f_cfg = config.get(name, {}) if name in config else {}
+            window = f_cfg.get('window', defaults['window'])
+            shift = f_cfg.get('shift', defaults['shift'])
+
+        key_x = f'{key_x}_{window}_{shift}'
+        ma = df[key_close].rolling(window).mean()
+        pre_ma = ma.shift(shift)
+        df[key_x] = (ma - pre_ma) / pre_ma / shift * 10000
+        key_xs.append(key_x)
+
     name = 'CLV'
-    if key_high and (calc_all or name in config):
-        key_x = f'{prefix}{name}'
+    key_x = get_feature_key(name, config, prefix, calc_all, trial)
+    if key_high and key_x:
         df[key_x] = CLV(df[key_high], df[key_low], df[key_close])
         key_xs.append(key_x)
 
     name = 'CV'
-    if key_high and (calc_all or name in config):
-        scs = [{"n": 10}]
-        if name in config and config[name]:
-            scs = config[name]
-            if type(scs) != list:
-                scs = [scs]
-        for sc in scs:
-            period = sc['n']
-            key_x = f'{prefix}{name}_{period}'
-            df[key_x] = CV(df[key_high], df[key_low], period)
-            key_xs.append(key_x)
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 10)
+    if key_x:
+        df[key_x] = CV(df[key_high], df[key_low], n)
+        key_xs.append(key_x)
 
     name = 'DBCD'
-    if key_high and (calc_all or name in config):
-        key_x = f'{prefix}{name}'
+    key_x = get_feature_key(name, config, prefix, calc_all, trial)
+    if key_high and key_x:
         df[key_x] = DBCD(df[key_close])
         key_xs.append(key_x)
 
     name = 'PB'
-    if key_high and (calc_all or name in config):
-        scs = [{"n": 20}]
-        if name in config and config[name]:
-            scs = config[name]
-            if type(scs) != list:
-                scs = [scs]
-        for sc in scs:
-            period = sc['n']
-            key_x = f'{prefix}{name}_{period}'
-            df[key_x] = PB(df[key_close], period)
-            key_xs.append(key_x)
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 20)
+    if key_x:
+        df[key_x] = PB(df[key_close], n)
+        key_xs.append(key_x)
 
     name = 'BW'
-    if key_high and (calc_all or name in config):
-        scs = [{"n": 20}]
-        if name in config and config[name]:
-            scs = config[name]
-            if type(scs) != list:
-                scs = [scs]
-        for sc in scs:
-            period = sc['n']
-            key_x = f'{prefix}{name}_{period}'
-            df[key_x] = BW(df[key_close], period)
-            key_xs.append(key_x)
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 20)
+    if key_x:
+        df[key_x] = BW(df[key_close], n)
+        key_xs.append(key_x)
 
     name = 'KDJ'
-    if key_high and (calc_all or name in config):
-        key_x = f'{prefix}{name}'
-        period = 9
-        k, d, j = KDJ(df[key_high], df[key_low], df[key_close], period)
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 9)
+    if key_x:
+        k, d, j = KDJ(df[key_high], df[key_low], df[key_close], n)
         df[key_x] = j
         key_xs.append(key_x)
 
     name = 'CMF'
-    if key_high and (calc_all or name in config):
-        n = 21
-        key_x = f'{prefix}{name}_{n}'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 21)
+    if key_x:
         df[key_x] = CMF(df[key_high], df[key_low], df[key_close], df[key_volume], n)
         key_xs.append(key_x)
 
+    name = 'CMF_intraday'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 21)
+    if key_x:
+        df[key_x] = CMF_intraday(df[key_high], df[key_low], df[key_close], df[key_volume], n)
+        key_xs.append(key_x)
+
     name = 'CR'
-    if key_high and (calc_all or name in config):
-        n = 20
-        key_x = f'{prefix}{name}_{n}'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 20)
+    if key_x:
         df[key_x] = CR(df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
-    name = 'CR2'
-    if key_high and (calc_all or name in config):
-        n = 20
-        key_x = f'{prefix}{name}_{n}'
-        df[key_x] = CR2(df[key_high], df[key_low], df[key_close], n)
-        key_xs.append(key_x)
-
     name = 'MassIndex'
-    if key_high and (calc_all or name in config):
-        n = 9
-        key_x = f'{prefix}{name}_{n}'
-        df[key_x] = MassIndex(df[key_high], df[key_low], df[key_close], n)
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 9)
+    if key_x:
+        df[key_x] = MassIndex(df[key_high], df[key_low], n)
         key_xs.append(key_x)
 
-    name = 'MassIndex2'
-    if key_high and (calc_all or name in config):
-        n = 9
-        key_x = f'{prefix}{name}_{n}'
-        df[key_x] = MassIndex2(df[key_high], df[key_low], df[key_close], n)
+    name = 'MassIndex_intraday'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 9)
+    if key_x:
+        df[key_x] = MassIndex_intraday(df[key_high], df[key_low], n)
         key_xs.append(key_x)
 
-    name = 'ElderRayIndex'
-    if key_high and (calc_all or name in config):
-        n = 13
-        key_x = f'{prefix}{name}_{n}'
-        df[key_x] = ElderRayIndex(df[key_high], df[key_low], df[key_close], n)
+    name = 'ElderPowerRatio'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 13)
+    if key_x:
+        df[key_x] = ElderPowerRatio(df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
-    name = 'ElderRayIndex2'
-    if key_high and (calc_all or name in config):
-        n = 13
-        key_x = f'{prefix}{name}_{n}'
-        df[key_x] = ElderRayIndex2(df[key_high], df[key_low], df[key_close], n)
+    name = 'BarAmplitude'
+    key_x = get_feature_key(name, config, prefix, calc_all, trial)
+    if key_x:
+        df[key_x] = BarAmplitude(df[key_high], df[key_low], df[key_close])
         key_xs.append(key_x)
 
     name = 'UOS'
-    if key_high and (calc_all or name in config):
-        key_x = f'{prefix}{name}'
-        df[key_x] = UOS(df[key_high], df[key_low], df[key_close])
+    key_x = get_feature_key(name, config, prefix, calc_all, trial)
+    if key_high and key_x:
+        df[key_x] = UOS(df[key_high], df[key_low], df[key_close], M=7, N=14, O=28)
         key_xs.append(key_x)
 
-    name = 'UOS2'
-    if key_high and (calc_all or name in config):
-        key_x = f'{prefix}{name}'
-        df[key_x] = UOS2(df[key_high], df[key_low], df[key_close])
+    name = 'UOS_intraday'
+    key_x = get_feature_key(name, config, prefix, calc_all, trial)
+    if key_high and key_x:
+        df[key_x] = UOS_intraday(df[key_high], df[key_low], df[key_close], M=7, N=14, O=28)
         key_xs.append(key_x)
 
     name = 'ASIR'
-    if key_high and (calc_all or name in config):
-        n = 20
-        key_x = f'{prefix}{name}_{n}'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 20)
+    if key_x:
         df[key_x] = ASIR(df[key_open], df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
-    name = 'ASIR2'
-    if key_high and (calc_all or name in config):
-        n = 20
-        key_x = f'{prefix}{name}_{n}'
-        df[key_x] = ASIR2(df[key_open], df[key_high], df[key_low], df[key_close], n)
+    name = 'ASIR_intraday'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 20)
+    if key_x:
+        df[key_x] = ASIR_intraday(df[key_open], df[key_high], df[key_low], df[key_close], n)
         key_xs.append(key_x)
 
     name = 'UI'
-    if key_high and (calc_all or name in config):
-        n = 10
-        key_x = f'{prefix}{name}_{n}'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 10)
+    if key_x:
         df[key_x] = UI(df[key_close], n)
         key_xs.append(key_x)
-    '''
+
     name = 'Hurst'
-    if key_high and (calc_all or name in config):
-        n = 10
-        key_x = '%s_%s' % (name, n)
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 10)
+    if key_x:
         df[key_x] = Hurst(df[key_close], n)
         key_xs.append(key_x)
-    '''
-    name = 'nBIAS'
-    if calc_all or name in config:
-        ary = []
-        if name in config:
-            scs = config[name]
-            if type(scs) != list:
-                scs = [scs]
-            if not scs:
-                scs = [{"n": 13}]
 
-        for sc in scs:
-            if 't' not in sc:
-                continue
-            t = sc['t']
-            n = sc['n']
-            key_x = f'{prefix}{name}_{t}_{n}'
-            if t == 'c':
-                s = df[key_close]
-            elif t == 'v':
-                s = df[key_volume]
-            elif t == 'oi':
-                s = df[quoter.kline_key_oi]
-            else:
-                s = df[key_close]
-            df[key_x] = BIAS(s, n)
-            key_xs.append(key_x)
+    name = 'BIAS_C'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 13)
+    if key_x:
+        df[key_x] = BIAS(df[key_close], n)
+        key_xs.append(key_x)
 
-            if 'diff' in sc:
-                for N in sc['diff']:
-                    key_x_diff = f'{prefix}{key_x}_diff_{N}'
-                    df[key_x_diff] = df[key_x].diff(N)
-                    key_xs.append(key_x_diff)
+    name = 'BIAS_V'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 13)
+    if key_x:
+        df[key_x] = BIAS(df[key_volume], n)
+        key_xs.append(key_x)
 
-    name = 'n-mBIAS'
-    if calc_all or name in config:
-        ary = []
-        if name in config:
-            scs = config[name]
-            if type(scs) != list:
-                scs = [scs]
-            if not scs:
-                scs = [{"n": 13, "m": 39}]
+    name = 'BIAS_E_C'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 13)
+    if key_x:
+        df[key_x] = BIAS_E(df[key_close], n)
+        key_xs.append(key_x)
 
-        for sc in scs:
-            if 't' not in sc:
-                continue
-            t = sc['t']
-            n = sc['n']
-            m = sc['m']
-            key_x = f'{prefix}{name}_{t}_{n}_{m}'
-            if t == 'c':
-                s = df[key_close]
-            elif t == 'v':
-                s = df[key_volume]
-            elif t == 'oi':
-                s = df[quoter.kline_key_oi]
-            else:
-                s = df[key_close]
-            df[key_x] = nmBIAS(s, n, m)
-            key_xs.append(key_x)
+    name = 'BIAS_E_V'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 13)
+    if key_x:
+        df[key_x] = BIAS_E(df[key_volume], n)
+        key_xs.append(key_x)
 
-            if 'diff' in sc:
-                for N in sc['diff']:
-                    key_x_diff = f'{prefix}{key_x}_diff_{N}'
-                    df[key_x_diff] = df[key_x].diff(N)
-                    key_xs.append(key_x_diff)
+    name = 'nmBIAS_C'
+    n, m, key_x = get_feature_2p(name, config, prefix, calc_all, trial, 10, 30)
+    if key_x:
+        df[key_x] = nmBIAS(df[key_close], n, m)
+        key_xs.append(key_x)
 
-    name = 'n-mEMA'
-    if calc_all or name in config:
-        ary = []
-        if name in config:
-            scs = config[name]
-            if type(scs) != list:
-                scs = [scs]
-            if not scs:
-                scs = [{"n": 13, "m": 39}]
+    name = 'nmBIAS_V'
+    n, m, key_x = get_feature_2p(name, config, prefix, calc_all, trial, 10, 30)
+    if key_x:
+        df[key_x] = nmBIAS(df[key_volume], n, m)
+        key_xs.append(key_x)
 
-        for sc in scs:
-            if 't' not in sc:
-                continue
-            t = sc['t']
-            n = sc['n']
-            m = sc['m']
-            key_x = f'{prefix}{name}_{t}_{n}_{m}'
-            if t == 'c':
-                s = df[key_close]
-            elif t == 'v':
-                s = df[key_volume]
-            elif t == 'oi':
-                s = df[quoter.kline_key_oi]
-            else:
-                s = df[key_close]
-            df[key_x] = nmEMA(s, n, m)
-            key_xs.append(key_x)
+    name = 'nmBIAS_E_C'
+    n, m, key_x = get_feature_2p(name, config, prefix, calc_all, trial, 10, 30)
+    if key_x:
+        df[key_x] = nmBIAS_E(df[key_close], n, m)
+        key_xs.append(key_x)
 
-            if 'diff' in sc:
-                for N in sc['diff']:
-                    key_x_diff = f'{prefix}{key_x}_diff_{N}'
-                    df[key_x_diff] = df[key_x].diff(N)
-                    key_xs.append(key_x_diff)
+    name = 'nmBIAS_E_V'
+    n, m, key_x = get_feature_2p(name, config, prefix, calc_all, trial, 10, 30)
+    if key_x:
+        df[key_x] = nmBIAS_E(df[key_volume], n, m)
+        key_xs.append(key_x)
+
+    name = 'OI_diff_ratio'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 20)
+    if key_x:
+        df[key_x] = OI_diff_ratio(df[key_oi], n)
+        key_xs.append(key_x)
+
+    name = 'OI_diff_ratio_intraday'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 20)
+    if key_x:
+        df[key_x] = OI_diff_ratio_intraday(df[key_oi], n)
+        key_xs.append(key_x)
+
+    name = 'OI_diff_ratio_atr'
+    n, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 20)
+    if key_x:
+        df[key_x] = OI_diff_ratio_atr(df[key_oi], df[key_high], df[key_low], n)
+        key_xs.append(key_x)
 
     name = 'OIV'
-    if key_oi and (calc_all or name in config):
-        key_x = f'{prefix}{name}'
+    key_x = get_feature_key(name, config, prefix, calc_all, trial)
+    if key_high and key_x:
         df[key_x] = OIV(df[key_volume], df[key_oi])
         key_xs.append(key_x)
 
     name = 'VOI'
-    if key_oi and (calc_all or name in config):
-        key_x = f'{prefix}{name}'
+    key_x = get_feature_key(name, config, prefix, calc_all, trial)
+    if key_high and key_x:
         df[key_x] = VOI(df[key_volume], df[key_oi])
         key_xs.append(key_x)
 
     name = 'MA-EMA'
-    if calc_all or name in config:
-        if name in config and 'period' in config[name]:
-            tp = config[name]['period']
-        else:
-            tp = 16
-        key_x = f'{prefix}{name}_{tp}'
+    tp, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 16)
+    if key_x:
         a = talib.MA(df[key_close], timeperiod=tp)
         b = talib.EMA(df[key_close], timeperiod=tp)
         df[key_x] = a / b - 1
@@ -280,12 +245,8 @@ def calc_other_indicators(quoter, config, df, calc_all,
 
     '''
     name = 'EMA-DEMA'
-    if calc_all or name in config:
-        if name in config and 'period' in config[name]:
-            tp = config[name]['period']
-        else:
-            tp = 16
-        key_x = '%s_%s' % (name, tp)
+    tp, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 16)
+    if key_x:
         a = talib.EMA(df[key_close], timeperiod=tp)
         b = talib.DEMA(df[key_close], timeperiod=tp)
         df[key_x] = a / b - 1
@@ -293,12 +254,8 @@ def calc_other_indicators(quoter, config, df, calc_all,
     '''
 
     name = 'KAMA-EMA'
-    if calc_all or name in config:
-        if name in config and 'period' in config[name]:
-            tp = config[name]['period']
-        else:
-            tp = 16
-        key_x = f'{prefix}{name}_{tp}'
+    tp, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 16)
+    if key_x:
         a = talib.KAMA(df[key_close], timeperiod=tp)
         b = talib.EMA(df[key_close], timeperiod=tp)
         df[key_x] = a / b - 1
@@ -318,24 +275,16 @@ def calc_other_indicators(quoter, config, df, calc_all,
         key_xs.append(key_x)
     '''
     name = 'WMA-EMA'
-    if calc_all or name in config:
-        if name in config and 'period' in config[name]:
-            tp = config[name]['period']
-        else:
-            tp = 16
-        key_x = f'{prefix}{name}_{tp}'
+    tp, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 16)
+    if key_x:
         a = talib.WMA(df[key_close], timeperiod=tp)
         b = talib.EMA(df[key_close], timeperiod=tp)
         df[key_x] = a / b - 1
         key_xs.append(key_x)
     '''
     name = 'SAR-MIDPRICE'
-    if calc_all or name in config:
-        if name in config and 'period' in config[name]:
-            tp = config[name]['period']
-        else:
-            tp = 16
-        key_x = '%s_%s' % (name, tp)
+    tp, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 16)
+    if key_x:
         a = talib.SAR(df[key_high], df[key_low], acceleration=0, maximum=0)
         b = talib.MIDPRICE(df[key_high], df[key_low], timeperiod=tp)
         df[key_x] = a / b - 1

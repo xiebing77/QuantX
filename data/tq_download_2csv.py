@@ -22,6 +22,8 @@ def tq_download_his_data(api, product, code, sec):
         tt = '5m'
     elif args.sec == 900:
         tt = '15m'
+    elif args.sec == 1800:
+        tt = '30m'
     elif args.sec == 3600:
         tt = '1h'
     elif args.sec == 24*60*60:

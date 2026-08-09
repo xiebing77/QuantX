@@ -164,9 +164,9 @@ def stat_commission(total_commission, commission):
         else:
             total_commission[coin_name] = n
 
-def round_commission(commission):
+def round_commission(commission, prec=8):
     for coin in commission:
-        commission[coin] = round(commission[coin], 8)
+        commission[coin] = round(commission[coin], prec)
     return commission
 
 
@@ -182,6 +182,10 @@ class TradeEngine(object):
                 self.min_price_change = config['prec']['min_price_change']
             if 'min_qty_change' in config['prec']:
                 self.min_qty_change = config['prec']['min_qty_change']
+            if 'fee' in config['prec']:
+                self.fee_prec = config['prec']['fee']
+            else:
+                self.fee_prec = 8
 
         '''
         for contract in get_contractes():
@@ -234,7 +238,8 @@ class TradeEngine(object):
                     show_multiplier=True,
                     show_win_rate=True,
                     show_qp=True,
-                    show_deal=True,
+                    show_deal=False,
+                    show_deal_price=True,
                     show_profit=True,
                     show_total_profit=True,
                     show_retrace=True,
@@ -242,15 +247,18 @@ class TradeEngine(object):
                     show_status=True,
                     show_order=True):
         fmt_start          = '%8s  %19s  %14s  %5s  %5s'
-        fmt_rmk            = '  %24s'
+        fmt_rmk            = '  %88s'
         fmt_multiplier     = '  %10s'
         fmt_qp             = '  %10s  %12s'
-        fmt_deal           = '  %10s  %12s  %18s'
+        if show_deal:
+            fmt_deal       = '  %10s  %12s  %18s'
+        elif show_deal_price:
+            fmt_deal       = '  %12s'
         fmt_win_rate       = '  %18s'
         fmt_profit         = '  %20s'
         fmt_total_profit   = '  %20s'
-        fmt_retrace        = '  %18s'
-        fmt_commission     = '  %15s  %18s'
+        fmt_retrace        = '  %22s'
+        fmt_commission     = '  %18s  %20s'
         fmt_status         = '  %7s'
         fmt_order          = '  %12s'
 
@@ -265,6 +273,8 @@ class TradeEngine(object):
             title += fmt_qp % ('qty', 'price')
         if show_deal:
             title += fmt_deal % ('deal_qty', 'deal_price', 'dear_value')
+        elif show_deal_price:
+            title += fmt_deal % ('deal_price')
         if show_profit:
             title += fmt_profit % ('profit')
         if show_total_profit:
@@ -287,7 +297,7 @@ class TradeEngine(object):
         his_gross_profit = 0
         total_gross_profit = 0
         max_total_profit = 0
-        total_commission = {}
+        total_fee = {}
         pst_qty = 0
         pst_quote_qty = 0
 
@@ -328,6 +338,8 @@ class TradeEngine(object):
 
             if show_deal:
                 info += fmt_deal % (deal_qty, deal_price, deal_value)
+            elif show_deal_price:
+                info += fmt_deal % (deal_price)
 
             if side == SIDE_BUY:
                 pst_qty += deal_qty
@@ -349,7 +361,7 @@ class TradeEngine(object):
                     gross_profit = 0
                 gross_profit_rate = 0
             if show_profit:
-                info += fmt_profit % '{} ({:3.2%})'.format(round(gross_profit, 2), gross_profit_rate) if oc==OC_CLOSE else ''
+                info += fmt_profit % '{} ({:3.2%})'.format(round(gross_profit, 2), gross_profit_rate) if oc==OC_CLOSE else ' '*22
 
             total_gross_profit = gross_profit + his_gross_profit
             if pst_qty == 0:
@@ -367,15 +379,17 @@ class TradeEngine(object):
                 retrace_rate = 0
 
             if show_total_profit:
-                info += fmt_total_profit % '{} ({:3.2%})'.format(round(total_gross_profit, 2), total_profit_rate) if oc==OC_CLOSE else ''
+                info += fmt_total_profit % '{} ({:3.2%})'.format(round(total_gross_profit, 2), total_profit_rate) if oc==OC_CLOSE else ' '*22
 
             if show_retrace:
-                info += fmt_retrace % ('{} ({:3.2%})'.format(round(retrace, 2), retrace_rate) if oc==OC_CLOSE else '')
+                info += fmt_retrace % ('{} ({:3.2%})'.format(round(retrace, 2), retrace_rate) if oc==OC_CLOSE else ' '*18)
 
             commission = self.get_bill_commission(b)
-            stat_commission(total_commission, commission)
+            fee = round_commission(commission, self.fee_prec)
+            stat_commission(total_fee, fee)
+            total_fee = round_commission(total_fee, self.fee_prec)
             if show_commission:
-                info += fmt_commission % (round_commission(commission), round_commission(total_commission))
+                info += fmt_commission % (fee, total_fee)
 
             if show_status:
                 info += fmt_status % (b['status'])

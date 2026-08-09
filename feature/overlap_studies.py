@@ -2,22 +2,26 @@ import talib
 from . import *
 
 def calc_overlap_indicators(quoter, config, kdf, calc_all,
-        key_open, key_high, key_low, key_close, key_volume, key_oi, prefix=''):
+        key_open, key_high, key_low, key_close, key_volume, key_oi, prefix='', trial=None):
     key_xs = []
 
     name = 'BBANDS'
-    if calc_all or name in config:
-        if name in config and 'period' in config[name]:
-            tp = config[name]['period']
-        else:
-            tp = 20
-        key_x = f'{prefix}{name}_{tp}'
+    tp, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 20)
+    if key_x:
         upperband, middleband, lowerband = talib.BBANDS(kdf[key_close], timeperiod=tp)
         kdf[key_x] = (upperband - lowerband) / middleband
         #m = MA(kdf[key_close], tp)
         #kdf[key_x] = 4 * m.std() / m
         key_xs.append(key_x)
 
+    name = 'BBANDS-C'
+    tp, key_x = get_feature_1p(name, config, prefix, calc_all, trial, 20)
+    if key_x:
+        upperband, middleband, lowerband = talib.BBANDS(kdf[key_close], timeperiod=tp)
+        kdf[key_x] = (kdf[key_close] - lowerband) / (upperband - lowerband)
+        #m = MA(kdf[key_close], tp)
+        #kdf[key_x] = 4 * m.std() / m
+        key_xs.append(key_x)
     '''
     name = 'DEMA'
     if calc_all or name in config:
