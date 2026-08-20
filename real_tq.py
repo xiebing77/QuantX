@@ -268,8 +268,16 @@ def tq_run():
         logfilename = cell_id + ".log"
         log.init('real', logfilename)
 
+    print(cell)
+    cell_cluster = cell['cluster']
+    cell_cluster_name  = cell_cluster[0]
+    cell_cluster_model = cell_cluster[1]
+    log.info(f'cell_cluster: {cell_cluster}')
+
+    model_palams = config['cluster'][cell_cluster_name][cell_cluster_model]
+    log.info(model_palams)
     threshold = cell['threshold']
-    if threshold not in config['y']['threshold']:
+    if threshold not in model_palams['thresholds']:
         log.warning('threshold not in config')
         exit(1)
 
@@ -284,6 +292,8 @@ def tq_run():
     strategy = common.createInstance(module_name, class_name, config, quote_engine, trade_engine)
     strategy.set_y_threshold(cell_id, threshold)
     log.info(f'slippage: {trade_engine.slippage}, min_price_change: {trade_engine.min_price_change}')
+
+    strategy.set_cluster(cell_cluster_name, cell_cluster_model)
 
     if hasattr(strategy, 'trainning'):
         strategy.trainning()

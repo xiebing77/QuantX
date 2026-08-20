@@ -218,11 +218,11 @@ def real_list(args):
     title_pst_fmt = "%16s  %16s  %16s  %20s  %14s  %32s  %32s  %11s"
     pst_fmt       = title_pst_fmt#"%18s  %18f  %18f  %12f"
 
-    title_tail_fmt = "  %10s  %10s  %13s  %68s  %-20s  %-6s  %-30s  %-s"
+    title_tail_fmt = "  %10s  %10s  %-18s  %-40s  %-20s  %-6s  %-30s  %-s"
 
     print(title_head_fmt % (common.BILL_KEY_CELL_ID, "symbol", "win_rate", 'max retrace', 'rate') +
         title_pst_fmt % ('pst_base_qty', 'pst_quote_qty', 'deal_quote_qty', "float_profit", "total_profit", "commission", 'cfg_commission', 'order_count') +
-        title_tail_fmt % ('value', 'amount', 'slippage_rate', 'threshold', "exchange", "status", "broker_path", "config_path"))
+        title_tail_fmt % ('value', 'amount', 'cluster', 'threshold', "exchange", "status", "broker_path", "config_path"))
     for cell in cells:
         cell_id = cell[common.BILL_KEY_CELL_ID]
         exchange_name = cell["exchange"]
@@ -412,12 +412,13 @@ def real_list(args):
         value_info  = '%s' % value if value else ''
         amount_info = '%s' % amount if amount else ''
         sr_info     = '%s' % slippage_rate if slippage_rate else ''
+        cluster_info = '%s' % cell['cluster'] if 'cluster' in cell else ''
         threshold_info = '%s' % cell['threshold'] if 'threshold' in cell else ''
 
         print(head_fmt % (cell_id, symbol, win_count_rate*100, win_count, oc_count,
                           max_retrace_profit, max_profit_rr*100, min_profit_rate_b*100, max_profit_rate*100, min_profit_rate_a*100, cur_profit_rate*100) +
             profit_info +
-            title_tail_fmt % (value_info, amount_info, sr_info, threshold_info, exchange_name, status, broker_path, config_path))
+            title_tail_fmt % (value_info, amount_info, cluster_info, threshold_info, exchange_name, status, broker_path, config_path))
     close_all_exchange()
 
     if args.stat:
