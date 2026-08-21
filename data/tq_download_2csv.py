@@ -62,7 +62,10 @@ def tq_download_his_data(api, product, code, sec):
         y_start = y
         pre_m = main_mouths[m_i - 1]
 
-    head_mouths = 3
+    if tt == '1d':
+        head_mouths = 6
+    else:
+        head_mouths = 3
     m_start = pre_m - head_mouths
     if m_start <= 0:
         y_start = y_start - 1
@@ -134,6 +137,9 @@ if __name__ == "__main__":
         cost_start = datetime.now()
         df = pd.read_csv(csv_file_name)
         print('  cost: %s'%(datetime.now()-cost_start))
+
+        if len(df) == 0:
+            continue
 
         df['last_time'] = df['datetime_nano'].apply(exchange.get_time_from_data_ts)
         k = df.iloc[0]
