@@ -3,7 +3,7 @@
 __author__ = ''
 
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import argparse
 
@@ -15,98 +15,10 @@ from exchange.exchange_factory import get_exchange_names, create_exchange
 from engine.quote.exchange import ExchangeQuoteEngine
 from engine.trade.exchange import ExchangeTradeEngine
 from db.mongodb import get_mongodb
-import setup
+from .real_tq import check_alive_orders, create_orders, check_run_time, get_book_info
 
 
-
-def sycn_order_to_bill(cell_id, trader, trade_engine, order):
-    if not order:
-        return None
-    if not trader.check_status_is_close(order):
-        return order
-
-    if trader.get_order_exec_qty(order) > 0:
-        trades = [trade for trade in order.trade_records.values()]
-        if len(trades) == 0:
-            log.info('not trades! close order: {}'.format(order))
-            return order
-    else:
-        trades = []
-
-    trade_engine.sync_bill(trader, order, trades)
-    trade_engine.get_position(cell_id)
-    return None
-
-
-def check_alive_orders(cell_id, trader, trade_engine, orders):
-    if not orders:
-        return []
-
-    alive_orders = []
-    for order in orders:
-        if sycn_order_to_bill(cell_id, trader, trade_engine, order):
-            alive_orders.append(order)
-    return alive_orders
-
-
-def create_orders(strategy, signal, cell_id, trader, rmk):
-    orders = strategy.new_signal(signal)
-    log.info('-----> {} orders: {}'.format(rmk, orders))
-    orders = check_alive_orders(cell_id, trader, strategy.trade_engine, orders)
-    return orders
-
-
-def check_run_time(now_time):
-    if now_time.weekday() in [5, 6]:
-        return
-
-    if 15 <= now_time.hour < 20:
-        return False
-    if 20 == now_time.hour and now_time.minute < 30:
-        return False
-
-    if 3 <= now_time.hour < 8:
-        return False
-    if 8 == now_time.hour and now_time.minute < 30:
-        return False
-
-    return True
-
-
-def get_book_info(quote):
-    return 'local time: {}    exchange time: {};    book:  {:6.1f}({:4d})  {:6.1f}({:4d})    {:6.1f}    {:6.1f}({:4d})  {:6.1f}({:4d})'.format(
-                datetime.now(), quote.datetime, quote.bid_price2, quote.bid_volume2, quote.bid_price1, quote.bid_volume1,
-                quote.last_price, quote.ask_price1, quote.ask_volume1, quote.ask_price2, quote.ask_volume2)
-
-
-def update_super_df(exchange, super_df, sub_df):
-    last_super_k = super_df.iloc[-1]
-
-    new_super_open_time = sub_df[exchange.kline_key_open_time].iloc[0]
-    new_super_k = {
-        exchange.kline_key_open_time: new_super_open_time,
-        exchange.kline_key_open:  sub_df[exchange.kline_key_open].iloc[0],
-        exchange.kline_key_high:  sub_df[exchange.kline_key_high].max(),
-        exchange.kline_key_low:   sub_df[exchange.kline_key_low].min(),
-        exchange.kline_key_close: sub_df[exchange.kline_key_close].iloc[-1],
-        exchange.kline_key_volume: sub_df[exchange.kline_key_volume].sum(),
-
-        'open_oi':  sub_df['open_oi'].iloc[0],
-        'close_oi': sub_df['close_oi'].iloc[-1],
-
-        'id':       last_super_k['id'] + 1,
-        'symbol':   last_super_k['symbol'],
-        'duration': last_super_k['duration']
-    }
-
-    if 'open_time_dt'in last_super_k:
-        new_super_k['open_time_dt'] = exchange.get_time_from_data_ts(new_super_open_time)
-
-    new_super_k = pd.DataFrame(new_super_k, index=[0])
-    return pd.concat([super_df, new_super_k], ignore_index=True)
-
-
-def tq_loop(strategy, cell_id):
+def tq_loop(strategy, cell_id, realtime_gen):
     exchange = strategy.trade_engine.get_cell_trader(cell_id)
 
     now_time = datetime.now()
@@ -119,17 +31,51 @@ def tq_loop(strategy, cell_id):
 
     strategy.open_day(now_time)
     symbol = strategy.symbol
-    dfs = []
+
+    key_open_time = exchange.kline_key_open_time
+    key_close = exchange.kline_key_close
+    tick_df = api.get_tick_serial(symbol, data_length=10000)
+
+    tick_start_time = exchange.get_time_from_data_ts(tick_df[key_open_time].iloc[0])
+    tick_end_time = exchange.get_time_from_data_ts(tick_df[key_open_time].iloc[-1])
+    log.info(f'tick len: {len(tick_df)};  time range:  {tick_start_time} ~ {tick_end_time}; {tick_end_time-tick_start_time}')
+
+    tick_df['last_time'] = tick_df[key_open_time].apply(exchange.get_time_from_data_ts)
+
+    '''
+    del tick_df['ask_price2']
+    del tick_df['ask_price3']
+    del tick_df['ask_price4']
+    del tick_df['ask_price5']
+    del tick_df['ask_volume2']
+    del tick_df['ask_volume3']
+    del tick_df['ask_volume4']
+    del tick_df['ask_volume5']
+
+    del tick_df['bid_price2']
+    del tick_df['bid_price3']
+    del tick_df['bid_price4']
+    del tick_df['bid_price5']
+    del tick_df['bid_volume2']
+    del tick_df['bid_volume3']
+    del tick_df['bid_volume4']
+    del tick_df['bid_volume5']
+    '''
+    log.info(tick_df.head(10))
+    log.info(tick_df.tail(10))
+
+    dfs = realtime_gen.get_all_klines()
+
     interval_secs = []
     interval_timedeltas = []
-    for interval in strategy.intervals:
+    for interval, df in zip(strategy.intervals, dfs):
         interval_timedelta = kl.get_interval_timedelta(interval)
         interval_sec = int(interval_timedelta.total_seconds())
         log.info('{}  {}'.format(symbol, interval_sec))
 
-        df = api.get_kline_serial(symbol, interval_sec, data_length=strategy.window)
         log.info(df)
-        dfs.append(df)
+        log.info(f"{interval} K线数量: {len(df)}")
+
         interval_secs.append(interval_sec)
         interval_timedeltas.append(interval_timedelta)
 
@@ -141,7 +87,6 @@ def tq_loop(strategy, cell_id):
 
     quote = api.get_quote(symbol)
 
-    key_open_time = exchange.kline_key_open_time
     trader = exchange
     close_orders = []
     open_orders  = []
@@ -149,8 +94,10 @@ def tq_loop(strategy, cell_id):
     open_signal = None
     sl_signal   = None
     cancel_time = None
-    sub_df = dfs[0]
-    cur_sub_open_time = exchange.get_time_from_data_ts(sub_df[key_open_time].iloc[-1])
+    interval = strategy.intervals[0]
+    cur_k = realtime_gen.get_current_kline(interval)
+    cur_k_open_time = exchange.get_time_from_data_ts(cur_k[key_open_time]) if cur_k else None
+    print(f'cur_k_open_time: {cur_k_open_time}')
     handle_open_time = None
     while True:
         '''
@@ -166,6 +113,18 @@ def tq_loop(strategy, cell_id):
         if not is_update:
             # print('{}  not update'.format(now_time))
             continue
+
+        info = f'local time: {now_time}'
+        if api.is_changing(tick_df.iloc[-1], exchange.tick_key_time):
+            cur_tick = tick_df.iloc[-1]
+            cur_tick_time = exchange.get_time_from_data_ts(cur_tick[key_open_time])
+            info += '    cur_tick_time: {};    id: {},         {:6.1f}({:4d})    {:6.1f}    {:6.1f}({:4d}),'.format(
+                cur_tick_time, int(cur_tick["id"]),
+                float(cur_tick['bid_price1']), int(cur_tick['bid_volume1']),
+                float(cur_tick['last_price']),
+                float(cur_tick['ask_price1']), int(cur_tick['ask_volume1'])
+            )
+        log.info(info)
 
         if api.is_changing(quote, "last_price"):
             log.info(get_book_info(quote))
@@ -186,54 +145,39 @@ def tq_loop(strategy, cell_id):
         open_orders = check_alive_orders(cell_id, trader, trade_engine, open_orders)
         sl_orders   = check_alive_orders(cell_id, trader, trade_engine, sl_orders)
 
-        cur_sec = (now_time - cur_sub_open_time).total_seconds()
-        if cur_sec > interval_secs[0] * 0.8 and (not cancel_time or (now_time - cancel_time).total_seconds() > 10):
-            cancel_time = now_time
-            cancel_bill_num = strategy.cancel_open_bills(cell_id)
-            if cancel_bill_num > 0:
-                log.info('{} cell_id: {},  cancel_bill_num: {}'.format(
-                    now_time, cell_id, cancel_bill_num))
+        if cur_k_open_time:
+            cur_sec = (now_time - cur_k_open_time).total_seconds()
+            if cur_sec > interval_secs[0] * 0.8 and (not cancel_time or (now_time - cancel_time).total_seconds() > 10):
+                cancel_time = now_time
+                cancel_bill_num = strategy.cancel_open_bills(cell_id)
+                if cancel_bill_num > 0:
+                    log.info('{} cell_id: {},  cancel_bill_num: {}'.format(
+                        now_time, cell_id, cancel_bill_num))
 
-        diff_sec = interval_secs[0] - cur_sec
-        if diff_sec <= 1 and ( not handle_open_time or handle_open_time < cur_sub_open_time):
-            log.info(get_book_info(quote))
-            log.info(f'pre 1 sec for calc k')
-            handle_open_time = cur_sub_open_time
+            diff_sec = interval_secs[0] - cur_sec
+            if diff_sec <= 1 and ( not handle_open_time or handle_open_time < cur_k_open_time):
+                log.info(get_book_info(quote))
+                log.info(f'pre 1 sec for calc k')
+                handle_open_time = cur_k_open_time
 
-        for interval, df in zip(strategy.intervals[1:], dfs[1:]):
-            if not api.is_changing(df.iloc[-1], key_open_time):
-                continue
-            df['open_time_dt'] = df[key_open_time].apply(exchange.get_time_from_data_ts)
-            pre_k = df.iloc[-2]
-            cur_k = df.iloc[-1]
-            log.info("\n{} {} {}  {}  new kline id: {}, open time: {};  close  pre: {}  cur: {}".format(
-                '-'*30, now_time, '-'*30, interval, cur_k.id, cur_k.open_time_dt, pre_k.close, cur_k.close))
-            #log.info(df)
-
-        if api.is_changing(sub_df.iloc[-1], key_open_time):
+        has_new_klines = realtime_gen.update_realtime(tick_df)
+        if any(has_new_klines.values()):
+            dfs = realtime_gen.get_completed_klines()
+            sub_df = dfs[0]
             sub_df['open_time_dt'] = sub_df[key_open_time].apply(exchange.get_time_from_data_ts)
-            pre_k = sub_df.iloc[-2]
-            cur_k = sub_df.iloc[-1]
-            cur_sub_open_time = cur_k.open_time_dt
+            pre_k = sub_df.iloc[-1]
+
+            cur_k = realtime_gen.get_current_kline(interval)
+            cur_k_open_time = exchange.get_time_from_data_ts(cur_k[key_open_time])
+
             log.info("\n{} {} {}  new kline id: {}, open time: {};  close  pre: {}  cur: {}".format(
-                '-'*30, now_time, '-'*30, cur_k.id, cur_sub_open_time, pre_k.close, cur_k.close))
-            if (cur_sub_open_time - pre_k.open_time_dt).total_seconds() > interval_secs[0]:
+                '-'*30, now_time, '-'*30, cur_k['id'] if 'id' in cur_k else '', cur_k_open_time, pre_k.close, cur_k[key_close]))
+            if (cur_k_open_time - pre_k.open_time_dt).total_seconds() > interval_secs[0]:
                 continue
-            #log.info(sub_df)
+            log.info(sub_df.head(3))
+            log.info(sub_df.tail(5))
 
-            new_sub_df = sub_df[:-1].copy()
-            new_dfs = [new_sub_df]
-            for interval_timedelta, df in zip(interval_timedeltas[1:], dfs[1:]):
-                new_super_df = df[:-1].copy()
-                cur_super_open_time = exchange.get_time_from_data_ts(df[key_open_time].iloc[-1])
-                if cur_sub_open_time  == cur_super_open_time + interval_timedelta:
-                    num = int(interval_timedelta / interval_timedeltas[0])
-                    new_super_df = update_super_df(exchange, new_super_df, new_sub_df[-num:])
-                    log.info(new_super_df)
-                new_dfs.append(new_super_df)
-            log.info(f'after handdle dfs.   :  {datetime.now()}')
-
-            kdf = strategy.handle_feature(new_dfs)
+            kdf = strategy.handle_feature(dfs)
             log.info(f'after handdle feature:  {datetime.now()}')
             kdf = strategy.predict(kdf)
             log.info(f'after predict        :  {datetime.now()}')
@@ -295,7 +239,7 @@ def tq_run():
         logfilename = cell_id + ".log"
         log.init('real', logfilename)
 
-    print(cell)
+    log.info(cell)
     cell_cluster = cell['cluster']
     cell_cluster_name  = cell_cluster[0]
     cell_cluster_model = cell_cluster[1]
@@ -334,13 +278,82 @@ def tq_run():
     #pd.options.display.float_format = None
     #pd.reset_option('display.float_format')
 
+    now_time = datetime.now()
+    strategy.open_day(now_time)
+    symbol = strategy.symbol
+    download_tasks = {}
+    csv_files = []
+
+    e_time = now_time
+    days = 0
+    while days < 30:
+        days += 1
+
+        s_time = e_time - timedelta(days=days)
+        s_time = s_time.replace(hour=16, minute=0, second=0, microsecond=0)
+        if s_time.weekday() in [4, 5, 6]:
+            continue
+        log.info(f'**********  time range:    ({s_time}  ~~~  {e_time}) *****************')
+
+        csv_file_name = f'{symbol}_{s_time}_{e_time}_tick.csv'
+        log.info(csv_file_name)
+
+        api = exchange.connect()
+        from tqsdk.tools import DataDownloader
+        kd = DataDownloader(api, symbol_list=symbol, dur_sec=0,
+                            start_dt=s_time, end_dt=e_time,
+                            csv_file_name=csv_file_name)
+        download_tasks[symbol] = kd
+
+        # 使用with closing机制确保下载完成后释放对应的资源
+        from contextlib import closing
+        import sys
+        with closing(api):
+            while not all([v.is_finished() for v in download_tasks.values()]):
+                api.wait_update()
+                sys.stdout.flush()
+                info = { k:("%.2f%%" % v.get_progress()) for k,v in download_tasks.items() }
+                sys.stdout.write("\rprogress: %s" % info)
+            sys.stdout.write('\n')
+        exchange.close()
+
+        tick_df = pd.read_csv(csv_file_name)
+        log.info(f'tick_df len: {len(tick_df)}')
+        if len(tick_df) == 0:
+            continue
+
+        tick_df.rename(columns={'datetime': 'datetime_str', 'datetime_nano': 'datetime'}, inplace=True)
+        index = csv_file_name.find('_')
+        prefix = csv_file_name[:index] + '.'
+        tick_df.columns = tick_df.columns.str.replace(prefix, '')
+        log.info(tick_df.head(5))
+        log.info(tick_df.tail(15))
+
+        from common.tick_to_kline import KLineGenerator
+        realtime_gen = KLineGenerator(symbol, intervals=strategy.intervals, need_book=True,
+                                    exchange=exchange, window=strategy.window)
+        has_new_klines = realtime_gen.update_realtime(tick_df)
+        if not any(has_new_klines.values()):
+            exit(1)
+        dfs = realtime_gen.get_completed_klines()
+        kline_df = dfs[0]
+        interval = strategy.intervals[0]
+        cur_k = realtime_gen.get_current_kline(interval)
+        key_open_time = exchange.kline_key_open_time
+        cur_k_open_time = exchange.get_time_from_data_ts(cur_k[key_open_time]) if cur_k else None
+        log.info(kline_df.head(5))
+        log.info(kline_df.tail(15))
+        log.info(f'completed_kline_df len: {len(kline_df)};   current_kline open time: {cur_k_open_time}')
+        if len(kline_df) >= strategy.window:
+            break
+
     while True:
 
         if args.debug:
-            tq_loop(strategy, cell_id)
+            tq_loop(strategy, cell_id, realtime_gen)
         else:
             try:
-                tq_loop(strategy, cell_id)
+                tq_loop(strategy, cell_id, realtime_gen)
             except Exception as ept:
                 log.critical(ept)
         time.sleep(60)

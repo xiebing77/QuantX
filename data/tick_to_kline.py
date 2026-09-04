@@ -101,6 +101,8 @@ def to_kline(exchange, interval, tick_df, need_book=False):
     interval_td = kl.get_interval_timedelta(interval)
     kls = []
     start_cost_time = datetime.now()
+    day_reset_tick = None
+    first_k_is_ok = True
     pre_tick = None
     k_start_day_volume = 0  # tick[tick_key_volume]
     k = None
@@ -120,6 +122,12 @@ def to_kline(exchange, interval, tick_df, need_book=False):
             pre_tick = tick
             continue
 
+        if i == 0 and first_k_is_ok:
+            open_tick = tick
+            pre_tick  = tick
+            first_k_is_ok = False
+
+
         tick_time = tick.last_time
         day_volume = tick[tick_key_volume]
         last_price = tick[tick_key_last]
@@ -128,7 +136,7 @@ def to_kline(exchange, interval, tick_df, need_book=False):
         #2025-01-15 20:59:00.016000000,1736945940016000000,2975,2975,2975,2975.0,42,1249500,42,2975,9,2999,5
         #2025-02-05 08:59:00.028000000,1738717140028000000,3052,3052,3052,3052.0,33,1007160,17984,3052,9,3053,2
         #2021-08-26 20:58:53.876000000,1629982733876000000,,,,,0,0,65880,3633.0,1,3638.0,2
-        if pre_tick.last_time == day_reset_tick.last_time:
+        if pre_tick.equals(day_reset_tick):
             open_tick = tick
             pre_tick  = tick
             continue
@@ -264,6 +272,8 @@ def to_kline(exchange, interval, tick_df, need_book=False):
 
     kls.append(k)
     sys.stdout.write('\n')
+    if not first_k_is_ok:
+        kls = kls[1:]
     return kls 
 
 
@@ -297,7 +307,19 @@ if __name__ == "__main__":
         kline_file_name = tick_file_name[:index] + mid_name + suffix
         print(kline_file_name)
 
-        kls = to_kline(exchange, args.interval, tick_df, args.book)
-        kls_df = pd.DataFrame(kls)
+        symbol = tick_file_name.split('_')[0]
+        from common.tick_to_kline import KLineGenerator
+        gen = KLineGenerator(
+            symbol=symbol,           # 合约代码，如 'DCE.y2701'
+            intervals=[args.interval],  # K线周期列表
+            need_book=True,          # 是否需要买卖盘口数据
+            exchange=exchange
+        )
+        dfs = gen.load_history(tick_df)
+        kls_df = dfs[0]
+
+        #kls = to_kline(exchange, args.interval, tick_df, args.book)
+        #kls_df = pd.DataFrame(kls)
+
         kls_df.to_csv(kline_file_name, encoding='utf-8', index=False)
 
